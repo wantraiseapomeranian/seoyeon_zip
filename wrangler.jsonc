@@ -1,0 +1,14 @@
+{
+  "name": "seoyeon-zip",
+  "main": "src/worker.mjs",
+  "compatibility_date": "2026-09-09",
+  "compatibility_flags": ["nodejs_compat"],
+  // Access login redirects verified on the production hostname.
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": { "directory": "validation", "binding": "ASSETS", "run_worker_first": true },
+  "d1_databases": [{ "binding": "DB", "database_name": "seoyeon-zip-validation", "database_id": "017ec07d-d095-45f9-80f7-0dffd6f48ba0", "migrations_dir": "migrations" }],
+  // Owner identity and Access settings are managed in the Cloudflare dashboard.
+  "keep_vars": true,
+  "observability": { "enabled": true, "traces": { "enabled": true } }
+}

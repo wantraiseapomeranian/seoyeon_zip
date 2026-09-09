@@ -1,0 +1,8 @@
+node_modules/
+.local/
+.wrangler/
+.playwright-cli/
+.agents/skills/
+.env*
+.dev.vars*
+*.sqlite*
