@@ -14,12 +14,12 @@ const mf=new Miniflare(convertV4MiniflareOptions({workers:[{name:'scheduler-vali
     assert.match(request.headers.get('User-Agent'),/^SeoyeonZip\//);requests++;
     if(stopDuringFetch) await DB.prepare('UPDATE collection_control SET enabled=0,revision=revision+1').run();
     if(status!==200) return new Response(null,{status,headers:{'Retry-After':'120'}});
-    const results=Array.from({length:21},(_,i)=>({type:'status',id:String(i+1),url:`https://x.com/Seowoo_0501/status/${i+1}`,author:{screen_name:'Seowoo_0501'},reposted_by:null,text:'',created_at:new Date().toISOString(),media:{all:[{type:'photo',url:'https://pbs.twimg.com/media/example.jpg'}]}}));
+    const results=Array.from({length:21},(_,i)=>({type:'status',id:String(i+1),url:`https://x.com/Seowoo_0501/status/${i+1}`,author:{screen_name:'Seowoo_0501'},reposted_by:null,text:'',created_at:'2000-01-01T00:00:00Z',media:{all:[{type:'photo',url:'https://pbs.twimg.com/media/example.jpg'}]}}));
     return Response.json({code:200,results,cursor:{bottom:'next-'+requests}});
   }}]}));
 try {
   DB=await mf.getD1Database('DB');
-  for(const name of ['0001_validation.sql','0002_collection_state.sql','0003_collection_lanes.sql']) {
+  for(const name of ['0001_validation.sql','0002_collection_state.sql','0003_collection_lanes.sql','0004_secondary_sources.sql','0005_official_review.sql','0006_pumpkin_source.sql','0007_source_outcome.sql','0008_unrestricted_history.sql']) {
     const sql=readFileSync(new URL('../migrations/'+name,import.meta.url),'utf8');
     for(const statement of sql.replace(/^\s*--.*$/gm,'').split(';').filter(s=>s.trim()))
       await DB.prepare(statement).run();

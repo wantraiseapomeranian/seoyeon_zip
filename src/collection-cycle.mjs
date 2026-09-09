@@ -1,7 +1,7 @@
 export function startCycle(state,now) {
   if(state.cycle_started_at != null) return {...state};
   return {...state,cycle_started_at:now,
-    cycle_boundary_at:state.committed_boundary_at == null ? now-7*86400 : state.committed_boundary_at-86400,
+    cycle_boundary_at:state.committed_boundary_at == null ? 0 : state.committed_boundary_at-86400,
     next_cursor:null,pages_in_cycle:0,cursor_resets:0};
 }
 

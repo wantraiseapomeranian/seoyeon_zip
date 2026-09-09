@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { startCycle,advanceCycle,retryAt } from '../src/collection-cycle.mjs';
-test('initial seven days; overlap fixed; partial and catchup never advance boundary',()=>{
-  assert.equal(startCycle({},1000000).cycle_boundary_at,395200);
+test('initial history has no date cutoff; overlap fixed; partial and catchup never advance boundary',()=>{
+  assert.equal(startCycle({},1000000).cycle_boundary_at,0);
   const state=startCycle({committed_boundary_at:100000},200000);
   assert.equal(state.cycle_boundary_at,13600);
   const next=advanceCycle({...state,pages_in_cycle:19},{nextCursor:'b',traversal:{}},200010);

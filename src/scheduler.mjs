@@ -41,7 +41,7 @@ export async function runDueSource(env) {
   const latest=state.next_lane==='latest';
   const next=latest?advanceLatest(state,page,now):advanceCycle(state,page,now);
   // Normalize the entire response, but never persist posts outside the fixed requested range.
-  const boundary=latest?now-7*86400:state.cycle_boundary_at;
+  const boundary=latest?0:state.cycle_boundary_at;
   const eligible={...page,reviewPosts:(page.reviewPosts||[]).filter(r=>Date.parse(r.post.publishedAt)/1000>=boundary),posts:page.posts.filter(p=>Date.parse(p.publishedAt)/1000>=boundary)};
   let results;
   try { results=await commitPage(env.DB,lease,eligible,next); }

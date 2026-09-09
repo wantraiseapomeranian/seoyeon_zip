@@ -57,11 +57,24 @@ test('concurrent invocations cannot collect the same leased source twice',async 
   const results=await Promise.all([runDueSource({DB,COLLECTION_ENABLED:'true'}),runDueSource({DB,COLLECTION_ENABLED:'true'})]);
   assert.deepEqual(results.map(r=>r.status).sort(),['idle','stored']);assert.equal(fetch.mock.callCount(),1);
 });
-test('old posts outside the fixed seven-day range are not stored or mistaken for completion',async t=>{
+test('old posts are saved in latest and history without claiming complete coverage',async t=>{
   const {DB,sqlite,enable}=testDatabase();t.after(()=>sqlite.close());enable();t.mock.method(console,'log',()=>{});
   t.mock.method(globalThis,'fetch',async()=>Response.json({code:200,results:[{...direct(),created_at:'2000-01-01T00:00:00Z'}],cursor:{bottom:'next'}}));
   const result=await runDueSource({DB,COLLECTION_ENABLED:'true'});
-  assert.equal(result.stored,0);assert.equal(result.cycleStatus,'running');
+  assert.equal(result.stored,1);assert.equal(result.cycleStatus,'running');
   const state=sqlite.prepare('SELECT * FROM collection_state WHERE source=?').get('Seowoo_0501');
   assert.equal(state.last_complete_sync_at,null);assert.equal(state.next_cursor,'next');
+  assert.equal(state.cycle_boundary_at,0);
+  sqlite.exec('UPDATE collection_state SET next_due_at=0');
+  const history=await runDueSource({DB,COLLECTION_ENABLED:'true'});
+  assert.equal(history.lane,'history');assert.equal(history.stored,1);
+  assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM posts').get().n,1);
+});
+
+test('old official review items are stored separately from the feed',async t=>{
+  const {DB,sqlite,enable}=testDatabase();t.after(()=>sqlite.close());enable('triplescosmos');t.mock.method(console,'log',()=>{});
+  t.mock.method(globalThis,'fetch',async()=>Response.json({code:200,results:[{...direct(),url:'https://x.com/triplescosmos/status/123',author:{screen_name:'triplescosmos'},text:'서연 포토 비하인드',created_at:'2000-01-01T00:00:00Z'}],cursor:{bottom:'next'}}));
+  await runDueSource({DB,COLLECTION_ENABLED:'true'});
+  assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM official_review').get().n,1);
+  assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM posts').get().n,0);
 });

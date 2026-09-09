@@ -500,3 +500,12 @@ scripts/validate-remaining-sources.mjs 실행. Pumpkin030806/hampuppy806 각2페
 - npm test 43/43, dry-run 통과. Playwright 390/1440px 대화창 넘침 없음; 성공0건/공식보류/429/첫대기/중지 fixture 확인. 조회 실패 보존 및 Escape/포커스 복귀 확인. fixture는 실제 수집 실적이 아님.
 - 0007 원격 적용 후 비공개 배포 bd115b01-65c0-49f6-9bab-029e83afc79d. 실제 로그인 화면 11행 및 상태 새로고침 성공 확인, 비로그인 /api/sources 302. 배포 직후 Pumpkin 첫 성공은 아직 대기. 새 건수 필드의 실제 Cron 저장은 아직 미확인.
 - 화면: .local/source-status-live.png (실제 운영), .local/source-status-390.png 및 -1440.png (상태별 fixture).
+
+## 날짜 제한 해제 — 2026-09-10
+
+- 변경 전 원격 posts 83개, 가장 오래된 작성일 2026-09-02T14:29:12Z. 11개 활성, 2개 gap, 나머지 running 확인. 공급자 전체 이력 완전성과는 별개다.
+- 최초/최신 7일 하한을 해제하고 기존 20페이지 상한을 유지했다. 0008은 데이터 보존, 탐색 재시작, 이전 lease 차단, 중지/백오프 보존을 수행한다. 코드 배포 후 적용한다.
+- Node 테스트 45/45 통과. 과거 글 latest/history 저장, 중복 방지, 공식 검토 분리, reset 후 stale writer 거절, 재시도/중지 보존 포함.
+- 일반 권한 dry-run은 로그/상위 디렉터리 접근 제한으로 실패. 확장 권한 빌드 및 원격 적용 결과는 후속 기록한다.
+- 확장 권한 dry-run 통과(60.72 KiB / gzip 17.25 KiB). 로컬 workerd/D1에서 2000년 게시물 21개 저장·중복 재생·SQL rollback·중지 중 응답 거절·429/401·HTTP 봉인 통과.
+- GitHub main=9a616376175f2060ac865ce74d2dfecedb18972a로 로컬과 일치, 보호 브랜치 아님. 기존 Workers Builds 체크 성공 확인. 원격 미적용 마이그레이션은 0008 한 개다.

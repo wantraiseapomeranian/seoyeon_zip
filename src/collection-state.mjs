@@ -2,7 +2,7 @@ export async function acquireDueSource(DB,token) {
   return DB.prepare(`UPDATE collection_state
     SET lease_token=?,lease_until=unixepoch()+120,last_attempt_at=unixepoch(),revision=revision+1,
       cycle_boundary_at=CASE WHEN cycle_started_at IS NULL
-        THEN COALESCE(committed_boundary_at-86400,unixepoch()-604800) ELSE cycle_boundary_at END,
+        THEN COALESCE(committed_boundary_at-86400,0) ELSE cycle_boundary_at END,
       cycle_started_at=COALESCE(cycle_started_at,unixepoch())
     WHERE source=(SELECT source FROM collection_state
       WHERE enabled=1 AND next_due_at<=unixepoch()

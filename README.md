@@ -63,7 +63,7 @@ npx wrangler deploy --dry-run
 npx wrangler d1 execute seoyeon-zip-validation --remote --command "UPDATE collection_control SET enabled=0,revision=revision+1 WHERE id=1"
 ```
 
-시범 활성화 기록은 [후속 계획](docs/superpowers/plans/2026-09-09-collection-followup.md)과 VALIDATION.md를 따릅니다. 검증용 cursor를 운영 완료 경계로 이관하지 않았습니다. 초기 최근 7일 자료를 최대 20페이지 내에서 보완하며 완전성을 보장하지 않습니다.
+시범 활성화 기록은 [후속 계획](docs/superpowers/plans/2026-09-09-collection-followup.md)과 VALIDATION.md를 따릅니다. 검증용 cursor를 운영 완료 경계로 이관하지 않았습니다. 날짜 제한 없이 최대 20페이지 내에서 과거 자료를 보완하며 완전성을 보장하지 않습니다.
 
 설계 기준: DESIGN.md, docs/SPEC.md. 실행 결과와 오탐 정정: docs/VALIDATION.md.
 
