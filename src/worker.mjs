@@ -2,6 +2,7 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { sources } from './sources.mjs';
 import { runDueSource } from './scheduler.mjs';
 import { listSources,scheduleRetry } from './collection-state.mjs';
+import { readFeed } from './feed.mjs';
 const reply=(value,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 
 export async function authorize(request,env) {
@@ -18,13 +19,17 @@ export async function authorize(request,env) {
 // Internal router. The public fetch handler always authorizes first.
 export async function handleApi(request,env) {
   const url=new URL(request.url);
+  if(url.pathname==='/api/feed' && request.method==='GET') {
+    try { return reply(await readFeed(env.DB,url.searchParams)); }
+    catch(error) { if(error.status===400)return reply({error:'invalid_feed_query'},400);throw error; }
+  }
   if(url.pathname==='/api/probe') return reply({error:'manual_probe_retired'},410);
   if(url.pathname==='/api/samples' && request.method==='GET') {
     const {results}=await env.DB.prepare("SELECT data FROM posts ORDER BY json_extract(data,'$.publishedAt') DESC LIMIT 48").all();
     const state=await env.DB.prepare('SELECT MAX(last_success_at) AS latest FROM collection_state').first();
     return reply({collectedAt:state?.latest==null?null:new Date(state.latest*1000).toISOString(),posts:results.map(r=>JSON.parse(r.data))});
   }
-  if(url.pathname==='/api/sources' && request.method==='GET') return reply({sources:await listSources(env.DB)});
+  if(url.pathname==='/api/sources' && request.method==='GET') return reply({sources:(await listSources(env.DB)).map(s=>({...s,collection_enabled:env.COLLECTION_ENABLED==='true'&&s.collection_enabled===1}))});
   const retry=url.pathname.match(/^\/api\/sources\/([A-Za-z0-9_]{1,15})\/retry$/);
   if(retry && request.method==='POST') {
     if(request.headers.get('origin')!==url.origin || request.headers.get('x-validation-action')!=='collect') return reply({error:'invalid_origin'},403);
@@ -43,7 +48,8 @@ export default {
     try {
       if(new URL(request.url).pathname.startsWith('/api/')) return await handleApi(request,env);
       if(request.method!=='GET' && request.method!=='HEAD') return reply({error:'method_not_allowed'},405);
-      const asset=await env.ASSETS.fetch(request);const headers=new Headers(asset.headers);
+      const assetUrl=new URL(request.url);if(assetUrl.pathname==='/')assetUrl.pathname='/feed.html';
+      const asset=await env.ASSETS.fetch(new Request(assetUrl,request));const headers=new Headers(asset.headers);
       headers.set('Cache-Control','private, no-store');
       headers.set('Content-Security-Policy',"default-src 'self'; img-src https://pbs.twimg.com 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
       return new Response(asset.body,{status:asset.status,headers});

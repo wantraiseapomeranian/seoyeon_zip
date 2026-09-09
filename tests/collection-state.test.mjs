@@ -38,3 +38,34 @@ test('21 posts commit together; media failure rolls back page and cursor',async 
   assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM posts').get().n,21);
   assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM discoveries').get().n,21);
 });
+
+test('official review and cursor commit atomically and replay is idempotent',async t=>{
+ const {sqlite,DB,enable}=testDatabase();t.after(()=>sqlite.close());enable('triplescosmos');
+ const lease=await acquireDueSource(DB,'review');
+ const full={...page,reviewPosts:[{post:{id:'x:12',publishedAt:'2026-09-09T00:00:00Z'},reason:'untagged-personal-content',version:'official-v1'}]};
+ const next=advanceCycle(startCycle(lease,lease.db_now),full,lease.db_now);
+ sqlite.exec("CREATE TRIGGER fail_review BEFORE INSERT ON official_review BEGIN SELECT RAISE(ABORT,'review failure'); END");
+ await assert.rejects(commitPage(DB,lease,full,next),/review failure/);
+ assert.equal(sqlite.prepare('SELECT next_cursor FROM collection_state WHERE source=?').get('triplescosmos').next_cursor,null);
+ sqlite.exec('DROP TRIGGER fail_review');await commitPage(DB,lease,full,next);
+ assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM official_review').get().n,1);
+ assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM posts').get().n,0);
+ sqlite.exec('UPDATE collection_state SET next_due_at=0');const again=await acquireDueSource(DB,'again');await commitPage(DB,again,full,next);
+ assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM official_review').get().n,1);
+});
+
+test('page outcome rolls back with data and survives later provider failure',async t=>{
+ const {sqlite,DB,enable}=testDatabase();t.after(()=>sqlite.close());enable();
+ const lease=await acquireDueSource(DB,'outcome');
+ const state=startCycle(lease,lease.db_now),next=advanceCycle(state,page,lease.db_now);
+ const read=()=>sqlite.prepare('SELECT last_received_count,last_matched_count,last_review_count FROM collection_state WHERE source=?').get(lease.source);
+ assert.equal(read().last_matched_count,null);
+ sqlite.exec("CREATE TRIGGER fail_state BEFORE UPDATE OF next_due_at ON collection_state BEGIN SELECT RAISE(ABORT,'state failure'); END");
+ await assert.rejects(commitPage(DB,lease,page,next),/state failure/);
+ assert.equal(read().last_received_count,null);
+ sqlite.exec('DROP TRIGGER fail_state');await commitPage(DB,lease,page,next);
+ assert.deepEqual({...read()},{last_received_count:21,last_matched_count:0,last_review_count:0});
+ sqlite.exec('UPDATE collection_state SET next_due_at=0');const retry=await acquireDueSource(DB,'fail');
+ await recordFailure(DB,retry,startCycle(retry,retry.db_now),{code:'provider_timeout',nextDueAt:retry.db_now+1800,status:'retry'});
+ assert.equal(read().last_received_count,21);
+});

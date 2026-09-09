@@ -19,7 +19,7 @@ const mf=new Miniflare(convertV4MiniflareOptions({workers:[{name:'scheduler-vali
   }}]}));
 try {
   DB=await mf.getD1Database('DB');
-  for(const name of ['0001_validation.sql','0002_collection_state.sql']) {
+  for(const name of ['0001_validation.sql','0002_collection_state.sql','0003_collection_lanes.sql']) {
     const sql=readFileSync(new URL('../migrations/'+name,import.meta.url),'utf8');
     for(const statement of sql.replace(/^\s*--.*$/gm,'').split(';').filter(s=>s.trim()))
       await DB.prepare(statement).run();

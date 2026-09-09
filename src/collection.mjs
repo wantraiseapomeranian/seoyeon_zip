@@ -1,3 +1,4 @@
+import { classifyOfficial } from './official-policy.mjs';
 import { Buffer } from 'node:buffer';
 const handlePattern = /^[A-Za-z0-9_]{1,15}$/;
 export class ProviderError extends Error {
@@ -12,7 +13,7 @@ export function normalizePage(json, source) {
   if (json.code !== 200 || !Array.isArray(json.results) || !json.cursor ||
       !(json.cursor.bottom === null || typeof json.cursor.bottom === 'string')) throw Error('Invalid provider page');
   if (!handlePattern.test(source.handle)) throw Error('Invalid source');
-  const posts = [];
+  const posts = []; const officialDecisions=[]; const reviewPosts=[];
   for (const p of json.results) {
     if (p.type !== 'status' || typeof p.id !== 'string' || !/^\d+$/.test(p.id) ||
         !handlePattern.test(p.author?.screen_name ?? '') || typeof p.text !== 'string' ||
@@ -39,13 +40,21 @@ export function normalizePage(json, source) {
         width: Number.isSafeInteger(m.width) && m.width > 0 ? m.width : null,
         height: Number.isSafeInteger(m.height) && m.height > 0 ? m.height : null };
     });
-    if (!(textMatch || directMatch) || !media.length) continue;
-    posts.push({ id: `x:${p.id}`, platformPostId: p.id, canonicalUrl: url.origin + url.pathname,
+    const official=source.handle.toLowerCase()==='triplescosmos';
+    let verdict;
+    if(official){
+      verdict=classifyOfficial({text:p.text,author,relationship,hasMedia:media.length>0,nameMatch:textMatch});
+      officialDecisions.push({id:`x:${p.id}`,...verdict});
+      if(verdict.decision==='exclude')continue;
+    }else if (!(textMatch || directMatch) || !media.length) continue;
+    const normalized={ id: `x:${p.id}`, platformPostId: p.id, canonicalUrl: url.origin + url.pathname,
       authorHandle: author, observedViaSource: source.handle, relationship,
       publishedAt: new Date(p.created_at).toISOString(), caption: p.text,
-      matchReason: textMatch ? 'text' : 'verified-direct-author', contentKind: /cosmo/i.test(p.text) ? 'cosmo' : directMatch ? 'fansite' : 'other', media });
+      matchReason: official ? verdict.reason : textMatch ? 'text' : 'verified-direct-author', contentKind: official ? 'official' : /(?<![\p{L}\p{N}])(?:cosmo|코스모(?:톡)?)(?![\p{L}\p{N}])/iu.test(p.text.normalize('NFKC')) ? 'cosmo' : directMatch ? 'fansite' : 'other', media };
+    if(official&&verdict.decision==='review')reviewPosts.push({post:normalized,reason:verdict.reason,version:verdict.version});
+    else posts.push(normalized);
   }
-  return { posts, receivedCount: json.results.length, nextCursor: json.cursor.bottom,
+  return { posts, ...(source.handle.toLowerCase()==='triplescosmos'?{officialDecisions,reviewPosts}:{}), receivedCount: json.results.length, nextCursor: json.cursor.bottom,
     // Null cursor is observed exhaustion, not proof that the requested range is complete.
     traversal:{exhausted:json.cursor.bottom===null,boundaryVerified:false,exhaustionVerified:false} };
 }

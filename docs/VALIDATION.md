@@ -1,5 +1,90 @@
 # 서연모음.zip — 단계 0 실측 기록
 
+## 종합 계정 3개 역할 확인 및 연결 — 2026-09-09 05:03 UTC
+
+사용자 요청에 따라 보류된 계정만 읽기 전용으로 최대 10페이지씩 조사했다. 기존 normalizePage를 그대로 적용했으며 원본 미디어/raw 응답은 저장하지 않았다. 아래 역할 확인은 공급자 목록의 명시적 캡션·작성자·미디어 메타데이터 근거이며 사진 속 인물의 시각적 식별이나 COSMO 전체 커버리지 검증은 아니다.
+
+| 계정 | 조사 페이지 / 응답 글 수 | 이름+미디어 일치 수 | COSMO 표본 |
+|---|---|---|---|
+| gapyeonghaus | 6 / 122 | 2 | [2095328792315060339](https://x.com/gapyeonghaus/status/2095328792315060339): Jiyeon COSMO Talk update w/ Seoyeon, 윤서연 명시, 미디어 2개 |
+| tripleSnewsfeed | 8 / 149 | 8 | [2095157556041724097](https://x.com/tripleSnewsfeed/status/2095157556041724097): Seoyeon COSMO Talk Update, 미디어 2개 |
+| TRIPLES_FAN_FR | 5 / 102 | 3 | [2096003636786549106](https://x.com/TRIPLES_FAN_FR/status/2096003636786549106): COSMO Talk / SEOYEON / 윤서연 명시, 미디어 4개 |
+
+- 19페이지 모두 HTTP 200 및 전체 페이지 정규화 성공. TRIPLES_FAN_FR의 3페이지는 count=10 요청에 **22개**를 반환했다. 요청 count는 처리량 상한이 아니며 기존 전체 페이지 처리 규칙을 유지한다.
+- 이전 지서연 부분 일치 오탐은 철회 상태를 유지한다. 새 gapyeonghaus 표본은 윤서연과 함께한 글이라는 명시적 근거가 별도로 있다. 공동 출연 글은 포함하며 윤서연 단독 사진이라고 주장하지 않는다.
+- 05:03 UTC 기존 비공개 앱 DB에서 후보 3개의 enabled=1, revision 증가, next_due_at=현재 시각으로 변경하고 전체 6개 enabled=1을 다시 조회했다. 수집 코드·전용 직접 작성 예외·Access·Cron·CPU 제한은 변경하지 않았다. 재배포나 테스트 실행은 필요하지 않아 수행하지 않았다.
+- 추가 3개 소스의 **실제 Cron 저장은 아직 미확인**이다. 읽기 전용 조사 cursor와 표본을 DB에 이관하지 않았다. 자동 수집은 각 첫 페이지부터 시작하므로 위 5~8페이지 COSMO가 바로 피드 DB에 들어온다는 뜻은 아니다.
+- 기존 First0806_도 05:00:44 UTC 예약 저장 성공을 확인했다. Seowoo_0501은 04:55:42 UTC 성공 상태이며 확인 시점 Or1gin030806은 첫 예약 대기였다.
+- 6개 소스로 확대하면서 최신 조회는 과거 보완 중 약 60분, 이후 약 30분 간격이다. 장기 안정성·공급자 누락 가능성은 여전히 미검증이다. 추가 사용자 로그인·API 키·결제는 필요하지 않았다.
+
+## Paid 비공개 자동 수집 시범 전환 — 2026-09-09 04:51 UTC
+
+- 사용자 직접 결제 후 인증된 대시보드에서 Workers Paid Active를 확인했다. 추가 결제는 수행하지 않았다.
+- CPU 상한 100ms, 예약 `*/5 * * * *`, COLLECTION_ENABLED=true를 설정했다. DB 중지 상태에서 배포한 후 Access를 확인하고 마지막으로 DB 전역/검증된 전용 소스 3개만 켰다.
+- 기존 앱 DB에 0003 적용 성공: 5명령 / SQL 2.54ms. 기존 게시물 20개 보존. 미검증 소스 3개는 enabled=0을 유지한다.
+- 기본 dry-run은 샌드박스 상위 경로/로그 접근 제한으로 실패했다. 승인된 재실행은 54.24KiB / gzip 15.31KiB로 성공했다. 배포 버전 `cd9327bd-919c-4826-881e-4c072fa44139`, startup 5ms, 5분 예약 등록 확인.
+- 비로그인 API는 302, 기존 소유자 브라우저의 /api/samples는 200 / 20개였다. 의도적인 missing-preview.jpg 404는 실패 대체 표본이며 인증 실패가 아니다.
+- 04:55:41 UTC 실제 Cron 첫 수집 성공: Seowoo_0501 latest, HTTP/code 200, 72,600 bytes, 20개 수신/20개 upsert, DB 전체 20→21개. CPU 10ms / wall 2461ms / outcome ok / exceptions 없음. DB last_success_at=04:55:42, next_lane=history, pages_in_cycle=1, last_error_code=null 확인.
+- 수집 후 소유자 브라우저 API도 200 / 21개 / collectedAt=04:55:42 UTC를 반환했다. 사진·영상 preview=loaded, 의도적 실패 표본 preview=failed를 확인했다. 최종 git diff --check 통과.
+- 실시간 tail의 저장+관측 로그는 SQL 8 statements / rowsRead 204 / rowsWritten 115다. DB runs는 저장 batch만 7 statements / 204 / 113이며 lease/시간 조회는 양쪽 모두 제외한다. 일시 tail 관찰은 종료하고 5분 Cron 및 3개 소스 활성화는 유지한다. 다른 2개 소스의 첫 예약 성공과 장기 안정성은 아직 확인하지 않았다.
+- 이전의 32 tests/workerd 및 13/7ms는 아래 절의 별도 검증 증거다. 이번 설정 변경에서 같은 기능 테스트를 반복 실행하지 않았다.
+- 3개 소스의 최신 조회는 과거 교대 중 약 30분, 과거 중지 후 약 15분이다. 공급자 누락·첫 페이지 밖 급증분·장기 안정성은 보장하지 않는다. 100ms는 CPU 상한이며 월 요금 상한이 아니다.
+- 변경은 로컬 브랜치에 미커밋 상태이며 GitHub push는 하지 않았다. 연결된 main을 재배포하면 최신 시범 코드와 달라질 수 있으므로 통합 전 확인이 필요하다.
+
+## 최신/과거 분리 및 CPU 최적화 — 2026-09-09 04:40 UTC
+
+- 단일 에이전트로 후속 계획을 실행했다. 0003은 next_lane/last_latest_success_at/history_paused를 추가한다. 운영 DB에는 적용하지 않았으며 검증 DB의 기존 게시물/cursor를 보존했다.
+- 최신 첫 페이지와 저장된 과거 cursor를 교대한다. 과거는 20페이지에서 limited, 소진/반복이면 gap으로 중지하고 최신 조회는 유지한다. 최신 조회는 과거 cursor를 덮어쓰지 않는다. 6소스/5분 예약 시 최신 주기는 과거 보완 중 약 60분, 이후 약 30분이다. 첫 페이지 밖 급증분을 보장하지 않는 제한을 SPEC/README에 명시했다.
+- 새 3개 회귀 테스트의 수정 전 실패 확인 후 구현했다. 최종 npm test **32/32 통과**. workerd 로컬 검증도 21개·재처리·batch rollback·진행 중 중지·429·401·HTTP 봉인 통과. 기본 샌드박스에서는 esbuild 부모 경로 접근이 실패해 승인된 로컬 실행으로 확인했다.
+- Node 메모리 프로파일(실제 20개 응답, 2,000회)은 정규화/SQL 바인딩의 상대적 비용 확인용이다. Worker CPU 측정 대체가 아니다. SQL에서 ID만 필요한 삭제/발견 기록에 전체 JSON을 보내던 부분을 바꿨다. 바인딩 문자열은 45,781→20,107자, Node 반복 평균 0.589→0.328ms/page였다. 매회 API 표본을 새로 읽으므로 동일 payload의 정밀 벤치마크로 주장하지 않는다.
+- runs에 저장된 비용은 이제 sqlScope=page_commit / 7 statements로 정확히 표시한다. console의 page_commit_and_observation_log는 로그 INSERT까지 합산한다. 둘 다 lease/시각 쿼리는 제외한다.
+- 검증 D1 0003 적용 5명령/1.01ms SQL. 검증 패키징 54.30KiB / gzip 15.32KiB. 개선 버전 `1afeeb15-2652-45d5-b4c6-494154888d48`에서 실제 Cron을 두 번 측정했다.
+
+| UTC 실행 | 수집 | 실제 CPU | 결과 |
+|---|---|---|---|
+| 04:34:19 | latest / 20개 upsert | 13ms | ok, wall 1765ms |
+| 04:37:10 | latest / 20개 upsert | 7ms | ok |
+
+첫 실행은 삭제 전파 중이던 이전 검증 Cron 표현으로 새 코드가 실행됐고, 두 번째는 새 검증 시간대로 실행됐다. 성공 후 DB 자동중지 트리거로 외부 수집은 각각 한 번씩만 허용했다. 이 트리거의 비용도 측정에 포함되므로 운영과 완전히 같은 환경은 아니다. 반복 측정이 13/7ms여서 무료 10ms 기준의 안정적 여유는 입증하지 못했다. 7ms 한 번을 무료 운영 통과로 승격하지 않는다.
+
+측정 후 DB 전역/소스 enabled=0, 환경 COLLECTION_ENABLED=false, crons=[]로 정리하고 임시 trigger를 제거했다. 최종 비활성 버전 `262b8461-7e4e-4550-86fd-b9bb09288220`, No targets deployed 확인. Cron 삭제 전파 중에도 DB와 환경 봉인이 수집을 막는다.
+
+### 월 USD 5 대안
+
+사용자는 무료로 어렵다면 약 USD 5 지출 가능성을 밝혔다. 대시보드에서 현재 Workers Free와 Workers Paid 결제 검토 화면의 기본료 USD 5/month를 확인했다. 이는 고정 상한이 아니며 초과 사용량 자동 청구 동의를 포함한다. 아직 Activate/결제를 실행하지 않았다.
+
+현재 5분 수집만 가정하면 30일 8,640회, 13ms/회 가정 CPU 112,320ms로 기본 포함량(월 요청 1천만/CPU 3천만ms)보다 작다. 다른 Worker·프런트 요청·다른 제품·세금은 이 계산에서 제외했다. 무료 한도에 맞추려고 영속 큐와 페이지 분할을 추가하기보다 Paid를 선택하는 편이 간단하다는 판단이다. 유료여도 공급자 누락/가용성 문제는 해결되지 않는다.
+
+근거: [Workers 요금](https://developers.cloudflare.com/workers/platform/pricing/), [CPU 한도](https://developers.cloudflare.com/workers/platform/limits/#cpu-time). 코드 변경은 로컬 미커밋 상태이며 운영 배포/push는 하지 않았다.
+
+## 실제 Cron CPU 검증 — 2026-09-09 04:19 UTC
+
+사용자 로그인 후 기존 브라우저 세션에서 Cloudflare 대시보드에 접근했다. Wrangler 토큰의 Observability 조회 403은 대시보드 조회로 해결했으며 새 자격증명을 수집하지 않았다.
+
+- 대상은 운영 앱과 분리한 `seoyeon-zip-scheduler-check` Worker/D1이다. 공개 URL과 preview는 false. 기존 코드의 scheduled handler를 실제 Cron으로 실행했다. 실행 버전 `d093aaeb-c5b8-4616-afdb-d1782869cb46`.
+- 04:19:21 UTC 실행, outcome=ok, **cpuTimeMs=13 / wallTimeMs=2348**. 대시보드 invocation 이벤트에서 직접 확인했다. startup 5ms 및 공급자 wallMs와 구분한다.
+- 실제 API HTTP/JSON 200, 응답 73,103 bytes, 20개 수신/20개 upsert. 검증 DB의 총 게시물 수는 32→33으로 증가했다. 첫 페이지를 재조회했으므로 기존 자료와 겹치며 완전히 동일한 응답 재생 검증은 아니다.
+- runs 저장값은 SQL statements=8, rowsRead=204, rowsWritten=113. 이 저장값은 runs INSERT 자체의 비용을 합산하기 전 값이므로 전체 invocation SQL 비용으로 해석하지 않는다. lease/시각 조회도 포함하지 않는다.
+- 무료 플랜 Cron CPU 한도는 공식 문서상 10ms. 13ms 요청이 성공한 것만으로 한도 적합성을 입증하지 못하며, 단일 표본이라 최악값/평균도 알 수 없다. **무료 운영 CPU 기준 미충족 표본 → 활성화 보류 유지**.
+- 최초 날짜 지정 예약의 실행 확인이 늦어 제한된 추가 시간대를 잠시 배포했으나, 확인된 수집은 최초 예약이다. 이후 전역/모든 소스 enabled=0, COLLECTION_ENABLED=false, crons=[]로 봉인했다. 임시 자동중지 SQL trigger도 제거했다. 최종 비활성 버전 `a02d60d1-1bd5-4442-9f4e-cf1b0784c32c`, Wrangler 출력 No targets deployed 확인.
+- 운영 Worker/DB는 이번 실측에서 변경하지 않았고 GitHub push·유료 전환은 하지 않았다. 다음 작업은 CPU 프로파일링과 비용 절감 후 재측정이다. 공급자 탐색 범위 설계 보완도 별도로 남아 있다.
+
+근거: [Cloudflare CPU 한도 및 초과 허용 설명](https://developers.cloudflare.com/workers/platform/limits/#cpu-time), [Cron 반영 지연 및 제거](https://developers.cloudflare.com/workers/configuration/cron-triggers/).
+
+## 후속 검증 — 2026-09-09 04:12 UTC
+
+판정: 자동 운영 보류 유지. 제작자 코드와 추가 실측으로 현재 cycle의 한계를 확인했다. 이번에는 운영 배포·Cron 등록·DB 변경을 하지 않았다.
+
+- FxEmbed 제작자 커밋 `60a550c70e834f575792963130714cef73600856`의 `packages/atmosphere/src/providers/twitter/userStatuses.ts:187–209`: upstream Bottom cursor를 전달하며 게시물 변환 실패는 null로 바꿔 결과에서 제외하고도 code=200을 반환한다. 따라서 cursor 종료를 모든 게시물의 누락 없는 수집 증거로 취급할 수 없다. 이는 공개 코드의 동작이며 현재 서비스 배포 커밋과 일치함을 확인한 것은 아니다.
+- 같은 커밋 `src/realms/api/routes/twitter.ts:239–260`: since의 204 판정은 cursor 없는 첫 응답의 작성 시각만 검사한다. 재게시 발견 시각이나 전체 목록의 변경 없음 계약이 아니다.
+- Seowoo_0501 최대 6페이지 읽기 전용 재확인: 수신 20/19/18/20/20/19개, 최근 7일 20/13/0/0/0/0개. 6페이지 최저 작성 시각은 2026-06-05T23:11:56Z이며 모든 페이지에 서로 다른 다음 cursor가 있었다. raw 응답·미디어·DB 저장은 하지 않았다. 이전 관측과 페이지 수가 다르므로 고정 snapshot으로 간주하지 않는다.
+- 이 증거로 작성 시각 기반 조기 종료를 검증 완료로 승격하지 않았다. 현재 구현은 완료 판정을 보수적으로 막지만, 장기 cycle 동안 최신 목록 재조회가 지연되는 한계가 있다.
+- 다음 설계안: 최신 목록의 제한된 재탐색과 과거 cursor 이어받기를 분리하고, 수집 완료 대신 확인 범위를 기록한다. 반복 조회/겹침으로 누락 가능성을 줄이되 공급자의 변환 실패까지 복구한다고 보장하지 않는다. 페이지 예산·교대 주기·완료 상태 의미를 확정한 뒤 구현할 후속 변경이며 현재 코드에는 반영하지 않았다.
+- CPU 조회: 기존 Wrangler 인증으로 Observability telemetry/query를 호출했으나 HTTP 403. 공식 API는 Workers Observability Write 권한을 요구한다. 원격 개발 세션의 이전 응답 시간은 CPU 증거가 아니다. 대시보드 경로로 검증을 이어갈 수 있도록 Cloudflare 로그인 화면을 열었다. 새 스케줄러의 CPU 측정은 아직 미완료다.
+- 자동 승인 검토가 과거 리뷰 제한을 근거로 공개 소스 저장·실측을 거절했다. 공개 소스는 파일 저장 없는 읽기 방식으로 확인했고, 실측은 최신 사용자 승인과 현재 프로젝트 AGENTS.md를 근거로 재검토 후 허용됐다.
+
+근거: [공급자 목록 처리 코드](https://github.com/FxEmbed/FxEmbed/blob/60a550c70e834f575792963130714cef73600856/packages/atmosphere/src/providers/twitter/userStatuses.ts#L187), [since 처리](https://github.com/FxEmbed/FxEmbed/blob/60a550c70e834f575792963130714cef73600856/src/realms/api/routes/twitter.ts#L239), [Cloudflare 로그 조회 권한](https://developers.cloudflare.com/api/resources/workers/subresources/observability/subresources/telemetry/methods/query/).
+
 ## 자동 수집 구현 실행 결과 — 2026-09-09 03:06 UTC
 
 상태: **비활성 자동 수집 코드 구현 / 운영 활성화 보류**. 아래 과거 단계 0 결과와 구별한다.
@@ -276,3 +361,142 @@ Impeccable은 스킬 설치 성공, 엔진 로더는 바이너리 부재로 실�
 - Seowoo: 외부 응답 74670 bytes/705ms, Worker CPU 10ms/wall 959ms, SQL 10문장, rows read 111/write 144. gapyeonghaus: 72599 bytes/829ms, CPU 6ms/wall 1067ms, SQL 10문장, rows read 15/write 17. 각 1회 관측이며 장기 CPU 한도 통과나 안정성 보장이 아니다.
 - 실제 배포 화면에서 사진 loaded/naturalWidth 1661, 영상 썸네일 loaded/naturalWidth 1200, 의도적 실패 카드 failed 확인. 조회 도중 한 번 페이지 이동으로 평가가 중단됐고 재조회에 성공했다.
 - 판정: User-Agent 추가 후 실제 Worker 수집·D1 저장·화면 조회가 성공했다. 기존 401 문제는 이번 두 소스 실측에서 해소됐다. 전체 6개 소스, COSMO 역할, 장기 자동 수집, 원격 동시성·재시작 검증은 완료로 간주하지 않는다.
+
+## 실제 피드 연결 코드 — 2026-09-09 (실행 미검증)
+
+src/feed.mjs 및 Worker 라우팅, validation/feed.js에 전체 데이터 필터/정렬/cursor와 화면 연결을 작성했다. 인증 핸들러를 통과한 뒤 API 및 정적 자산을 제공하는 구조는 유지했다. 로컬 시안과 실제 데이터 화면을 분리했다. 파일 내용만 확인했으며 테스트·빌드·브라우저 검증·배포는 실행하지 않았다. 이전 수집 검증 결과는 새 피드의 검증 근거가 아니다. 남은 검증은 PLAN.md 실제 피드 연결 절 참조.
+
+## 실제 피드 후속 검증 — 2026-09-09 06:43 UTC
+
+- `node --test tests/feed.test.mjs`: 3/3 통과. 같은 게시일 120개를 최신/오래된순으로 페이지 끝까지 조회해 누락·중복 없음 확인. KST 월 경계 및 복수 발견 출처, GIF, 빈 결과, 잘못된 query/cursor HTTP 400 확인.
+- `npm test`: 35/35 통과. SQLite 기반 검증이며 원격 D1 비용/동작의 대체가 아니다.
+- Wrangler whoami: 지정 소유자 계정 OAuth 로그인 확인.
+- Playwright 로컬 페이지 열기 성공. scripts/check-feed-live.js를 작성했으나 실행은 자동 승인 검토에서 과거 리뷰 전용 테스트 금지를 근거로 거절. 브라우저 동작 검증 통과로 간주하지 않는다.
+- Wrangler dry-run: 기본 샌드박스에서 파일 접근 오류. 권한 확대 재시도는 자동 승인 검토에서 빌드 금지를 근거로 거절. 빌드 통과 미확인.
+- 원격 배포하지 않았다. 사용자에게 해당 검증과 기존 Access 비공개 배포 범위의 명시적 예외 승인을 요청한다.
+
+## 실제 피드 비공개 배포 완료 — 2026-09-09 06:53 UTC
+
+사용자가 브라우저 검증·빌드·기존 Access 비공개 배포를 명시 승인했다. 자동 검토의 과거 지침 오적용은 현재 AGENTS.md 및 이번 승인 근거를 제출해 동일 명령 재검토 후 진행했다.
+
+- Wrangler dry-run 통과. 390/1440px 모의 API 브라우저 검증에서 60개 페이지 추가, 실패 후 기존 카드 보존·재시도, 지연 응답 무시, 가로 넘침 없음 확인.
+- 첫 원격 확인에서 실제 ID `x:숫자`가 cursor 숫자 검사에 걸려 다음 페이지 400 발생. 검사와 회귀 표본을 실제 형식으로 수정하고 feed 테스트 3/3 통과 후 재배포.
+- 최종 버전: 59750e24-3767-43f8-b624-71423e42f262. 기존 DB·Access·keep_vars·5분 예약 유지. commit/push 없음.
+- 소유자 원격 API: 첫 페이지 200/48개, 다음 페이지 200/7개, 전체 55개, 페이지 교집합 없음. 실제 더 보기 클릭 후 55개 카드 및 버튼 숨김 확인.
+- 최신 게시일 2026-09-09T03:52:57.000Z, 오래된 게시일 2026-09-03T10:17:12.000Z. 2026-09 월 조건 응답 200/총55 확인.
+- 비로그인 /api/feed 요청 302 Access 로그인 리다이렉트 확인.
+- 원격 D1 SQL/CPU 비용 실측 및 장기 데이터 증가에 따른 인덱스 검토는 남아 있다. 모의 브라우저 실패 재시도 확인을 원격 장애 주입 검증으로 간주하지 않는다.
+
+## 피드 CPU / SQL 비용 실측 — 2026-09-09 06:59 UTC
+
+대상: 기존 Access 비공개 seoyeon-zip / D1 seoyeon-zip-validation, 게시물 55개. 데이터 수정·새 배포 없이 소유자 GET 및 SELECT/EXPLAIN만 실행했다.
+
+| 표본 | 결과 |
+|---|---|
+| Worker 오래된순 GET 1회 (wrangler tail) | outcome ok, CPU 5ms, wall 187ms |
+| 전체 개수 SELECT | 0.1827ms / rows_read 55 / rows_written 0 |
+| 최신 목록 49개 SELECT | 0.7306ms / rows_read 110 / rows_written 0 |
+| 오래된 목록 49개 SELECT | 2.8914ms / rows_read 110 / rows_written 0 |
+| 2026-09 KST 목록 49개 SELECT | 2.8309ms / rows_read 110 / rows_written 0 |
+| 영상 목록 33개 SELECT | 0.8286ms / rows_read 129 / rows_written 0 |
+| 갱신 상태 MAX SELECT | 0.4677ms / rows_read 6 / rows_written 0 |
+
+첫 기본 페이지의 세 SQL에 대응하는 별도 실행 표본 합계는 읽기 171행이다. 동일 요청의 통합 프로파일이나 월간 청구 예측이 아니다. 브라우저 왕복 표본은 기본829/오래된311/월316/영상288ms였으며 CPU 시간과 구분한다. 모든 GET은 200. CPU 표본은 한 건이므로 p95/장기 운영/수집 Cron 비용을 대표하지 않는다.
+
+EXPLAIN 최신 목록: SCAN p + USE TEMP B-TREE FOR ORDER BY. 현재 표본에서 CPU 제한 100ms 초과는 관찰되지 않았으며 긴급 인덱스 변경은 하지 않았다. 게시물 증가 시 publishedAt 표현식 + ID 정렬 인덱스를 양 정렬 방향과 cursor에 맞게 검토하고, EXPLAIN 및 rows_read로 효과를 입증한다. 영상/출처 필터 및 COUNT 비용은 별도로 남는다.
+
+scripts/measure-feed-tail.mjs는 60초 제한 로그 구독 후 종료하며 요청 헤더·URL·본문 대신 CPU/wall/outcome만 출력한다. 첫 구독은 표본 미수신, 두 번째에서 위 GET 표본 수신. 추가 자동화나 계속 실행되는 모니터는 생성하지 않았다.
+
+## 미설치 스킬 보완 — 2026-09-09
+
+사용자 설치 요청에 따라 공식 skill-installer를 사용해 프로젝트 .agents/skills에 12개를 추가했다. 기존 10개는 덮어쓰지 않았다.
+
+- jakubkrehel/skills: better-colors, better-typography, variant, break.
+- emilkowalski/skills: emil-design-eng, review-animations.
+- obra/superpowers: using-superpowers, subagent-driven-development, brainstorming, systematic-debugging, requesting-code-review, test-driven-development. 뒤 4개는 새 항목의 워크플로/필수 참조 누락을 보완한 의존 스킬이다.
+
+전체 설치 스킬의 Markdown 로컬 링크를 검사했다. 남은 미존재 경로는 Playwright 문서 예시의 과거 스냅샷뿐이며 설치 자산 누락이 아니다. 새 Superpowers의 review-package/task-brief/sdd-workspace 파일 존재 및 Git Bash 5.2.37의 bash -n 구문 검사 통과. 실제 서브에이전트 작업·리뷰 생성·커밋은 실행하지 않았다. Windows에서는 system32의 WSL bash가 아닌 C:/Program Files/Git/bin/bash.exe를 사용한다.
+
+설치와 실행 범위는 구분한다. 지침형 스킬에 별도 엔진은 없고, 새 스킬 자동 발견은 다음 턴부터 확인 가능하다. using-superpowers와 subagent-driven-development 설치 자체는 사용자의 단일 에이전트 선호/commit 금지/미세 디자인 판단 위임을 변경하지 않는다. Skill에서 다른 역할을 설명하는 일반 참조(writing-skills 등)를 무조건 설치 의존성으로 취급하지 않았다.
+
+## CPU 표본 확대 및 수집 상태 — 2026-09-09 07:20 UTC
+
+기존 비공개 배포에서 피드 기본/오래된순/2026-09 게시월/영상/Seowoo_0501 출처 GET 5건과 sources GET 1건을 순서대로 읽었다. 모두 HTTP200, 모든 tail outcome ok.
+
+- 피드 5건 CPU: 6,4,4,3,3ms (범위3~6, 평균4ms). wall:890,66,81,62,68ms. 첫 요청 wall이 큰 원인은 이 표본으로 특정하지 않았으며 CPU와 구분한다.
+- sources 요청 CPU1ms / wall31ms.
+- 총55개, 영상33개, Seowoo_0501 발견출처33개.
+- First0806_, Or1gin030806, Seowoo_0501, TRIPLES_FAN_FR, gapyeonghaus, tripleSnewsfeed 모두 enabled1, 최근 last_success_at 존재, last_error_code null, catchup_status running. pages_in_cycle 3~4, history_paused0, last_complete_sync_at null. 최근 성공 및 진행 확인이지 전체 과거 수집 완료가 아니다.
+- 별도 추가 계정 활성화·데이터 변경·배포 없음. CPU 표본을 월간 청구 금액/장기p95 보장으로 환산하지 않는다. SQL 비용은 앞선 실측 참조.
+
+## 추가 후보 6계정 수집·판별 표본 — 2026-09-09 07:23 UTC
+
+사용자 진행 요청에 따라 scripts/validate-additional-sources.mjs로 계정당 첫 목록 1페이지를 조회했다. S2O806 중복은 제거했다. 총119개 응답을 기존 normalizePage에 모두 전달했으며 verifiedDirect=false로 이름 없는 글 예외를 적용하지 않았다. 운영 DB 저장·source 추가·자동 활성화는 하지 않았다. 원본 미디어와 raw 전체 응답은 저장하지 않았다. .local/additional-source-validation.json은 요약과 계정당 최대3개 정규화 텍스트 표본이다.
+
+| 계정 | HTTP | 반환 | 이름+미디어 일치 | 다른 작성자 글 |
+|---|---|---|---|---|
+| sogeumdwarf | 200 | 20 | 7 | 0 |
+| hamhamm806 | 200 | 20 | 4 | 2 |
+| S2O806 | 200 | 22 | 16 | 5 |
+| Pumpkin030806 | 200 | 19 | 19 | 0 |
+| hampuppy806 | 200 | 18 | 8 | 6 |
+| triplescosmos | 200 | 20 | 2 | 10 |
+
+일치 수는 메타데이터의 이름/미디어 존재 규칙 통과 수이며 이미지 속 인물의 육안 검증 또는 7일 운영 저장 건수가 아니다. 22개 응답도 자르지 않고 전부 판별했다.
+
+- sogeumdwarf: 9/4 직접 작성 사진 + 윤서연 태그 확인. hamhamm806: 9/5 직접 영상 + 윤서연 태그 및 다른 계정 재게시 확인. S2O806: 9/4 코스모톡 사진 + 윤서연 태그 확인. 이 3개는 이름 기반 보조 소스 연결 후보.
+- Pumpkin030806 표본은8/16, hampuppy806 표본은8/13 또는 이전. 현재 초기7일 범위 밖 표본이므로 활성화해도 바로 보일 것으로 보장하지 않는다. 범위 밖 과거 수집을 임의 확대하지 않는다.
+- triplescosmos 일치2개는 다른 작성자 starlikemusicco/soundwave_korea의 행사·굿즈 안내 재게시. 공식 직접 작성 미디어 역할은 이번 페이지로 검증하지 못했다. 계정 자체의 탈락 근거가 아니며 공식 출처만으로 전용 직접 글 예외를 적용하지 않는다. 공지 포함 여부는 기존 요구사항에 확정하지 않은 제품 범위 선택이다.
+- 한글 '코스모톡'은 현재 /cosmo/i 분류에서 other가 됨. secondary 직접 사진도 verifiedDirect=false이면 other로 표시된다. 수집 포함 여부와 콘텐츠 종류 분류를 분리해 설계를 보완할 필요가 있다.
+- 6계정을 모두 추가하면 현행 한슬롯1소스/5분 구조상12소스가 된다. 정상 최신 조회 순회는 약60분, 초기 최신/과거 교대 시 약120분까지 길어질 수 있다. 기존6개와 같은30분/60분 목표로 설명하면 안 된다. 추가 활성화 전에 주기 계약을 갱신해야 한다.
+
+## 보조 계정 3개 연결 — 2026-09-09
+
+- sogeumdwarf, hamhamm806, S2O806를 소스 목록에 추가. verifiedDirect=false 유지. 이름 없는 글 허용은 기존3개 전용계정만 유지.
+- 명시적 영문 COSMO 및 한글 코스모/코스모톡 단어를 cosmo로 분류. cosmopolitan 등 부분 일치는 제외. 분류는 이름+미디어 포함 판별과 별개.
+- 0004_secondary_sources.sql은 비활성 신규3행만 추가. 기존 데이터 보존. 원격 적용 후 새 코드 배포, 마지막으로 해당3행 enabled1/revision증가/next_due_at현재시각 적용.
+- 버전 e325b655-524f-4a24-bf04-3a3bdb55f41f. Cron */3 * * * *, CPU100ms, keep_vars, Access 유지. 비로그인 API302 확인. 계정9개 enabled1 조회 확인, 신규3개 last_success_at null: 첫 예약 저장 아직 미확인.
+- TDD: 코스모톡 분류 테스트가 other 반환으로 실패하는 것을 먼저 확인. 수정 후 전체37/37 통과. 신규 소스 설정의 이름 없는 글 예외 미부여, 9소스 순회, 기존 인증/트랜잭션 테스트 포함. dry-run 통과, git diff --check 통과.
+- 예약 슬롯 하루288→480(약67% 증가), 한 실행1소스1페이지 유지. 9소스 정상 순회 약27분, 최신/과거 교대 중 최신 확인 약54분 목표. 재시도/예약 전파/실행 지연은 별도라 보장 간격이 아니다. 추가 결제나 요금제 변경 없음.
+- Pumpkin030806/hampuppy806/triplescosmos는 미활성 상태로 보류. 신규 첫 Cron 저장 및 변경 주기 하 장기 CPU/SQL 비용은 후속 확인 대상.
+
+## 남은 3계정 추가 확인 — 2026-09-09
+
+scripts/validate-remaining-sources.mjs 실행. Pumpkin030806/hampuppy806 각2페이지, triplescosmos4페이지(직접 작성 이름+미디어 표본 발견 시 중단), 모든 페이지 HTTP200. 운영 저장/활성화 없이 메타데이터 판별. .local/remaining-source-validation.json에 시각·범위·요약 기록.
+
+- Pumpkin030806: 33개 응답/33개 일치, 최근7일 일치0. 조회 응답의 가장 최근 작성일8/16. 이름 명시 직접 사진이 있어 수집 경로/판별은 가능. 현재 표본에서 최근 자료 없음.
+- hampuppy806: 38개 응답/16개 일치, 최근7일 일치0. 조회 응답 가장 최근 작성일8/13이며 직접 이름 명시 표본은8/6. 재게시가 많아 발견출처 분리 유지 필요.
+- triplescosmos: 80개 응답/3개 일치. 최근7일 일치2개는 앞서 확인한 행사/굿즈 재게시. 4페이지에서8/31 직접 작성 Event Gravity Badge War 결과(SeoYeon, 이미지1) 확인: https://x.com/triplescosmos/status/2094273978714271806 . 직접 작성 미디어가 반환되는 것은 확인했지만 개인 사진 표본으로 간주하지 않는다.
+- hampuppy806 응답에서 공식 작성8/13 게시물 https://x.com/triplescosmos/status/2087811644600496422 의 윤서연 태그+이미지2 메타데이터가 재게시 형태로 확인됐다. 이는 공식계정 자체 최근 목록에서 확인한 표본과 구분한다.
+
+판정: 세 계정 모두 API 경로 실패가 아니다. 앞의2개는 향후 글 감시용 연결이 가능하지만 초기7일 데이터가0이어도 정상이며 과거 자료를 보이려면 별도 수집 범위 확대가 필요하다. 공식계정은 직접/재게시와 사진/행사 안내의 포함 정책을 정리한 뒤 연결하는 편이 맞다. 현재9소스 활성 상태 유지. 페이지 표본 조사이므로 계정 전체의 최근 글 부재를 확정하거나 이미지 속 인물의 육안 검증으로 표현하지 않는다.
+
+공식 계정 해시태그 조사: 10페이지/200개 HTTP200, 이름일치13개(직접8/기타작성5), 그중 미디어11개, 정확한 윤서연 멤버 태그 일치1개. 실제 영상 태그 및 태그 없는 포토 비하인드 예외 발견. 태그만 필수인 규칙은 누락 위험, 본문 이름만 규칙은 행사/굿즈/투표 혼입 위험. docs/official-hashtag-analysis.md에 근거 URL과 미구현 제안 기록. 운영 변경 없음.
+
+공식전용 official-v1 로컬 구현 및 실제200개 재조회 검증: 포함1/검토1/제외198, 기존 이름+미디어11개 중9개 안내/재게시 제외. 전체40테스트 통과. 운영 미배포·공식미활성. 상세 한계와 URL은 docs/official-hashtag-analysis.md의 실제 적용 결과 참조. 검토 대상 운영 저장함은 미구현이며 현재 결과는 검증 파일에만 보존된다.
+
+## 공식 소스 운영 등록 — 2026-09-09
+
+사용자 등록 승인 후 official-v1 필터와 공식 검토 메타데이터 보존을 배포했다. 총10소스, triplescosmos verifiedDirect=false.
+
+- 0005_official_review.sql: 검토 테이블과 비활성 공식 행 추가. 첫 원격 요청7403 이후 계정권한 재확인, 동일 요청 재시도 성공. 기존 게시물 변경 없음.
+- 검토 자료는 정규화된 post/reason/version으로 반환하고, scheduler에서 포함 자료와 동일한7일/고정경계 필터 후 commitPage의 lease/revision guard batch에서 official_review에 upsert한다. cursor와 원자적으로 저장되며 피드 posts에는 넣지 않는다. 운영 검토용 사용자 화면은 아직 없다.
+- 검토저장 실패 시 cursor rollback, 재처리중복 없음, 공식 태그/공지/분류/9→10소스 순회 포함 전체42테스트 통과, dry-run/git diff --check 통과.
+- 배포246edd00-9865-4e87-a167-367101e69d40 후 공식 행만 enabled1/revision증가/next_due현재 적용. last_success_at null, 검토0: 첫 Cron 미확인.
+- Access 비로그인302 유지. 주기3분, 하루480슬롯 그대로. 10소스 정상순회 약30분/최신과거교대 중 최신약60분 목표. 초기7일 제한 유지. 이번에 과거8월 표본을 운영으로 복사하지 않았다.
+
+## Pumpkin 소스 등록 — 2026-09-09
+- 사용자 승인: Pumpkin030806 연결, hampuppy806 보류. 전용 직접 작성 예외 없음(verifiedDirect=false), 최근7일 정책 유지.
+- 0006_pumpkin_source.sql로 비활성 등록 → Worker 배포 → Pumpkin 행만 활성화(changes=1) 완료.
+- 배포 버전: f2f92c8c-e7b6-4811-8c0a-8c4375a3ed07. 기존 비공개 seoyeon-zip 대상.
+- npm test 42/42 통과(11소스 순회 포함), Wrangler dry-run 통과, 비로그인 /api/feed HTTP302 확인.
+- 원격11행 enabled=1. Pumpkin last_success_at=null / last_error_code=null: 활성화 확인이며 첫 자동 수집 성공은 미확인. 공식 역시 첫 성공 미확인. 기존9개는 last_success_at 존재/오류없음.
+- 3분당1소스(일480슬롯) 유지: 전체약33분, 초기 최신/과거 교대시 최신약66분. 재시도 등으로 더 길어질 수 있음.
+
+## 수집 상태 화면 — 2026-09-09
+- 기존 대화창에서 첫 수집 대기/성공/재시도/확인 필요/전역 또는 소스 중지를 구분. 마지막 성공 시각, 마지막 성공 페이지 응답/조건 통과/공식 검토 보류 건수 표시. 통과 건수는 중복 포함이며 신규 게시물 수가 아님.
+- 0007_source_outcome.sql nullable 3필드 추가. 건수 UPDATE는 기존 guard/게시물/커서 batch 안에 있어 실패 시 함께 rollback. 조회 실패는 이전 성공 건수를 보존. /api/sources는 DB와 환경 전역 스위치를 모두 반영.
+- 상태 새로고침은 GET만 실행. 조회 실패 시 이전 결과 유지, 로컬 저장본 표시. 기존 과거 성공의 상세 건수는 null이며 다음 성공부터 기록.
+- npm test 43/43, dry-run 통과. Playwright 390/1440px 대화창 넘침 없음; 성공0건/공식보류/429/첫대기/중지 fixture 확인. 조회 실패 보존 및 Escape/포커스 복귀 확인. fixture는 실제 수집 실적이 아님.
+- 0007 원격 적용 후 비공개 배포 bd115b01-65c0-49f6-9bab-029e83afc79d. 실제 로그인 화면 11행 및 상태 새로고침 성공 확인, 비로그인 /api/sources 302. 배포 직후 Pumpkin 첫 성공은 아직 대기. 새 건수 필드의 실제 Cron 저장은 아직 미확인.
+- 화면: .local/source-status-live.png (실제 운영), .local/source-status-390.png 및 -1440.png (상태별 fixture).

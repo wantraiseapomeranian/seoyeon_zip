@@ -1,6 +1,6 @@
 import { fetchPage,normalizePage,ProviderError } from './collection.mjs';
 import { sources } from './sources.mjs';
-import { startCycle,advanceCycle,retryAt } from './collection-cycle.mjs';
+import { startCycle,advanceCycle,advanceLatest,retryAt } from './collection-cycle.mjs';
 import { acquireDueSource,commitPage,recordFailure } from './collection-state.mjs';
 
 export async function runDueSource(env) {
@@ -12,7 +12,7 @@ export async function runDueSource(env) {
   let fetched,page;
   try {
     if(!source) throw new ProviderError(null,'unknown_source');
-    fetched=await fetchPage(source.handle,state.next_cursor);
+    fetched=await fetchPage(source.handle,state.next_lane==='latest'?null:state.next_cursor);
     if(fetched.kind==='not-modified') throw new ProviderError(204,'unexpected_204');
     try { page=normalizePage(fetched.json,source); }
     catch { throw new ProviderError(null,'provider_schema'); }
@@ -24,7 +24,7 @@ export async function runDueSource(env) {
     const now=(await env.DB.prepare('SELECT unixepoch() AS now').first()).now;
     // Only an explicitly recognized provider cursor-expiration code may restart a cycle.
     // FxEmbed's generic HTTP 400 is not such evidence.
-    const resetCursor=error.code==='cursor_expired' && state.cursor_resets<2;
+    const resetCursor=state.next_lane==='history' && error.code==='cursor_expired' && state.cursor_resets<2;
     if(resetCursor) {
       state.next_cursor=null;state.cursor_resets++;
     }
@@ -38,21 +38,24 @@ export async function runDueSource(env) {
     return result;
   }
   const now=(await env.DB.prepare('SELECT unixepoch() AS now').first()).now;
-  const next=advanceCycle(state,page,now);
+  const latest=state.next_lane==='latest';
+  const next=latest?advanceLatest(state,page,now):advanceCycle(state,page,now);
   // Normalize the entire response, but never persist posts outside the fixed requested range.
-  const eligible={...page,posts:page.posts.filter(p=>Date.parse(p.publishedAt)/1000>=state.cycle_boundary_at)};
+  const boundary=latest?now-7*86400:state.cycle_boundary_at;
+  const eligible={...page,reviewPosts:(page.reviewPosts||[]).filter(r=>Date.parse(r.post.publishedAt)/1000>=boundary),posts:page.posts.filter(p=>Date.parse(p.publishedAt)/1000>=boundary)};
   let results;
   try { results=await commitPage(env.DB,lease,eligible,next); }
   catch(error){if(error.message==='stale_lease')return {status:'stale'};throw error;}
-  const observation={status:'stored',source:lease.source,received:page.receivedCount,stored:eligible.posts.length,
+  const observation={status:'stored',source:lease.source,lane:state.next_lane,received:page.receivedCount,stored:eligible.posts.length,
     cycleStatus:next.catchup_status,...fetched.observation,
-    sqlScope:'page_commit_and_observation_log',sqlStatements:results.length+1,
+    sqlScope:'page_commit',sqlStatements:results.length,
     rowsRead:results.reduce((n,r)=>n+(r.meta.rows_read??0),0),
     rowsWritten:results.reduce((n,r)=>n+(r.meta.rows_written??0),0)};
   try {
     const log=await env.DB.prepare('INSERT INTO runs(id,finished_at,data) VALUES(?,?,?)')
       .bind(crypto.randomUUID(),new Date(now*1000).toISOString(),JSON.stringify(observation)).run();
     observation.rowsRead+=log.meta.rows_read??0;observation.rowsWritten+=log.meta.rows_written??0;
+    observation.sqlScope='page_commit_and_observation_log';observation.sqlStatements++;
   } catch {
     observation.warning='observation_log_failed';observation.rowsRead=null;observation.rowsWritten=null;
   }

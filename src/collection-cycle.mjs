@@ -7,9 +7,9 @@ export function startCycle(state,now) {
 
 export function advanceCycle(state,page,now) {
   const next={...state,last_success_at:now,failures:0,last_error_code:null,
-    pages_in_cycle:state.pages_in_cycle+1,next_cursor:page.nextCursor,next_due_at:now+300};
+    pages_in_cycle:state.pages_in_cycle+1,next_cursor:page.nextCursor,next_due_at:now+300,next_lane:'latest'};
   if(state.next_cursor != null && page.nextCursor===state.next_cursor) {
-    return {...next,catchup_status:'needs_attention',last_error_code:'repeated_cursor'};
+    return {...next,catchup_status:'gap',history_paused:1,last_error_code:'repeated_cursor'};
   }
   const traversal=page.traversal??{};
   if(traversal.boundaryVerified || (traversal.exhausted && traversal.exhaustionVerified)) {
@@ -18,9 +18,20 @@ export function advanceCycle(state,page,now) {
       next_due_at:now+1800,catchup_status:'idle'};
   }
   if(traversal.exhausted || page.nextCursor == null) {
-    return {...next,catchup_status:'gap',last_error_code:'unverified_exhaustion'};
+    return {...next,catchup_status:'gap',history_paused:1,last_error_code:'unverified_exhaustion'};
   }
-  return {...next,catchup_status:next.pages_in_cycle>=20?'catchup':'running'};
+  return {...next,history_paused:next.pages_in_cycle>=20?1:0,
+    catchup_status:next.pages_in_cycle>=20?'limited':'running'};
+}
+
+export function advanceLatest(state,page,now) {
+  // Seed history from the first stored page only. Later fresh polls never replace its cursor.
+  const next=state.pages_in_cycle===0 && !state.history_paused
+    ? advanceCycle(state,page,now) : {...state,last_success_at:now,failures:0};
+  return {...next,last_latest_success_at:now,next_due_at:now+300,
+    next_lane:next.history_paused?'latest':'history',
+    catchup_status:next.history_paused?(next.pages_in_cycle>=20?'limited':'gap'):'running',
+    last_error_code:next.history_paused?'history_window_unverified':null};
 }
 
 export function retryAt(now,failures,retryAfter) {

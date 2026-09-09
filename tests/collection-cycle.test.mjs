@@ -6,7 +6,7 @@ test('initial seven days; overlap fixed; partial and catchup never advance bound
   const state=startCycle({committed_boundary_at:100000},200000);
   assert.equal(state.cycle_boundary_at,13600);
   const next=advanceCycle({...state,pages_in_cycle:19},{nextCursor:'b',traversal:{}},200010);
-  assert.equal(next.committed_boundary_at,100000);assert.equal(next.catchup_status,'catchup');
+  assert.equal(next.committed_boundary_at,100000);assert.equal(next.catchup_status,'limited');
   assert.equal(next.next_cursor,'b');assert.equal(next.last_success_at,200010);
 });
 test('unverified exhaustion is a gap; repeated cursor needs attention; verified boundary completes',()=>{
@@ -14,7 +14,7 @@ test('unverified exhaustion is a gap; repeated cursor needs attention; verified 
   const gap=advanceCycle(state,{nextCursor:null,traversal:{exhausted:true}},200010);
   assert.equal(gap.catchup_status,'gap');assert.equal(gap.committed_boundary_at,100000);
   const repeated=advanceCycle({...state,next_cursor:'a'},{nextCursor:'a',traversal:{}},200010);
-  assert.equal(repeated.catchup_status,'needs_attention');
+  assert.equal(repeated.catchup_status,'gap');assert.equal(repeated.history_paused,1);
   const done=advanceCycle(state,{nextCursor:null,traversal:{boundaryVerified:true}},200010);
   assert.equal(done.committed_boundary_at,200000);assert.equal(done.last_complete_sync_at,200010);
   assert.equal(done.cycle_started_at,null);assert.equal(done.next_due_at,201810);

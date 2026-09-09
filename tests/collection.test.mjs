@@ -75,3 +75,18 @@ test('separate process replay after reopening database creates no duplicates', (
   assert.equal(reopened.prepare('SELECT count(*) n FROM discoveries').get().n,21);
   reopened.close();
 });
+
+test('secondary sources require names and recognize Korean COSMO labels',()=>{
+ const secondary={handle:'S2O806',verifiedDirect:false};
+ const normalize=text=>normalizePage({code:200,results:[post(99,{author:{screen_name:'S2O806'},url:'https://x.com/S2O806/status/99',text})],cursor:{bottom:null}},secondary).posts;
+ assert.equal(normalize('260904 코스모톡 #윤서연')[0].contentKind,'cosmo');
+ assert.equal(normalize('코스모 #서연')[0].contentKind,'cosmo');
+ assert.equal(normalize('COSMO #SeoYeon')[0].contentKind,'cosmo');
+ assert.equal(normalize('코스모톡').length,0);
+ assert.equal(normalize('cosmopolitan #윤서연')[0].contentKind,'other');
+});
+
+test('secondary configuration never grants nameless direct-post exception',async()=>{
+ const {sources}=await import('../src/sources.mjs');
+ for(const handle of ['sogeumdwarf','hamhamm806','S2O806'])assert.equal(sources.find(s=>s.handle===handle).verifiedDirect,false);
+});
