@@ -1,5 +1,58 @@
 # 서연모음.zip — 단계 0 실측 기록
 
+## 자동 수집 구현 실행 결과 — 2026-09-09 03:06 UTC
+
+상태: **비활성 자동 수집 코드 구현 / 운영 활성화 보류**. 아래 과거 단계 0 결과와 구별한다.
+
+- 단일 에이전트로 Superpowers executing-plans 지침을 읽고 실행했다. 기존 미커밋 수정은 보존하고 `feature/automatic-collection` 브랜치에서 작업했다. 별도 worktree와 하위 에이전트는 사용하지 않았다.
+- 공급자 오류의 HTTP 상태·Retry-After를 분리하고 204/잘못된 JSON/2MiB 초과를 명시적으로 처리한다. User-Agent는 유지한다. 공급자의 일반 400을 cursor 만료로 추정하지 않는다. 명시적 cursor 만료 신호의 실제 계약은 아직 확보하지 못했다.
+- 운영 상태/전역 봉인/120초 lease/epoch guard/고정 cycle 경계/백오프/한 소스 한 페이지 scheduled를 구현했다. HTTP probe는 새 코드에서 410, 재시도 API는 예약만 한다.
+- `npm test`: **29/29 통과**. 공급자·경계·실제 SQLite SQL·동시 호출·중지·rollback·HTTP 예약/인증 봉인 검증. 수정 전 새 테스트 실패를 확인한 뒤 구현했다.
+- 최종 `wrangler deploy --dry-run` 통과: 53.16 KiB / gzip 15.08 KiB. 새 Worker 코드는 아직 배포하지 않았다.
+- `node scripts/validate-scheduler.mjs --local`: **workerd + D1 에뮬레이터 검증 통과**. 기본 비활성, 21개 저장, 중복 재처리, media SQL 실패 rollback, fetch 도중 전역 중지, 429 백오프, 401 needs_attention, HTTP fail-closed 확인. 외부 API는 모의 응답이며 원격 CPU 검증이 아니다.
+- 검증 도구는 기존 Wrangler가 설치한 Miniflare 5.20260908.0-alpha/esbuild 0.28.1을 직접 개발 의존성으로 고정했다. 설치 감사 취약점 0. Miniflare 공식 변환 함수로 V4 예제 옵션을 현재 API로 변환한다.
+- 로컬 0001/0002 마이그레이션 성공. 원격에는 0002만 추가, 6명령/1.16ms(SQL 시간). 적용 전후 posts=20, collection_control.enabled=0, 활성 소스=0. 기존 데이터 삭제/활성화는 하지 않았다.
+- 새 스케줄러의 원격 동시성·CPU 실측은 미완료다. 이전 단계 0 probe의 CPU 값을 새 코드의 통과 근거로 재사용하지 않는다. 새 코드의 SQL 계측 범위는 page_commit_and_observation_log이며 lease/시각 조회는 제외한다.
+
+### 분리된 원격 Worker/D1 검증 (03:15–03:17 UTC)
+
+`seoyeon-zip-scheduler-check` 검증용 D1에 두 마이그레이션을 적용하고 `wrangler dev --remote --test-scheduled`로 새 Worker를 실행했다. 로컬 전용 검증 스크립트와 별개의 수동 원격 검증이다. 운영 Worker 배포나 Cron 등록은 하지 않았다. 무인증 HTTP는 Access 설정 부재로 503을 반환했다.
+
+| 경우 | 예약 테스트 HTTP | 게시물 / 완료 페이지 | 관측 |
+|---|---|---|---|
+| 기본 비활성 | 200 | 0 / 0 | 저장 없음 |
+| Seowoo 첫 페이지 | 200 | 20 / 1 | 실제 API 20개, 8 SQL / read 112 / write 143 |
+| 다음 페이지 media INSERT 강제 실패 | 500 | 20 / 1 | D1 trigger 오류, 페이지 저장 rollback; lease 획득 revision만 2→3 |
+| 실패 트리거 제거·lease 만료 후 재시도 | 200 | 32 / 2 | 실제 18개 중 최근 7일 12개 저장, 8 SQL / read 69 / write 89 |
+| 전역 중지·모든 소스 비활성 후 실행 | 200 | 32 / 2 | 추가 저장 없음, enabled=0 / 활성 소스=0 |
+
+완료 경계는 null로 유지됐다. 원격 개발 세션은 종료했으며 검증 DB는 비활성 상태로 남겼다. Worker CPU, 원격 동시 실행·진행 중 중지·429·401은 이 실측에 포함하지 않았다. 개발 세션 응답 시간과 공급자 wallMs는 CPU가 아니다. 해당 실패 시나리오는 앞의 로컬 테스트 결과로만 구분한다.
+
+### 공급자 페이지 재확인 (03:01:04–03:01:16 UTC)
+
+각 계정 두 페이지를 실제 GET으로 읽었다. 모두 HTTP/JSON 200, 페이지 간 ID 중복 0, 다음 cursor 존재/변경 확인. 표의 수는 두 페이지 합계다.
+
+| 소스 | 수신 | 판별 일치 | COSMO 일치 | 작성 시각 역전 횟수 |
+|---|---:|---:|---:|---:|
+| gapyeonghaus | 40 | 1 | 0 | 8 |
+| Seowoo_0501 | 38 | 38 | 0 | 0 |
+| tripleSnewsfeed | 41 | 3 | 0 | 7 |
+| TRIPLES_FAN_FR | 40 | 2 | 0 | 5 |
+| Or1gin030806 | 40 | 40 | 0 | 0 |
+| First0806_ | 38 | 38 | 0 | 0 |
+
+이는 DB 저장 수가 아닌 읽기 전용 판별 결과다. COSMO 역할은 보류다. 종합 계정에서 작성 시각이 순서대로 감소하지 않으므로 오래된 글 하나로 탐색을 종료할 수 없다. 두 페이지에서 역전이 없었던 계정도 전체 순서/재게시/목록 소진 계약까지 검증된 것은 아니다.
+
+따라서 실제 어댑터의 boundaryVerified/exhaustionVerified는 false로 유지한다. cursor 소진 시 gap, 반복 시 needs_attention이며 완료 경계를 임의로 전진하지 않는다. Cron은 등록하지 않았고 운영 활성화도 하지 않았다. 최근 7일 밖의 게시물은 정규화 이후 저장 대상에서 제외하지만, 이 필터를 탐색 종료 증거로 쓰지 않는다.
+
+## 최신 로컬 수정 — 2026-09-09
+
+- 로컬 수집과 Worker가 `src/sources.mjs`의 동일 전용 계정 규칙을 사용한다. 이름 없는 검증된 직접 글은 포함하고 재게시·인용은 예외에서 제외한다. 이 수정만으로 이미 지나간 페이지의 누락 자료가 복구되는 것은 아니다.
+- 페이지/cursor 저장 후 runs 로그 INSERT만 실패하면 HTTP 200과 `warning:observation_log_failed`를 반환한다. 비용 계측은 null로 표시한다. 기존 runs 기반 collectedAt은 로그 실패 시 갱신되지 않을 수 있으며 운영 상태 시각 분리는 자동 수집 계획에 포함했다.
+- 추가된 probe 테스트에서 수정 전 두 결함이 재현됐다. 수정 후 `npm test` 14/14 통과. 인증 누락·위조 차단 및 stale batch 409도 통과했다. probe의 D1은 테스트 대역이며 실제 원격 SQL 재검증 결과가 아니다.
+- 자동 수집 상태·lease·cycle·백오프·운영 봉인·구현 순서는 docs/PLAN.md에 설계했다. Cron/마이그레이션/자동 수집은 아직 구현·활성화하지 않았다.
+- `wrangler deploy --dry-run` 통과: 44.92 KiB / gzip 12.93 KiB. 최초 자동 승인 검토가 과거 리뷰 제한을 근거로 거절했으나, 최신 사용자 요청과 AGENTS.md의 개발 역할을 확인해 재검토 후 실행했다. 실제 배포·push는 수행하지 않았다.
+
 실측일: 2026-09-09. 시각은 UTC(한국 시각 +9시간).
 
 ## 판정: PARTIAL / 운영 통과 보류

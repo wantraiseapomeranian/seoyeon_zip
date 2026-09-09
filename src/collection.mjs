@@ -1,5 +1,11 @@
 import { Buffer } from 'node:buffer';
 const handlePattern = /^[A-Za-z0-9_]{1,15}$/;
+export class ProviderError extends Error {
+  constructor(status,code,retryAfter=null) {
+    super(`Provider HTTP ${status ?? 'unknown'}: ${code}; checkpoint unchanged`);
+    Object.assign(this,{status,code,retryAfter});
+  }
+}
 export const matchesSeoyeon = text => /(?<![\p{L}\p{N}])(?:윤서연|seo\s?yeon|서연|ソヨン)(?![\p{L}\p{N}])/iu.test(text.normalize('NFKC'));
 
 export function normalizePage(json, source) {
@@ -39,7 +45,9 @@ export function normalizePage(json, source) {
       publishedAt: new Date(p.created_at).toISOString(), caption: p.text,
       matchReason: textMatch ? 'text' : 'verified-direct-author', contentKind: /cosmo/i.test(p.text) ? 'cosmo' : directMatch ? 'fansite' : 'other', media });
   }
-  return { posts, receivedCount: json.results.length, nextCursor: json.cursor.bottom };
+  return { posts, receivedCount: json.results.length, nextCursor: json.cursor.bottom,
+    // Null cursor is observed exhaustion, not proof that the requested range is complete.
+    traversal:{exhausted:json.cursor.bottom===null,boundaryVerified:false,exhaustionVerified:false} };
 }
 
 export async function fetchPage(handle, cursor = null) {
@@ -50,20 +58,36 @@ export async function fetchPage(handle, cursor = null) {
   const startedAt = new Date().toISOString();
   const start = performance.now();
   // FxEmbed rejects requests without an identifying User-Agent (HTTP 401).
-  const response = await fetch(url,{
+  let response;
+  try { response = await fetch(url,{
     headers:{'User-Agent':'SeoyeonZip/0.1 (+https://seoyeon-zip.seoyeon-archive.workers.dev)'},
     signal:AbortSignal.timeout(15000),redirect:'manual'
-  });
-  if (!response.ok || response.status === 204) throw Error(`Provider HTTP ${response.status}; checkpoint unchanged`);
+  }); } catch(error) {
+    throw new ProviderError(null,error.name==='TimeoutError'||error.name==='AbortError'?'provider_timeout':'provider_network');
+  }
+  const observation={startedAt,url:String(url),http:response.status};
+  if (response.status === 204) return {kind:'not-modified',observation:{...observation,bytes:0,wallMs:Math.round(performance.now()-start)}};
+  if (!response.ok) {
+    await response.body?.cancel();
+    throw new ProviderError(response.status,'provider_http_error',response.headers.get('retry-after'));
+  }
   let bytes = 0; const chunks = [];
+  if(!response.body) throw new ProviderError(response.status,'invalid_json');
   const reader = response.body.getReader();
+  try {
   while (true) {
     const {done,value} = await reader.read(); if (done) break;
     bytes += value.byteLength;
-    if (bytes > 2 * 1024 * 1024) { await reader.cancel(); throw Error('Response exceeds 2MiB'); }
+    if (bytes > 2 * 1024 * 1024) { await reader.cancel(); throw new ProviderError(response.status,'response_too_large'); }
     chunks.push(value);
   }
-  const json = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-  if (json.code !== 200) throw Error(`Provider JSON ${json.code}; checkpoint unchanged`);
-  return { json, observation: { startedAt, url:String(url), http:response.status, code:json.code, bytes, wallMs:Math.round(performance.now()-start) } };
+  } catch(error) {
+    if(error instanceof ProviderError) throw error;
+    throw new ProviderError(null,error.name==='TimeoutError'||error.name==='AbortError'?'provider_timeout':'provider_network');
+  }
+  let json;
+  try { json=JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+  catch { throw new ProviderError(response.status,'invalid_json'); }
+  if (json?.code !== 200) throw new ProviderError(Number.isInteger(json?.code)?json.code:response.status,'provider_json_error');
+  return {kind:'page',json,observation:{...observation,code:json.code,bytes,wallMs:Math.round(performance.now()-start)}};
 }

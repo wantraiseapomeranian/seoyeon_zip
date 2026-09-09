@@ -7,7 +7,7 @@ async page => {
   const results = await page.evaluate(async () => {
     const out = [];
     for (const source of ['Seowoo_0501', 'gapyeonghaus']) {
-      const r = await fetch('/api/probe?source=' + source, {
+      const r = await fetch('/api/sources/' + source + '/retry', {
         method: 'POST', headers: { 'x-validation-action': 'collect' }
       });
       out.push({ source, status: r.status, body: await r.json() });

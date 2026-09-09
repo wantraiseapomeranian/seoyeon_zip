@@ -1,6 +1,6 @@
 # 서연모음.zip
 
-단계 0 검증용 구현입니다. 운영 피드·최종 UI·정기 수집기는 아직 아닙니다.
+비공개 사진 아카이브 검증용 구현입니다. 예약 수집 코드와 상태 관리는 구현했지만, 제공자 탐색 종료 조건과 원격 실행 예산 검증이 남아 Cron은 아직 활성화하지 않았습니다. 최종 UI는 아닙니다.
 
 ## 로컬 실행
 
@@ -38,9 +38,30 @@ npx playwright-cli -s=seoyeon run-code --filename=scripts/check-cards.js
 - 현재 Wrangler OAuth에는 Access API 권한이 없어 앱 조회가 403입니다. Dashboard에서 설정하거나 별도 제한된 관리 권한이 필요합니다.
 - Worker는 JWT 서명·issuer·audience·만료·소유자 이메일을 확인합니다. 단순 이메일 헤더는 신뢰하지 않습니다.
 - Access 로그인 리다이렉트를 확인한 뒤 `workers_dev:true`로 배포했습니다. `preview_urls:false`, 정적 자산 `run_worker_first:true`를 유지합니다.
-- 원격 D1 `seoyeon-zip-validation` 생성과 0001 마이그레이션 적용을 완료했습니다.
-- `/api/probe?source=Seowoo_0501`은 인증된 동일 출처 POST와 `x-validation-action: collect` 헤더가 필요합니다. 한 요청은 한 페이지 전체를 판별·저장합니다. 운영 소스 활성화 기능은 아닙니다.
-- D1 batch는 stale revision CHECK guard로 전체 저장과 cursor를 원자적으로 반영합니다. D1 원격 동작, CPU·SQL 한도 및 인증 우회 검증은 아직 완료되지 않았습니다.
-- 로그의 wallMs는 네트워크 포함 경과시간입니다. CPU 시간으로 사용하지 않습니다. 응답과 콘솔의 rowsRead/rowsWritten은 사전 상태 조회, 저장 batch, 로그 INSERT를 합산합니다. runs 테이블 안의 관측값은 해당 로그 INSERT 자체의 비용을 알기 전 값입니다.
+- 원격 D1에 0001/0002 마이그레이션을 적용했습니다. 기존 게시물 20개는 보존했고 운영 전역/소스 상태는 모두 비활성입니다.
+- 이 브랜치의 `/api/probe`는 410입니다. `POST /api/sources/:handle/retry`는 소유자 인증, 동일 Origin, `x-validation-action: collect` 헤더를 요구하며 활성 소스의 다음 실행 시각만 앞당깁니다. 외부 수집을 직접 실행하지 않습니다. 중지/확인 필요 상태는 409입니다.
+- `GET /api/sources`는 소스별 마지막 페이지 저장/전체 범위 완료 시각과 장애 상태를 반환합니다. 페이지 저장만으로 전체 범위 완료를 표시하지 않습니다.
+- scheduled는 `COLLECTION_ENABLED=true`, D1 `collection_control.enabled=1`, 해당 소스 enabled=1이 모두 충족돼야 실행합니다. 현재 환경 봉인과 Cron 미등록 상태를 유지합니다.
+- D1 batch guard는 lease 토큰·만료·revision·전역 중지 revision을 함께 확인합니다. 중지 후 재개해도 오래된 실행은 커밋할 수 없습니다.
+- 로그 wallMs는 CPU 시간이 아닙니다. rowsRead/rowsWritten의 `sqlScope`는 페이지 저장 batch와 로그 INSERT만 포함하며 lease/시각 조회는 제외합니다. 로그 실패 시 비용은 null이며 저장 성공과 별개 경고를 기록합니다.
+
+## 예약 수집 검증과 중지
+
+```sh
+npm test
+node scripts/validate-scheduler.mjs --local
+node scripts/inspect-provider.mjs
+npx wrangler deploy --dry-run
+```
+
+`validate-scheduler`는 임시 로컬 workerd/D1에서 scheduled를 호출하고 외부 응답을 모의 처리합니다. 원격 DB나 실제 제공자에는 연결하지 않습니다. `inspect-provider`는 6개 공개 계정에서 두 페이지씩 실제 메타데이터만 읽으며 DB에 저장하지 않습니다. 각 검증의 목적은 다릅니다.
+
+운영을 중지할 때는 아래 명령으로 DB 전역 봉인과 revision을 먼저 변경합니다. 실행 중인 응답의 커밋도 차단됩니다. Cron 제거만으로 즉시 중지됐다고 간주하지 않습니다.
+
+```sh
+npx wrangler d1 execute seoyeon-zip-validation --remote --command "UPDATE collection_control SET enabled=0,revision=revision+1 WHERE id=1"
+```
+
+활성화는 [실행 계획](docs/superpowers/plans/2026-09-09-automatic-collection.md)의 원격/공급자 검증을 통과한 뒤 별도 변경으로 진행합니다. 검증용 cursor를 운영 완료 경계로 이관하지 않습니다. 최초 7일 범위 재탐색으로 해당 범위의 누락을 복구합니다.
 
 설계 기준: DESIGN.md, docs/SPEC.md. 실행 결과와 오탐 정정: docs/VALIDATION.md.

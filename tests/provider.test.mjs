@@ -2,6 +2,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fetchPage } from '../src/collection.mjs';
 
+test('provider failures expose structured status and Retry-After',async t=>{
+  t.mock.method(globalThis,'fetch',async()=>new Response('private diagnostic',{status:429,headers:{'Retry-After':'120'}}));
+  await assert.rejects(fetchPage('Seowoo_0501'),e=>e.status===429 && e.retryAfter==='120' && !e.message.includes('private diagnostic'));
+});
+test('204 is explicit and malformed or oversized bodies never become pages',async t=>{
+  const mock=t.mock.method(globalThis,'fetch',async()=>new Response(null,{status:204}));
+  assert.equal((await fetchPage('Seowoo_0501')).kind,'not-modified');
+  mock.mock.mockImplementation(async()=>new Response('<html>bad</html>'));
+  await assert.rejects(fetchPage('Seowoo_0501'),e=>e.code==='invalid_json');
+  mock.mock.mockImplementation(async()=>Response.json({code:503}));
+  await assert.rejects(fetchPage('Seowoo_0501'),e=>e.status===503);
+  mock.mock.mockImplementation(async()=>new Response('x'.repeat(2097153)));
+  await assert.rejects(fetchPage('Seowoo_0501'),e=>e.code==='response_too_large');
+});
+
 test('provider requests identify the app without relying on a runtime default User-Agent',async t=>{
   t.mock.method(globalThis,'fetch',async(url,options)=>{
     const headers=new Headers(options.headers);

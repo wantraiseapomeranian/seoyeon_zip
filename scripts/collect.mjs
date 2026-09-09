@@ -1,19 +1,21 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { fetchPage, normalizePage } from '../src/collection.mjs';
 import { openStore, savePage } from '../src/store.mjs';
+import { sources } from '../src/sources.mjs';
 
 mkdirSync('.local',{recursive:true});
 const db = openStore('.local/validation-v2.sqlite');
-const sources = ['gapyeonghaus','Seowoo_0501','tripleSnewsfeed','TRIPLES_FAN_FR','Or1gin030806','First0806_'];
 const observations = [];
 try {
-  for (const handle of sources) {
+  for (const source of sources) {
+    const {handle}=source;
     let cursor = null;
     for (let number=1;number <= (handle==='gapyeonghaus'?5:1);number++) {
       const state = db.prepare('SELECT * FROM source_state WHERE source=?').get(handle);
       try {
-      const {json,observation} = await fetchPage(handle,cursor);
-      const page = normalizePage(json,{handle,verifiedDirect:['Seowoo_0501','Or1gin030806','First0806_'].includes(handle)});
+      const {kind,json,observation} = await fetchPage(handle,cursor);
+      if(kind==='not-modified') throw Error('unexpected_204; checkpoint unchanged');
+      const page = normalizePage(json,source);
       savePage(db,handle,page,state?.revision??0);
       observations.push({...observation,handle,received:page.receivedCount,stored:page.posts.length,nextCursor:page.nextCursor,collectionStatus:'success',cosmoRoleStatus:page.posts.some(p=>p.contentKind==='cosmo')?'sample-observed':'pending'});
       cursor=page.nextCursor;
