@@ -122,7 +122,7 @@ async function loadLive(append=false){
 }
 function changeFilters(){if(live){posts=[];loaded=false;render();loadLive();}else{render();syncUrl();}}
 function renderSources(){
- const host=$('#source-status');host.replaceChildren();
+ const host=$('#source-status');const focused=document.activeElement?.dataset.source;const expanded=new Set([...host.querySelectorAll('details[open]')].map(d=>d.dataset.source));host.replaceChildren();
  if(!states.length){host.append(node('p','muted','수집 상태를 확인하지 못했어요. 상태 새로고침으로 다시 시도해 주세요.'));return;}
  for(const s of states){
   const paused=!s.enabled||s.collection_enabled===false||s.collection_enabled===0;
@@ -130,23 +130,26 @@ function renderSources(){
   const text=paused?'수집 중지':attention?'확인 필요':s.last_error_code?'재시도 대기':!s.last_success_at?'첫 수집 대기':'수집 성공';
   const row=node('section','source-row'),heading=node('div','source-heading');
   heading.append(node('strong',null,`@${s.source}`),node('span',attention||s.last_error_code?'source-state warning':'source-state',text));row.append(heading);
-  const toggle=node('button','source-toggle',s.enabled?'수집 중지':'수집 켜기');toggle.setAttribute('aria-label',s.source+' '+(s.enabled?'수집 중지':'수집 켜기'));toggle.disabled=!live||(!s.enabled&&!s.collection_enabled);toggle.onclick=async()=>{toggle.disabled=true;try{await management('/api/sources/'+s.source,{enabled:!s.enabled,revision:s.revision},'PATCH');await refreshSources();$('#status-message').textContent=s.enabled?'수집을 중지했어요. 저장된 글은 유지돼요.':'수집을 켰어요. 기존 대기 순서에 따라 진행돼요.';}catch(e){await refreshSources();$('#status-message').textContent=e.message;}};row.append(toggle);
+  const toggle=node('button','source-toggle',s.enabled?'중지':'켜기');toggle.dataset.source=s.source;toggle.setAttribute('aria-label',s.source+' '+(s.enabled?'수집 중지':'수집 켜기'));toggle.disabled=!live||(!s.enabled&&!s.collection_enabled);heading.append(toggle);
+  const feedback=node('p','source-feedback');feedback.setAttribute('role','status');
+  toggle.onclick=async()=>{const hadFocus=document.activeElement===toggle;toggle.disabled=true;let message;try{await management('/api/sources/'+s.source,{enabled:!s.enabled,revision:s.revision},'PATCH');message=s.enabled?'수집 중지 · 저장된 글은 유지됩니다.':'수집 재개 · 기존 대기 순서로 진행합니다.';}catch(e){message=e.message;}finally{toggle.disabled=false;}const restore=hadFocus&&(document.activeElement===toggle||document.activeElement===document.body);await refreshSources();const current=[...host.querySelectorAll('.source-toggle')].find(b=>b.dataset.source===s.source);if(current){current.closest('.source-row').querySelector('.source-feedback').textContent=message;if(restore&&(document.activeElement===document.body||document.activeElement===toggle))current.focus({preventScroll:true});}};
+  const detail=node('details','source-detail');detail.dataset.source=s.source;detail.open=expanded.has(s.source);detail.append(node('summary',null,'상세'));row.append(node('p','source-last',s.last_success_at?'마지막 성공 · '+stamp(s.last_success_at*1000):'아직 수집 기록 없음'),feedback,detail);
   if(s.last_success_at){
-   row.append(node('p',null,`마지막 성공 · ${stamp(s.last_success_at*1000)}`));
+   detail.append(node('p',null,`마지막 성공 · ${stamp(s.last_success_at*1000)}`));
    if(Number.isInteger(s.last_received_count)&&Number.isInteger(s.last_matched_count)){
-    row.append(node('p','source-result',`마지막 성공 페이지 · 응답 ${s.last_received_count}개 / 조건 통과 ${s.last_matched_count}개`));
-    if(s.last_review_count>0)row.append(node('p',null,`공식 검토 보류 ${s.last_review_count}개 · 피드에는 표시되지 않아요.`));
-    else if(s.last_matched_count===0)row.append(node('p',null,'이 페이지에는 수집 조건과 기간에 맞는 게시물이 없었어요.'));
-   }else row.append(node('p',null,'상세 건수는 다음 수집 성공부터 표시해요.'));
-  }else row.append(node('p',null,'아직 수집 성공 기록이 없어요.'));
+    detail.append(node('p','source-result',`마지막 성공 페이지 · 응답 ${s.last_received_count}개 / 조건 통과 ${s.last_matched_count}개`));
+    if(s.last_review_count>0)detail.append(node('p',null,`공식 검토 보류 ${s.last_review_count}개 · 피드에는 표시되지 않아요.`));
+    else if(s.last_matched_count===0)detail.append(node('p',null,'이 페이지에는 수집 조건과 기간에 맞는 게시물이 없었어요.'));
+   }else detail.append(node('p',null,'상세 건수는 다음 수집 성공부터 표시해요.'));
+  }else detail.append(node('p',null,'아직 수집 성공 기록이 없어요.'));
   if(s.last_error_code){
    const code=s.last_error_code;
    const reason=code.includes('429')?'요청 한도에 도달했어요.':code.includes('timeout')?'응답 대기 시간이 초과됐어요.':code.includes('network')?'수집 서버에 연결하지 못했어요.':/401|403/.test(code)?'수집 서버가 접근을 거부했어요.':'수집 중 오류가 발생했어요.';
    row.append(node('p','source-error',reason+(paused?' 수집이 중지되어 있어요.':attention?' 설정 확인이 필요해요.':' 자동으로 다시 시도해요.')));
-   const details=node('details');details.append(node('summary',null,'오류 상세'),node('code',null,code));row.append(details);
+   const details=node('details');details.append(node('summary',null,'오류 상세'),node('code',null,code));detail.append(details);
   }
-  if(!paused&&!attention&&s.next_due_at)row.append(node('p',null,(s.next_due_at*1000<=Date.now()?'실행 순서 대기 · ':'다음 조회 가능 · ')+stamp(s.next_due_at*1000)));
-  host.append(row);
+  if(!paused&&!attention&&s.next_due_at)detail.append(node('p',null,(s.next_due_at*1000<=Date.now()?'실행 순서 대기 · ':'다음 조회 가능 · ')+stamp(s.next_due_at*1000)));
+  host.append(row);if(focused===s.source)toggle.focus({preventScroll:true});
  }
 }
 async function refreshSources(){
@@ -154,7 +157,7 @@ async function refreshSources(){
  try{
   const response=await fetch('/api/sources');if(!response.ok)throw Error('status');
   const data=await response.json();if(!Array.isArray(data.sources))throw Error('shape');
-  states=data.sources;renderSources();$('#status-message').textContent=live?'방금 상태를 확인했어요.':'로컬 저장본이에요. 실제 운영 상태와 다를 수 있어요.';
+  states=data.sources;renderSources();$('#status-message').textContent=live?'갱신 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}):'로컬 저장본이에요. 실제 운영 상태와 다를 수 있어요.';
  }catch{$('#status-message').textContent='상태 조회에 실패했어요. 다시 시도해 주세요. 아래는 이전 조회 결과예요.';}
  finally{button.disabled=false;}
 }
@@ -189,3 +192,7 @@ load();
 
 async function management(path,body,method='POST'){const response=await fetch(path,{method,headers:{'Content-Type':'application/json','X-Management-Action':'manage'},body:JSON.stringify(body)});if(!response.ok){const messages={400:'X 또는 인스타 게시물 URL과 입력값을 확인해 주세요.',409:'수집 상태가 바뀌었거나 전체 수집이 중지돼 있어요. 상태를 확인하고 다시 시도해 주세요.',401:'다시 로그인해 주세요.',403:'접근 권한을 확인해 주세요.'};throw Error(messages[response.status]||'저장하지 못했어요. 잠시 후 다시 시도해 주세요.');}return response.json();}
 $('#manual-form').addEventListener('submit',async e=>{e.preventDefault();const button=$('#manual-submit');button.disabled=true;try{const result=await management('/api/manual-posts',{url:$('#manual-url').value});$('#management-message').textContent=result.existing?'이미 저장된 게시물이에요. 검토 상태와 필터에 따라 피드에 표시돼요.':'원문 링크를 등록했어요.';$('#manual-url').value='';if(!result.existing)await load();}catch(error){$('#management-message').textContent=error.message;}finally{button.disabled=false;}});
+
+const managementTabs=[...document.querySelectorAll('.management-tabs [role=tab]')];
+function selectManagementTab(tab){managementTabs.forEach(t=>{const active=t===tab;t.setAttribute('aria-selected',String(active));t.tabIndex=active?0:-1;document.getElementById(t.getAttribute('aria-controls')).hidden=!active;});$('.management-body').scrollTop=0;}
+managementTabs.forEach((tab,index)=>{tab.addEventListener('click',()=>selectManagementTab(tab));tab.addEventListener('keydown',event=>{let next;if(event.key==='ArrowRight'||event.key==='ArrowLeft')next=managementTabs[1-index];if(event.key==='Home')next=managementTabs[0];if(event.key==='End')next=managementTabs[1];if(next){event.preventDefault();selectManagementTab(next);next.focus();}});});
