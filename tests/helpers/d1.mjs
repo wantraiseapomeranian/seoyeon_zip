@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 export function testDatabase() {
   const sqlite=new DatabaseSync(':memory:');
   sqlite.exec('PRAGMA foreign_keys=ON');
-  for(const name of ['0001_validation.sql','0002_collection_state.sql','0003_collection_lanes.sql','0004_secondary_sources.sql','0005_official_review.sql','0006_pumpkin_source.sql','0007_source_outcome.sql','0009_instagram_review.sql','0010_x_quality.sql','0011_x_photo_decisions.sql','0012_instagram_feed.sql'])
+  for(const name of ['0001_validation.sql','0002_collection_state.sql','0003_collection_lanes.sql','0004_secondary_sources.sql','0005_official_review.sql','0006_pumpkin_source.sql','0007_source_outcome.sql','0009_instagram_review.sql','0010_x_quality.sql','0011_x_photo_decisions.sql','0012_instagram_feed.sql','0013_management.sql'])
     sqlite.exec(readFileSync(new URL('../../migrations/'+name,import.meta.url),'utf8'));
   const DB={
     prepare(sql) {

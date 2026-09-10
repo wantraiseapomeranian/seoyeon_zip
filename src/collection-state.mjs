@@ -72,7 +72,7 @@ export async function scheduleRetry(DB,source) {
 }
 
 export async function listSources(DB) {
-  const {results}=await DB.prepare(`SELECT source,enabled,last_success_at,last_complete_sync_at,
+  const {results}=await DB.prepare(`SELECT source,enabled,revision,last_success_at,last_complete_sync_at,
     catchup_status,last_error_code,next_lane,last_latest_success_at,history_paused,pages_in_cycle,
     last_attempt_at,next_due_at,last_received_count,last_matched_count,last_review_count,
     (SELECT enabled FROM collection_control WHERE id=1) AS collection_enabled

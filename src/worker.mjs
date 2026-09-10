@@ -1,3 +1,4 @@
+import {handleManagement} from './management.mjs';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { sources } from './sources.mjs';
 import { runDueSource } from './scheduler.mjs';
@@ -22,6 +23,7 @@ export async function authorize(request,env) {
 // Internal router. The public fetch handler always authorizes first.
 export async function handleApi(request,env) {
   const url=new URL(request.url);
+  if(url.pathname==='/api/export'||url.pathname==='/api/manual-posts'||(request.method==='PATCH'&&/^\/api\/sources\/[A-Za-z0-9_]{1,15}$/.test(url.pathname)))return handleManagement(request,env);
   if(url.pathname==='/api/admin/x')return handleXReview(request,env);
   if(url.pathname==='/api/admin/instagram'||url.pathname.startsWith('/api/admin/instagram/')) return handleInstagramReview(request,env);
   if(url.pathname==='/api/feed' && request.method==='GET') {
