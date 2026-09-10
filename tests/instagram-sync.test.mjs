@@ -7,6 +7,20 @@ const task='Task123',run='Run123',dataset='Data123';
 const rows=Array.from({length:12},(_,i)=>({shortCode:'Post_'+String(i).padStart(3,'0'),type:'Video',productType:'clips',displayUrl:'https://scontent.cdninstagram.com/'+i+'.jpg'}));
 function setup(){const {sqlite,DB}=testDatabase();return {sqlite,DB,env:{DB,APIFY_TOKEN:'test-token',APIFY_TASK_ID:task,APIFY_SYNC_ENABLED:'true'}};}
 function fake({bad=false,fail=false}={}){return async(url,options)=>{assert.equal(options.method,'GET');assert.equal(options.headers.Authorization,'Bearer test-token');assert.ok(!String(url).includes('test-token'));const u=new URL(url);if(u.pathname.includes('actor-tasks'))return Response.json({data:{items:[{id:run,status:'SUCCEEDED',defaultDatasetId:dataset,finishedAt:'2026-09-10T00:00:00Z'}]}});if(!u.pathname.endsWith('/items'))return Response.json({data:{id:dataset,itemCount:rows.length}});if(fail)return new Response('',{status:503});const offset=Number(u.searchParams.get('offset'));return Response.json(bad?[{error:'failure'}]:rows.slice(offset,offset+10));};}
+
+test('successful and empty polls remain eligible at the next five-minute cron',async()=>{
+ const {sqlite,env}=setup();let now=430;sqlite.function('unixepoch',()=>now);
+ const base=fake();const fetcher=async(...args)=>{now+=2;return base(...args);};
+ try{
+  assert.equal((await syncInstagram(env,{fetcher})).status,'progress');
+  now=730;assert.equal((await syncInstagram(env,{fetcher})).status,'complete');
+  now=1030;await syncInstagram(env,{fetcher});
+  const before=sqlite.prepare('SELECT last_checked_at FROM instagram_sync').get();
+  assert.ok(before.last_checked_at);
+  let calls=0;now=1330;await syncInstagram(env,{fetcher:async(...args)=>{calls++;return fetcher(...args);}});assert.equal(calls,1);
+  assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM instagram_review').get().n,12);
+ }finally{sqlite.close();}
+});
 test('completed task pages enter pending, preserve decisions and do not replay finished runs',async()=>{
  const {sqlite,DB,env}=setup();try{
  await syncInstagram(env,{fetcher:fake()});assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM instagram_review').get().n,10);

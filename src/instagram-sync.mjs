@@ -1,6 +1,7 @@
 import {importInstagram} from './instagram-import.mjs';
 const id=value=>typeof value==='string'&&/^[A-Za-z0-9]{3,64}$/.test(value);
 const fail=code=>{throw new Error(code);};
+// Normal polls align to the next 2-59/5 cron boundary; errors retain elapsed-time backoff.
 const fields='shortCode,type,isVideo,productType,caption,ownerUsername,timestamp,displayUrl,thumbnailUrl,images,childPosts,mediaCount';
 async function apify(env,path,fetcher){
  let response;try{response=await fetcher('https://api.apify.com/v2/'+path,{method:'GET',headers:{Authorization:'Bearer '+env.APIFY_TOKEN},redirect:'manual',signal:AbortSignal.timeout(15000)});}catch{fail('apify_network');}
@@ -37,14 +38,14 @@ export async function syncInstagram(env,{fetcher=fetch}={}){
   for(const run of eligible)if(!id(run.id)||!id(run.defaultDatasetId)||!Number.isFinite(Date.parse(run.finishedAt)))fail('apify_invalid_runs');
   await DB.batch([guard(),...eligible.map(run=>DB.prepare('INSERT OR IGNORE INTO instagram_sync_runs(id,task_id,dataset_id,finished_at) VALUES(?,?,?,?)').bind(run.id,task,run.defaultDatasetId,run.finishedAt)),DB.prepare("UPDATE instagram_sync SET discovery_offset=?,last_checked_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=1").bind(runs.length<20?0:state.discovery_offset+20),clear()]);
   run=await DB.prepare("SELECT * FROM instagram_sync_runs WHERE task_id=? AND state='pending' AND next_due_at<=unixepoch() ORDER BY finished_at,id LIMIT 1").bind(task).first();
-  if(!run){await DB.prepare('UPDATE instagram_sync SET lease_token=NULL,lease_until=0,next_due_at=unixepoch()+300,last_error=NULL,failures=0 WHERE id=1 AND lease_token=?').bind(token).run();return {status:'idle'};}
+  if(!run){await DB.prepare('UPDATE instagram_sync SET lease_token=NULL,lease_until=0,next_due_at=unixepoch()-((unixepoch()-120)%300)+300,last_error=NULL,failures=0 WHERE id=1 AND lease_token=?').bind(token).run();return {status:'idle'};}
   let count=run.item_count;
   if(count===null){const metadata=await apify(env,`datasets/${run.dataset_id}`,fetcher);count=metadata?.data?.itemCount;if(!Number.isSafeInteger(count)||count<0||count>1_000_000||metadata?.data?.id!==run.dataset_id)fail('apify_invalid_dataset');}
   const expected=Math.min(10,count-run.item_offset);if(expected<0)fail('apify_invalid_checkpoint');
   const rows=expected?await apify(env,`datasets/${run.dataset_id}/items?format=json&offset=${run.item_offset}&limit=10&clean=false&skipEmpty=false&skipHidden=false&fields=${fields}`,fetcher):[];
   if(!Array.isArray(rows)||rows.length!==expected)fail('apify_incomplete_page');
   const offset=run.item_offset+rows.length,complete=offset===count;
-  const after=[DB.prepare("UPDATE instagram_sync_runs SET item_offset=?,item_count=?,state=?,last_error=NULL,failures=0,next_due_at=0,completed_at=CASE WHEN ? THEN strftime('%Y-%m-%dT%H:%M:%fZ','now') ELSE NULL END WHERE id=?").bind(offset,count,complete?'complete':'pending',complete?1:0,run.id),DB.prepare("UPDATE instagram_sync SET last_success_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),last_error=NULL,failures=0,next_due_at=unixepoch()+300,lease_token=NULL,lease_until=0 WHERE id=1"),clear()];
+  const after=[DB.prepare("UPDATE instagram_sync_runs SET item_offset=?,item_count=?,state=?,last_error=NULL,failures=0,next_due_at=0,completed_at=CASE WHEN ? THEN strftime('%Y-%m-%dT%H:%M:%fZ','now') ELSE NULL END WHERE id=?").bind(offset,count,complete?'complete':'pending',complete?1:0,run.id),DB.prepare("UPDATE instagram_sync SET last_success_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),last_error=NULL,failures=0,next_due_at=unixepoch()-((unixepoch()-120)%300)+300,lease_token=NULL,lease_until=0 WHERE id=1"),clear()];
   if(rows.length)await importInstagram(DB,rows,{before:[guard()],after});else await DB.batch([guard(),...after]);
   return {status:complete?'complete':'progress',runId:run.id,offset,total:count};
  }catch(error){
