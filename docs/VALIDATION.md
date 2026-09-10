@@ -544,3 +544,6 @@ scripts/validate-remaining-sources.mjs 실행. Pumpkin030806/hampuppy806 각2페
 - 첫 유지관리 Cron(02:10 UTC)은 실행됐으나 외부 조회 실패를 재시도로 기록. 기존 provider와 달리 redirect:error를 사용한 호환성 문제를 발견해 manual 모드로 통일하고 3xx를 실패 처리. 회귀 테스트 추가. 성공적인 원격 이미지 처리 CPU는 후속 확인 필요.
 
 - 0610011 자동 빌드 Success 확인. 수정 후 02:13 UTC 유지관리에서 지문314→315장, 원문 available1건 신규 저장 확인. 첫 실패 건은 재시도 대기 유지. 정상 이미지 처리 Cron의 CPU 표본은 확보하지 못했으며 상한1000ms에서 DB 저장 성공만 확인했다. 전체52 테스트 이후 리다이렉트 회귀 포함 X 관련6개 테스트와 dry-run 통과.
+
+## 검토함 아이콘 — 2026-09-10
+피드 상단 검토함을 체크 문서 SVG로 교체하고 마지막 순서로 이동. 기존44px 아이콘 스타일 재사용, aria-label 및 hover/focus 설명 유지. Chromium 1440/390px에서 마지막 위치·44px·키보드 설명·가로 넘침 없음 확인.
