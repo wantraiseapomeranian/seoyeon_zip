@@ -47,8 +47,8 @@ test('eleven due sources each get one turn; matching-zero pages still progress',
   const {DB,sqlite,enable}=testDatabase();t.after(()=>sqlite.close());enable();sqlite.exec('UPDATE collection_state SET enabled=1');
   t.mock.method(console,'log',()=>{});
   const seen=[];t.mock.method(globalThis,'fetch',async url=>{seen.push(new URL(url).pathname);return Response.json({code:200,results:[],cursor:{bottom:'next'}});});
-  for(let i=0;i<11;i++) assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'stored');
-  assert.equal(new Set(seen).size,11);assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'idle');
+  for(let i=0;i<12;i++) assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'stored');
+  assert.equal(new Set(seen).size,12);assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'idle');
 });
 
 test('concurrent invocations cannot collect the same leased source twice',async t=>{

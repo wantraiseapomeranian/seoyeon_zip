@@ -26,5 +26,5 @@ test('public source routes remain fail-closed; source API omits lease tokens',as
   const request=new Request('https://example.test/api/sources');
   assert.equal((await worker.fetch(request,{DB})).status,503);
   const body=await (await handleApi(request,{DB})).json();
-  assert.equal(body.sources.length,11);assert.ok(body.sources.every(s=>!('lease_token' in s)));
+  assert.equal(body.sources.length,12);assert.ok(body.sources.every(s=>!('lease_token' in s)));
 });
