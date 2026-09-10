@@ -520,3 +520,10 @@ scripts/validate-remaining-sources.mjs 실행. Pumpkin030806/hampuppy806 각2페
 - `wrangler deploy --dry-run` 통과. 새 의존성 없음. 별도 읽기 전용 코드 리뷰에서 Critical/Major 없음.
 - 검토 결과는 별도 테이블에 저장하며 피드에는 반영하지 않는다. 이미지 중복은 자동 확정하지 않고 X 출처 표기 등 문맥만 안내한다. Instagram CDN 이미지 만료/차단은 원문 링크로 처리한다.
 - 원격 배포 및 소유자 실사용 확인은 아래 후속 기록으로 구분한다.
+
+## 인스타 검토함 원격 확인 — 2026-09-10 01:20 UTC
+- 0009 마이그레이션 적용 성공. GitHub main 32921ea 자동 빌드 성공, Worker 177f7138-9258-456e-90ac-63af287ec579에 100% 배포 확인.
+- 소유자 세션에서 화면/API 정상. 기존 실제 Apify 결과 60행 가져오기 후 58개 고유 게시물과 사진 표시 확인. 보류 저장 후 목록 변경, 판단 취소로 미검토 58개 복원 확인.
+- 인증 없는 /admin/instagram 및 /api/admin/instagram 요청은 모두 302 Access 로그인으로 이동. 정적 자산의 canonical URL 처리로 /admin/instagram 진입 시 /instagram으로 이동하며, 두 경로 모두 같은 소유자 인증을 거친다.
+- 원본 JSON과 수집 게시물·사진 URL은 GitHub에 추가하지 않았다. 자동 동기화 없이 결과 가져오기 방식이다.
+
