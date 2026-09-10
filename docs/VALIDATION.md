@@ -1,3 +1,8 @@
+## 사진 넘기기 로딩 표시 — 2026-09-10
+
+- Playwright 느린 이미지(700ms)로150ms 전 표시 없음/이후 표시, load·error 종료, 캐시·연속 뒤로 이동, reduced-motion 회전 없음, destroy 정리 검증 통과. 스크린샷으로 버튼 내부 표시 확인.
+- node --check 및 git diff --check 통과, Wrangler dry-run 성공. 공유 review-gallery.js/feed.css 변경으로 피드·X·인스타 검토함 공통 적용.
+
 ## 인스타 영상 분류·검토함 필터 — 2026-09-10
 
 - 배포 완료: 코드5cc7301, GitHub Workers Builds success, 활성버전 eac48764-4991-4986-b348-1692568c8c65 100%. 소유자 브라우저에서 인스타 영상 전체2(표시1/제외1), 2026-07+nagne_ss 조합1, 피드 Instagram+영상1개/영상5개·원문 재생 안내 확인.
