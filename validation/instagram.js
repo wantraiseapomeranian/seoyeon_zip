@@ -35,7 +35,7 @@ async function load(){
     const total=Object.values(data.counts).reduce((a,b)=>a+b,0),count=status==='all'?total:(data.counts[status]??0);
     if(offset&&offset>=count){offset=Math.max(0,offset-25);return load();}
     $('#items').replaceChildren(...data.items.map(card));
-    $('#empty').hidden=data.items.length>0;$('#empty h2').textContent=total?'이 상태의 게시물이 없어요':'아직 가져온 게시물이 없어요';$('#empty p').textContent=total?'다른 상태를 선택하거나 새로운 결과를 가져와 보세요.':'Apify에서 내보낸 JSON 결과를 가져오면 여기서 검토할 수 있어요.';
+    $('#empty').hidden=data.items.length>0;$('#empty h2').textContent={pending:'지금 검토할 글이 없어요.',kept:'보관한 글이 없어요.',held:'보류한 글이 없어요.',excluded:'제외한 글이 없어요.',all:'아직 가져온 게시물이 없어요.'}[status];$('#empty p').hidden=total>0;$('#empty p').textContent='상단의 결과 가져오기로 게시물을 추가할 수 있어요.';$('.pagination').hidden=count<=25;
     $('#tabs').querySelectorAll('button').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.status===status));b.querySelector('span').textContent=b.dataset.status==='all'?total:(data.counts[b.dataset.status]??0);});
     $('#previous').disabled=offset===0;$('#next').disabled=offset+25>=count;$('#page').textContent=`${Math.floor(offset/25)+1}페이지`;
   }finally{if(current===generation)$('#items').setAttribute('aria-busy','false');}
@@ -44,7 +44,7 @@ function reload(){load().catch(e=>$('#message').textContent=e.message);}
 $('#tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||busy)return;status=b.dataset.status;offset=0;$('#message').textContent='';reload();});
 $('#refresh').addEventListener('click',reload);
 $('#previous').addEventListener('click',()=>{offset=Math.max(0,offset-25);reload();});$('#next').addEventListener('click',()=>{offset+=25;reload();});
-for(const id of ['#open-import','#empty-import'])$(id).addEventListener('click',()=>$('#import-dialog').showModal());
+$('#open-import').addEventListener('click',()=>$('#import-dialog').showModal());
 $('#close-import').addEventListener('click',()=>$('#import-dialog').close());
 $('#file').addEventListener('change',async()=>{const file=$('#file').files[0];if(!file)return;if(file.size>2_000_000){$('#import-error').textContent='파일은 2MB까지 가져올 수 있어요.';return;}$('#json').value=await file.text();$('#import-error').textContent='';});
 $('#import-form').addEventListener('submit',async e=>{e.preventDefault();const button=$('#import-submit');button.disabled=true;$('#import-error').textContent='';try{
