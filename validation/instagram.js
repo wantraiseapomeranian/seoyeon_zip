@@ -1,5 +1,5 @@
 const $=s=>document.querySelector(s);
-function hasFilters(){return ['month','media','author','kind'].some(key=>{const el=$('#review-'+key);return el&&el.value&&el.value!=='all';});}
+function hasFilters(){return ['date','media','author','kind'].some(key=>{const el=$('#review-'+key);return el&&el.value&&el.value!=='all';});}
 function sizeFilterSelects(){
  const context=document.createElement('canvas').getContext('2d');if(!context)return;
  for(const select of document.querySelectorAll('.review-filters select')){
@@ -8,7 +8,7 @@ function sizeFilterSelects(){
  }
 }
 function syncFilterLabel(){sizeFilterSelects();const count=['author','kind'].filter(key=>{const field=$('#review-'+key);return field&&field.value&&field.value!=='all';}).length;$('#review-more').textContent=count?'필터 · '+count:'필터';}
-function filterQuery(){syncFilterLabel();const q=new URLSearchParams();for(const key of ['month','media','author','kind']){const el=$('#review-'+key);if(el)q.set(key,el.value);}return '&'+q;}
+function filterQuery(){syncFilterLabel();const q=new URLSearchParams();for(const key of ['date','media','author','kind']){const el=$('#review-'+key);if(el)q.set(key,el.value);}return '&'+q;}
 function updateAuthors(authors=[]){const el=$('#review-author'),value=el.value;el.replaceChildren(new Option('모든 계정',''),...[...new Set([...authors,...(value?[value]:[])])].sort().map(a=>new Option('@'+a,a)));el.value=value;sizeFilterSelects();}
 
 let status='pending',offset=0,busy=false;
@@ -64,7 +64,7 @@ $('#import-form').addEventListener('submit',async e=>{e.preventDefault();const b
   const result=await api('/import',rows);$('#import-dialog').close();$('#json').value='';$('#file').value='';offset=0;await load();$('#message').textContent=`${result.imported}개 게시물 정보를 가져왔어요. 기존 판단은 유지했어요.`;
 }catch(error){$('#import-error').textContent=error.message;}finally{button.disabled=false;}});
 for(const el of document.querySelectorAll('.review-filters input,.review-filters select'))el.addEventListener('change',()=>{offset=0;reload();});
-$('#review-reset').onclick=()=>{for(const key of ['month','media','author','kind']){const el=$('#review-'+key);if(el)el.value=['media','kind'].includes(key)?'all':'';}offset=0;reload();};
+$('#review-reset').onclick=()=>{for(const key of ['date','media','author','kind']){const el=$('#review-'+key);if(el)el.value=['media','kind'].includes(key)?'all':'';}offset=0;reload();};
 reload();
 
 $('#review-more').onclick=()=>{const button=$('#review-more'),open=button.getAttribute('aria-expanded')!=='true';button.setAttribute('aria-expanded',String(open));$('#review-extra').hidden=!open;};

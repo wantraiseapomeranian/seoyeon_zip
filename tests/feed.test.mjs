@@ -3,6 +3,22 @@ import assert from 'node:assert/strict';
 import { readFeed } from '../src/feed.mjs';
 import { handleApi } from '../src/worker.mjs';
 import { testDatabase } from './helpers/d1.mjs';
+import {reviewFilters} from '../src/review-filters.mjs';
+
+test('published day uses KST boundaries in feed and both review filters',async()=>{
+ const {sqlite,DB}=testDatabase();try{
+ const dates=['2026-09-09T14:59:59.999Z','2026-09-09T15:00:00.000Z','2026-09-10T14:59:59.999Z','2026-09-10T15:00:00.000Z'];
+ dates.forEach((date,i)=>add(sqlite,i+1,date));const params=new URLSearchParams({date:'2026-09-10'});
+ assert.deepEqual((await readFeed(DB,params)).posts.map(p=>p.id),['x:3','x:2']);
+ for(const instagram of [false,true])assert.deepEqual(dates.map(publishedAt=>reviewFilters(params,{instagram}).matches({publishedAt})),[false,true,true,false]);
+ for(const date of ['2026-02-29','2026-04-31','2026-13-01','2026-09','bad']){
+  await assert.rejects(readFeed(DB,new URLSearchParams({date})),/invalid_feed_query/);
+  assert.throws(()=>reviewFilters(new URLSearchParams({date})),/invalid_query/);
+ }
+ assert.equal((await readFeed(DB,new URLSearchParams({date:'2024-02-29'}))).total,0);
+ assert.equal((await readFeed(DB,new URLSearchParams())).total,4);
+ }finally{sqlite.close();}
+});
 function add(sqlite,id,date,kind='image') {
  const post={id:`x:${id}`,publishedAt:date,contentKind:'fansite',media:[{kind}],observedViaSource:'first'};
  sqlite.prepare('INSERT INTO posts VALUES (?,?)').run(post.id,JSON.stringify(post));
@@ -32,7 +48,7 @@ test('malformed query maps to 400 and cursor cannot change filter scope',async()
  const {sqlite,DB}=testDatabase();try{
  for(let i=100;i<150;i++)add(sqlite,i,'2026-09-01T00:00:00.000Z');
  const page=await readFeed(DB,new URLSearchParams());
- for(const query of ['month=2026-13','sort=bad','cursor=invalid',new URLSearchParams({cursor:page.nextCursor,media:'image'}).toString()]){
+ for(const query of [new URLSearchParams({cursor:page.nextCursor,date:'2026-09-01'}).toString(),'month=2026-13','sort=bad','cursor=invalid',new URLSearchParams({cursor:page.nextCursor,media:'image'}).toString()]){
  const response=await handleApi(new Request('https://example.com/api/feed?'+query),{DB});assert.equal(response.status,400);
  }
  }finally{sqlite.close();}

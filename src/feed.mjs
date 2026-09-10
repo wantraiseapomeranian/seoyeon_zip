@@ -1,8 +1,11 @@
+import {publishedDayRange} from './published-day.mjs';
 const dateSql="json_extract(p.data,'$.publishedAt')";
 export async function readFeed(db, params) {
   const sort=params.get('sort')||'newest', media=params.get('media')||'all';
   const kind=params.get('kind')||'all', source=params.get('source')||'all', month=params.get('month')||'';
   const invalid=()=>{throw Object.assign(new Error('invalid_feed_query'),{status:400});};
+  const day=params.get('date')||'';let dayRange;
+  if(day){try{dayRange=publishedDayRange(day);}catch{invalid();}}
   if(!['newest','oldest'].includes(sort)||!['all','image','video'].includes(media)||!['all','cosmo','fansite','official','other'].includes(kind))invalid();
   if(source!=='all'&&!/^[A-Za-z0-9_]{1,15}$/.test(source))invalid();
   if(month&&!/^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(month))invalid();
@@ -10,7 +13,8 @@ export async function readFeed(db, params) {
   if(kind!=='all'){where.push("json_extract(p.data,'$.contentKind')=?");args.push(kind);}
   if(source==='manual'){where.push("json_extract(p.data,'$.manual')=1");}else if(source==='instagram'){where.push("json_extract(p.data,'$.platform')='instagram'");}else if(source!=='all'){where.push('EXISTS (SELECT 1 FROM discoveries d WHERE d.post_id=p.id AND d.source=?)');args.push(source);}
   if(media!=='all')where.push(`EXISTS (SELECT 1 FROM json_each(p.data,'$.media') m WHERE json_extract(m.value,'$.kind') ${media==='image'?"= 'image'":"IN ('video','gif')"})`);
-  if(month){
+  if(dayRange){where.push(`${dateSql}>=? AND ${dateSql}<?`);args.push(...dayRange);}
+  else if(month){
     const start=new Date(`${month}-01T00:00:00+09:00`);
     const [year,number]=month.split('-').map(Number);
     const next=new Date(Date.UTC(year,number,1)-9*60*60*1000);
@@ -18,7 +22,7 @@ export async function readFeed(db, params) {
   }
   const condition=()=>where.length?' WHERE '+where.join(' AND '):'';
   const total=await db.prepare('SELECT COUNT(*) AS count FROM managed_feed_posts p'+condition()).bind(...args).first();
-  const scope=JSON.stringify([sort,media,kind,source,month]);
+  const scope=JSON.stringify([sort,media,kind,source,month,...(day?[day]:[])]);
   if(params.has('cursor')){
     if(params.get('cursor').length>2048)invalid();
     let cursor;try{cursor=JSON.parse(atob(params.get('cursor')));}catch{invalid();}

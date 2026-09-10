@@ -46,7 +46,7 @@ more.addEventListener('click',()=>loadLive(true));
 if(live){$('#range').textContent='저장된 게시물을 표시해요. 목록 새로고침은 수집을 실행하지 않아요.';$('#count').title='선택한 조건에 맞는 전체 저장 게시물 수';$('#updated').title='수집 데이터가 마지막으로 저장된 시각입니다.';}
 const stamp=value=>value?new Date(value).toLocaleString('ko-KR',{month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}):'아직 저장 기록 없음';
 function node(tag,className,text){const e=document.createElement(tag);if(className)e.className=className;if(text!=null)e.textContent=text;return e;}
-function syncUrl(){const q=new URLSearchParams();if(params.get('data')==='live')q.set('data','live');if($("#month").value)q.set("month",$("#month").value);if($("#sort").value==="oldest")q.set("sort","oldest");q.set('layout',document.body.dataset.layout);if(mood)q.set('mood',mood);if(iconFamily)q.set('icons',iconFamily);if(background)q.set('background',background);if(media!=='all')q.set('media',media);if($('#kind').value!=='all')q.set('kind',$('#kind').value);if($('#source').value!=='all')q.set('source',$('#source').value);history.replaceState(null,'',`${location.pathname}?${q}`);}
+function syncUrl(){const q=new URLSearchParams();if(params.get('data')==='live')q.set('data','live');if($("#month").value)q.set("date",$("#month").value);if($("#sort").value==="oldest")q.set("sort","oldest");q.set('layout',document.body.dataset.layout);if(mood)q.set('mood',mood);if(iconFamily)q.set('icons',iconFamily);if(background)q.set('background',background);if(media!=='all')q.set('media',media);if($('#kind').value!=='all')q.set('kind',$('#kind').value);if($('#source').value!=='all')q.set('source',$('#source').value);history.replaceState(null,'',`${location.pathname}?${q}`);}
 function displayCaption(text){
  const repeated=new Set();const contextTags=new Set(['triples','트리플에스','윤서연','seoyeon','서연','ソヨン']);
  return text.replace(/(^|\s)#([\p{L}\p{N}_]+)/gu,(match,space,tag)=>{
@@ -80,11 +80,11 @@ function render(){
  document.querySelectorAll('[data-media]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.media===media)));
  const month=$('#month').value;
  $('#clear-month').hidden=!month;
- const monthDescription=month?`${month.slice(0,4)}년 ${Number(month.slice(5))}월 선택됨`:'전체 기간';
- $('#month-trigger').setAttribute('aria-label',`게시월 선택 · ${monthDescription}`);
+ const monthDescription=month?`${month.slice(0,4)}년 ${Number(month.slice(5,7))}월 ${Number(month.slice(8))}일 선택됨`:'전체 기간';
+ $('#month-trigger').setAttribute('aria-label',`게시일 선택 · ${monthDescription}`);
  $('#month-trigger').dataset.active=String(Boolean(month));
- $('#month-trigger .icon-tooltip').textContent=`게시월 선택 · ${monthDescription}`;
- const selected=live?[...posts]:posts.filter(p=>(!month||new Date(p.publishedAt).toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'}).startsWith(month+'-'))&&(media==='all'||p.media.some(m=>media==='video'?['video','gif'].includes(m.kind):m.kind==='image'))&&($('#kind').value==='all'||p.contentKind===$('#kind').value)&&($('#source').value==='all'||p.observedViaSource===$('#source').value));
+ $('#month-trigger .icon-tooltip').textContent=`게시일 선택 · ${monthDescription}`;
+ const selected=live?[...posts]:posts.filter(p=>(!month||new Date(p.publishedAt).toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'})===month)&&(media==='all'||p.media.some(m=>media==='video'?['video','gif'].includes(m.kind):m.kind==='image'))&&($('#kind').value==='all'||p.contentKind===$('#kind').value)&&($('#source').value==='all'||p.observedViaSource===$('#source').value));
  const direction=$('#sort').value==='oldest'?1:-1;
  selected.sort((a,b)=>direction*(Date.parse(a.publishedAt)-Date.parse(b.publishedAt))||a.id.localeCompare(b.id));
  const elements=[];let previousDay=null;
@@ -184,7 +184,7 @@ $('#filter-toggle').addEventListener('click',()=>{const open=$('#filter-toggle')
 if(Object.hasOwn(kinds,params.get('kind')))$('#kind').value=params.get('kind');
 if(params.get('sort')==='oldest')$('#sort').value='oldest';
 document.querySelectorAll('[data-sort]').forEach(b=>b.addEventListener('click',()=>{$('#sort').value=b.dataset.sort;changeFilters();}));
-if(/^\d{4}-(0[1-9]|1[0-2])$/.test(params.get('month')||''))$('#month').value=params.get('month');
+if(/^\d{4}-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(params.get('date')||''))$('#month').value=params.get('date');
 $('#month').addEventListener('change',()=>{changeFilters();});
 $('#clear-month').addEventListener('click',()=>{$('#month').value='';changeFilters();$('#month').focus();});
 function closeMonth(focus=false){$('#month-panel').hidden=true;$('#month-trigger').setAttribute('aria-expanded','false');if(focus)$('#month-trigger').focus();}
