@@ -1,13 +1,14 @@
 import jpeg from 'jpeg-js';
 export const hamming=(a,b)=>{let x=BigInt('0x'+a)^BigInt('0x'+b),n=0;while(x){x&=x-1n;n++;}return n;};
 export async function fingerprint(url){
- const u=new URL(url);if(u.origin!=='https://pbs.twimg.com'||!u.pathname.startsWith('/media/'))throw Error('unsupported_image');
- u.searchParams.set('name','orig');
+ const u=new URL(url);const instagram=u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&/(^|\.)(cdninstagram\.com|fbcdn\.net)$/.test(u.hostname);if(!instagram&&(u.origin!=='https://pbs.twimg.com'||!u.pathname.startsWith('/media/')))throw Error('unsupported_image');
+ if(!instagram)u.searchParams.set('name','orig');
  const original=await fetch(u,{redirect:'manual',signal:AbortSignal.timeout(15000)});
  if(!original.ok)throw Error('original_http_'+original.status);
  const originalBytes=await limitedBody(original,10_000_000);
  const sha=await crypto.subtle.digest('SHA-256',originalBytes);
  const hash=Array.from(new Uint8Array(sha),b=>b.toString(16).padStart(2,'0')).join('');
+ if(instagram)return {hash,dhash:null,width:null,height:null,version:2};
  u.searchParams.set('format','jpg');u.searchParams.set('name','small');
  const response=await fetch(u,{redirect:'manual',signal:AbortSignal.timeout(15000)});
  if(!response.ok)throw Error('image_http_'+response.status);
@@ -39,10 +40,10 @@ export async function maintainX(env){
  if(!lock)return;
  const statements=[];
  try{
-  const image=await DB.prepare("SELECT DISTINCT json_extract(m.value,'$.previewUrl') AS url FROM posts p,json_each(p.data,'$.media') m LEFT JOIN x_fingerprints f ON f.url=json_extract(m.value,'$.previewUrl') WHERE json_extract(m.value,'$.kind')='image' AND json_extract(m.value,'$.previewUrl') LIKE 'https://pbs.twimg.com/media/%' AND (f.url IS NULL OR (f.hash IS NULL AND f.next_check<=unixepoch())) LIMIT 1").first();
+  const image=await DB.prepare("SELECT url FROM (SELECT DISTINCT m.value AS url,0 AS priority FROM instagram_review p,json_each(CASE WHEN COALESCE(json_array_length(p.data,'$.images'),0)>0 THEN json_extract(p.data,'$.images') ELSE json_array(json_extract(p.data,'$.image')) END) m WHERE p.status='kept' AND m.value IS NOT NULL UNION ALL SELECT DISTINCT json_extract(m.value,'$.previewUrl') AS url,1 AS priority FROM posts p,json_each(p.data,'$.media') m WHERE json_extract(m.value,'$.kind')='image' AND json_extract(m.value,'$.previewUrl') LIKE 'https://pbs.twimg.com/media/%') images LEFT JOIN x_fingerprints f USING(url) WHERE f.url IS NULL OR (f.hash IS NULL AND f.next_check<=unixepoch()) ORDER BY priority LIMIT 1").first();
   if(image){try{
    const fp=await fingerprint(image.url);const all=await DB.prepare('SELECT url,dhash,width,height FROM x_fingerprints WHERE dhash IS NOT NULL AND hash!=?').bind(fp.hash).all();
-   const near=all.results.find(f=>Math.abs(f.width/f.height-fp.width/fp.height)<.02&&hamming(f.dhash,fp.dhash)<=4);
+   const near=fp.dhash&&all.results.find(f=>Math.abs(f.width/f.height-fp.width/fp.height)<.02&&hamming(f.dhash,fp.dhash)<=4);
    statements.push(DB.prepare('INSERT INTO x_fingerprints(url,hash,dhash,width,height,near_url) VALUES(?,?,?,?,?,?) ON CONFLICT(url) DO UPDATE SET hash=excluded.hash,dhash=excluded.dhash,width=excluded.width,height=excluded.height,near_url=excluded.near_url,error=NULL').bind(image.url,fp.hash,fp.dhash,fp.width,fp.height,near?.url??null));
   }catch{statements.push(DB.prepare("INSERT INTO x_fingerprints(url,error,next_check) VALUES(?,'image_check_failed',unixepoch()+86400) ON CONFLICT(url) DO UPDATE SET error=excluded.error,next_check=excluded.next_check").bind(image.url));}}
   const candidate=await DB.prepare('SELECT p.id,p.data FROM posts p LEFT JOIN x_quality q ON q.post_id=p.id WHERE COALESCE(q.next_check,0)<=unixepoch() ORDER BY COALESCE(q.next_check,0),p.id LIMIT 1').first();

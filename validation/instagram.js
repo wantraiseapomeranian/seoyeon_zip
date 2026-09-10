@@ -1,6 +1,6 @@
 const $=s=>document.querySelector(s);
 let status='pending',offset=0,busy=false;
-const labels={pending:'미검토',kept:'보관',held:'보류',excluded:'제외'};
+const labels={pending:'미검토',kept:'표시 중',held:'보류',excluded:'제외'};
 const errors={review_conflict:'다른 화면에서 수정된 글이에요. 새로고침 후 다시 확인해 주세요.',invalid_import:'JSON 배열 형식과 게시물 정보를 확인해 주세요. 한 번에 100개, 2MB까지 가져올 수 있어요.'};
 async function api(path='',body){
   const response=await fetch('/api/admin/instagram'+path,{headers:body?{'Content-Type':'application/json','X-Review-Action':'review'}:{},...(body?{method:'POST',body:JSON.stringify(body)}:{})});
@@ -23,7 +23,7 @@ function card(p){
   if(images.length<p.mediaCount)tags.append(el('span','저장된 미리보기 '+images.length+'장 · 전체는 원문에서 확인'));
   body.append(meta,tags,reasons,el('p',p.caption||'본문이 없는 게시물이에요.','review-caption'),link(p.url,'원문에서 전체 사진 보기 ↗','review-link'));
   const actions=el('div',null,'review-buttons');
-  for(const value of ['kept','excluded','held','pending']){const button=el('button',value==='pending'?'판단 취소':labels[value]);button.setAttribute('aria-pressed',String(p.status===value));button.disabled=p.status===value;button.addEventListener('click',async()=>{
+  for(const value of ['kept','excluded','held','pending']){const button=el('button',value==='pending'?'판단 취소':value==='kept'?'피드에 표시':labels[value]);button.setAttribute('aria-pressed',String(p.status===value));button.disabled=p.status===value;button.addEventListener('click',async()=>{
     if(busy)return;busy=true;actions.querySelectorAll('button').forEach(b=>b.disabled=true);
     try{await api('/'+p.code,{status:value,revision:p.revision});await load();$('#message').textContent=`${labels[value]} 상태로 저장했어요.`;}catch(e){$('#message').textContent=e.message;actions.querySelectorAll('button').forEach(b=>b.disabled=b.getAttribute('aria-pressed')==='true');}finally{busy=false;}
   });actions.append(button);}body.append(actions);article.append(preview,body);return article;
@@ -35,7 +35,7 @@ async function load(){
     const total=Object.values(data.counts).reduce((a,b)=>a+b,0),count=status==='all'?total:(data.counts[status]??0);
     if(offset&&offset>=count){offset=Math.max(0,offset-25);return load();}
     $('#items').replaceChildren(...data.items.map(card));
-    $('#empty').hidden=data.items.length>0;$('#empty h2').textContent={pending:'지금 검토할 글이 없어요.',kept:'보관한 글이 없어요.',held:'보류한 글이 없어요.',excluded:'제외한 글이 없어요.',all:'아직 가져온 게시물이 없어요.'}[status];$('#empty p').hidden=total>0;$('#empty p').textContent='상단의 결과 가져오기로 게시물을 추가할 수 있어요.';$('.pagination').hidden=count<=25;
+    $('#empty').hidden=data.items.length>0;$('#empty h2').textContent={pending:'지금 검토할 글이 없어요.',kept:'표시 중인 글이 없어요.',held:'보류한 글이 없어요.',excluded:'제외한 글이 없어요.',all:'아직 가져온 게시물이 없어요.'}[status];$('#empty p').hidden=total>0;$('#empty p').textContent='상단의 결과 가져오기로 게시물을 추가할 수 있어요.';$('.pagination').hidden=count<=25;
     $('#tabs').querySelectorAll('button').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.status===status));b.querySelector('span').textContent=b.dataset.status==='all'?total:(data.counts[b.dataset.status]??0);});
     $('#previous').disabled=offset===0;$('#next').disabled=offset+25>=count;$('#page').textContent=`${Math.floor(offset/25)+1}페이지`;
   }finally{if(current===generation)$('#items').setAttribute('aria-busy','false');}

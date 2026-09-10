@@ -16,7 +16,7 @@ test('review endpoints reject unauthenticated callers before touching data',asyn
 test('import and decisions preserve manual review across duplicates; stale writes conflict',async()=>{
   const {sqlite,DB}=testDatabase();
   // New migration is optional here so the first run fails on missing behavior, not missing file.
-  try {sqlite.exec(readFileSync(new URL('../migrations/0009_instagram_review.sql',import.meta.url),'utf8'));} catch(e){if(e.code!=='ENOENT')throw e;}
+
   const env={DB};
   assert.equal((await handleApi(req('/import',[record]),env)).status,200);
   let data=await (await handleApi(req(''),env)).json();
@@ -35,7 +35,7 @@ test('import and decisions preserve manual review across duplicates; stale write
 });
 
 test('imports all safe carousel images and keeps them during summary-only reimport',async()=>{
- const {sqlite,DB}=testDatabase();sqlite.exec(readFileSync(new URL('../migrations/0009_instagram_review.sql',import.meta.url),'utf8'));
+ const {sqlite,DB}=testDatabase();
  await handleApi(req('/import',[{...record,childPosts:[{displayUrl:record.displayUrl},{displayUrl:'https://scontent.cdninstagram.com/two.jpg'},{displayUrl:'https://evil.test/no.jpg'}]}]),{DB});
  let data=await (await handleApi(req(''),{DB})).json();assert.equal(data.items[0].images.length,2);
  await handleApi(req('/import',[record]),{DB});data=await (await handleApi(req(''),{DB})).json();assert.equal(data.items[0].images.length,2);sqlite.close();
