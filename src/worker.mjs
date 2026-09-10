@@ -3,6 +3,7 @@ import { sources } from './sources.mjs';
 import { runDueSource } from './scheduler.mjs';
 import { listSources,scheduleRetry } from './collection-state.mjs';
 import { readFeed } from './feed.mjs';
+import { handleInstagramReview } from './instagram-review.mjs';
 const reply=(value,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 
 export async function authorize(request,env) {
@@ -19,6 +20,7 @@ export async function authorize(request,env) {
 // Internal router. The public fetch handler always authorizes first.
 export async function handleApi(request,env) {
   const url=new URL(request.url);
+  if(url.pathname==='/api/admin/instagram'||url.pathname.startsWith('/api/admin/instagram/')) return handleInstagramReview(request,env);
   if(url.pathname==='/api/feed' && request.method==='GET') {
     try { return reply(await readFeed(env.DB,url.searchParams)); }
     catch(error) { if(error.status===400)return reply({error:'invalid_feed_query'},400);throw error; }
@@ -49,9 +51,11 @@ export default {
       if(new URL(request.url).pathname.startsWith('/api/')) return await handleApi(request,env);
       if(request.method!=='GET' && request.method!=='HEAD') return reply({error:'method_not_allowed'},405);
       const assetUrl=new URL(request.url);if(assetUrl.pathname==='/')assetUrl.pathname='/feed.html';
+      if(assetUrl.pathname==='/admin/instagram'||assetUrl.pathname==='/admin/instagram/')assetUrl.pathname='/instagram.html';
       const asset=await env.ASSETS.fetch(new Request(assetUrl,request));const headers=new Headers(asset.headers);
       headers.set('Cache-Control','private, no-store');
-      headers.set('Content-Security-Policy',"default-src 'self'; img-src https://pbs.twimg.com 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
+      headers.set('Content-Security-Policy',"default-src 'self'; img-src https://pbs.twimg.com https://*.cdninstagram.com https://*.fbcdn.net 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
+      headers.set('Referrer-Policy','no-referrer');
       return new Response(asset.body,{status:asset.status,headers});
     } catch { return reply({error:'validation_failure'},500); }
   }

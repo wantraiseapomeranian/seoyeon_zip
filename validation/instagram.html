@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>인스타 검토함 · 서연모음.zip</title><link rel="stylesheet" href="/feed.css"><link rel="stylesheet" href="/instagram.css"><script src="/instagram.js" defer></script></head>
+<body data-background="mist"><a class="skip" href="#main">검토 목록으로 건너뛰기</a><div class="shell">
+<header><a class="wordmark" href="/">서연모음<span>.zip</span></a><span class="owner-label">나만 보는 검토함</span></header>
+<main id="main"><section class="review-heading"><div><h1>인스타 검토함</h1><p class="intro">사진과 이야기를 살펴보고, 아카이브에 남길 후보를 골라요.</p></div><button id="open-import">결과 가져오기</button></section>
+<div class="review-toolbar"><nav id="tabs" aria-label="검토 상태"><button data-status="pending" aria-pressed="true">미검토 <span>0</span></button><button data-status="kept" aria-pressed="false">보관 <span>0</span></button><button data-status="held" aria-pressed="false">보류 <span>0</span></button><button data-status="excluded" aria-pressed="false">제외 <span>0</span></button><button data-status="all" aria-pressed="false">전체 <span>0</span></button></nav><button id="refresh">새로고침</button></div>
+<p class="review-note">보관은 검토 결과만 저장해요. 피드에는 아직 반영되지 않아요.</p><p id="message" role="status" aria-live="polite"></p>
+<div id="items" aria-busy="true"></div><section id="empty" hidden><h2>아직 가져온 게시물이 없어요</h2><p>Apify에서 내보낸 JSON 결과를 가져오면 여기서 검토할 수 있어요.</p><button id="empty-import">첫 결과 가져오기</button></section>
+<div class="pagination"><button id="previous" disabled>이전</button><span id="page">1페이지</span><button id="next" disabled>다음</button></div>
+</main><footer><p>서연모음.zip · 개인 검토</p><a href="/">피드로 돌아가기</a></footer></div>
+<dialog id="import-dialog"><form id="import-form"><div class="dialog-heading"><h2>수집 결과 가져오기</h2><button id="close-import" type="button">닫기</button></div><p class="muted">Apify Output에서 JSON으로 내보낸 파일을 선택하거나 내용을 붙여 넣으세요. 한 번에 100개까지 가져올 수 있어요.</p><label for="file">JSON 파일</label><input id="file" type="file" accept=".json,application/json"><label for="json">JSON 내용</label><textarea id="json" rows="8" placeholder="[ … ]" spellcheck="false"></textarea><p class="muted">같은 글을 다시 가져와도 보관·제외·보류 판단은 유지돼요.</p><p id="import-error" role="alert"></p><button id="import-submit" class="primary" type="submit">검토함에 가져오기</button></form></dialog>
+</body></html>

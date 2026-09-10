@@ -513,3 +513,10 @@ scripts/validate-remaining-sources.mjs 실행. Pumpkin030806/hampuppy806 각2페
 - GitHub b1f6bb1 자동 배포 성공(2026-09-09 23:57:49 UTC), 활성 버전 a50e425d-d345-4924-a87e-9ddc21438792 100%. 이후 0008 원격 적용 성공. 적용 직후 83개 보존, 11소스 boundary0/pages0/latest/활성 확인. 비로그인 /api/sources 302 유지, 배포 COLLECTION_ENABLED=true 및 */3 Cron 확인.
 - 2026-09-10 00:03:52 UTC(09:03:52 KST) 실제 Cron: Or1gin030806 latest, 응답20/upsert20, 오류null, history 1페이지 진행. 전체83→87, 기존 최저 게시일보다 오래된 글4개 저장. 최저 게시일2026-08-29T13:26:31Z. upsert20을 신규20개로 해석하지 않는다.
 - runs의 page_commit 비용 rows_read176 / rows_written105. lease·시간 조회·관측 로그는 제외. 해당 Cron의 CPU 표본은 확보하지 못했다(짧은 tail 창에서는 fetch만 관측). 나머지 소스/전체20페이지 완료와 장기 비용은 아직 미확인이다. 기존 교대 수집을 계속한다.
+# 인스타 개인 검토함 — 2026-09-10
+
+- 로컬: 전체 47개 Node 테스트 통과. 미인증 화면/API 차단, 재가져오기 판단 보존, revision 충돌 409, 교차 출처 쓰기 403, 잘못된 입력 400, 기존 posts 미변경 확인.
+- 브라우저: `node scripts/check-instagram.mjs`로 실제 라우터/SQLite를 사용하여 JSON 가져오기, 본문 스크립트 문자열 비실행, 보관·보류·재접속 상태 보존, 빈 상태, 1440/390px 가로 넘침 없음을 확인. 로컬 harness는 Access 인증 검증의 대체가 아니다.
+- `wrangler deploy --dry-run` 통과. 새 의존성 없음. 별도 읽기 전용 코드 리뷰에서 Critical/Major 없음.
+- 검토 결과는 별도 테이블에 저장하며 피드에는 반영하지 않는다. 이미지 중복은 자동 확정하지 않고 X 출처 표기 등 문맥만 안내한다. Instagram CDN 이미지 만료/차단은 원문 링크로 처리한다.
+- 원격 배포 및 소유자 실사용 확인은 아래 후속 기록으로 구분한다.
