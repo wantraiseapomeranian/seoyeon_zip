@@ -540,3 +540,5 @@ scripts/validate-remaining-sources.mjs 실행. Pumpkin030806/hampuppy806 각2페
 - 원격 조회 당시 원본260개/피드250개, 지문314장. 제공한 4중복 글 중 대표1개만 노출, 안내3개와 원문 확인 불가 예시 미노출.
 - 소유자 /admin/x 실제 화면과 저장 성공. 원문 확인 불가 글 숨김→자동 복원 테스트 후 decision auto, revision2 확인. 비인증 /admin/x 및 /api/admin/x 모두 Access302.
 - 새 Cron의 첫 실행 및 원격 이미지 CPU는 아직 관측하지 못함. 전체 원문 검사는 순차 진행하며 즉시 완료를 의미하지 않음.
+
+- 첫 유지관리 Cron(02:10 UTC)은 실행됐으나 외부 조회 실패를 재시도로 기록. 기존 provider와 달리 redirect:error를 사용한 호환성 문제를 발견해 manual 모드로 통일하고 3xx를 실패 처리. 회귀 테스트 추가. 성공적인 원격 이미지 처리 CPU는 후속 확인 필요.

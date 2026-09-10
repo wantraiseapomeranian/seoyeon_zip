@@ -49,3 +49,10 @@ test('stale merge and unmerge roll back without changing newer groups',async()=>
  assert.equal(sqlite.prepare('SELECT COUNT(DISTINCT confirmed_hash) AS n FROM x_fingerprints').get().n,1);
  sqlite.close();
 });
+
+test('maintenance requests reject redirects using Workers supported manual mode',async t=>{
+ t.mock.method(globalThis,'fetch',async(url,options)=>{assert.equal(options.redirect,'manual');return new Response(null,{status:302,headers:{location:'https://example.test'}});});
+ const {fingerprint}=await import('../src/x-maintenance.mjs');
+ await assert.rejects(fingerprint('https://pbs.twimg.com/media/example.jpg'),/original_http_302/);
+ assert.equal(await checkOriginal({canonicalUrl:'https://x.com/test/status/1',platformPostId:'1'}),'retry');
+});

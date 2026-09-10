@@ -3,13 +3,13 @@ export const hamming=(a,b)=>{let x=BigInt('0x'+a)^BigInt('0x'+b),n=0;while(x){x&
 export async function fingerprint(url){
  const u=new URL(url);if(u.origin!=='https://pbs.twimg.com'||!u.pathname.startsWith('/media/'))throw Error('unsupported_image');
  u.searchParams.set('name','orig');
- const original=await fetch(u,{redirect:'error',signal:AbortSignal.timeout(15000)});
+ const original=await fetch(u,{redirect:'manual',signal:AbortSignal.timeout(15000)});
  if(!original.ok)throw Error('original_http_'+original.status);
  const originalBytes=await limitedBody(original,10_000_000);
  const sha=await crypto.subtle.digest('SHA-256',originalBytes);
  const hash=Array.from(new Uint8Array(sha),b=>b.toString(16).padStart(2,'0')).join('');
  u.searchParams.set('format','jpg');u.searchParams.set('name','small');
- const response=await fetch(u,{redirect:'error',signal:AbortSignal.timeout(15000)});
+ const response=await fetch(u,{redirect:'manual',signal:AbortSignal.timeout(15000)});
  if(!response.ok)throw Error('image_http_'+response.status);
  const bytes=await limitedBody(response,2_000_000);
  const decoded=jpeg.decode(bytes,{useTArray:true,maxResolutionInMP:1,maxMemoryUsageInMB:32,tolerantDecoding:false});
@@ -25,7 +25,7 @@ async function limitedBody(response,limit){
 }
 export async function checkOriginal(post){
  const u=new URL(post.canonicalUrl);if(u.origin!=='https://x.com'||!/^\/[A-Za-z0-9_]{1,15}\/status\/\d+$/.test(u.pathname))throw Error('invalid_post');
- const response=await fetch('https://api.fxtwitter.com'+u.pathname,{headers:{'User-Agent':'SeoyeonZip/0.1 (+https://seoyeon-zip.seoyeon-archive.workers.dev)'},redirect:'error',signal:AbortSignal.timeout(15000)});
+ const response=await fetch('https://api.fxtwitter.com'+u.pathname,{headers:{'User-Agent':'SeoyeonZip/0.1 (+https://seoyeon-zip.seoyeon-archive.workers.dev)'},redirect:'manual',signal:AbortSignal.timeout(15000)});
  if(response.status!==200&&response.status!==404){await response.body?.cancel();return 'retry';}
  const data=JSON.parse(new TextDecoder().decode(await limitedBody(response,1_000_000)));
  if(response.status===404&&data.code===404&&data.message==='NOT_FOUND'&&data.tweet===null)return 'missing';
