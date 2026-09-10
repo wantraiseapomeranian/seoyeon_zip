@@ -56,3 +56,13 @@ test('maintenance requests reject redirects using Workers supported manual mode'
  await assert.rejects(fingerprint('https://pbs.twimg.com/media/example.jpg'),/original_http_302/);
  assert.equal(await checkOriginal({canonicalUrl:'https://x.com/test/status/1',platformPostId:'1'}),'retry');
 });
+
+test('review tabs classify all posts before pagination and preserve hidden decisions',async()=>{
+ const {sqlite,DB}=testDatabase();for(let i=1;i<=28;i++){sqlite.prepare('INSERT INTO posts VALUES(?,?)').run('x:'+i,JSON.stringify({id:'x:'+i,publishedAt:'2026-09-01',moderationReason:i<=26?'홍보':null,media:[{kind:'image',previewUrl:'https://pbs.twimg.com/media/'+i+'.jpg'}]}));}
+ sqlite.exec("INSERT INTO x_quality(post_id,decision) VALUES('x:1','hidden')");
+ const get=async query=>(await handleXReview(new Request('https://test.local/api/admin/x'+query),{DB})).json();
+ let result=await get('');assert.deepEqual(result.counts,{pending:25,visible:2,hidden:1,all:28});assert.equal(result.total,25);assert.ok(!result.items.some(p=>p.id==='x:1'));
+ result=await get('?status=hidden');assert.equal(result.items[0].id,'x:1');
+ result=await get('?status=all&offset=25');assert.equal(result.items.length,3);
+ assert.equal((await handleXReview(new Request('https://test.local/api/admin/x?status=oops'),{DB})).status,400);sqlite.close();
+});
