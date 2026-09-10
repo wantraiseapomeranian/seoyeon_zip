@@ -63,7 +63,7 @@ function card(post){
  const video=post.media.some(m=>m.kind==='video'||m.kind==='gif');const photos=post.media.filter(m=>m.kind==='image').length;
  const first=post.media[0];
  if(post.manual){const link=node('a','manual-preview',post.platform==='instagram'?'Instagram 원문 보기 ↗':'X 원문 보기 ↗');link.href=post.canonicalUrl;link.target='_blank';link.rel='noopener noreferrer';article.append(link);}else{
- const viewer=window.reviewGallery(post.media.map(m=>({src:smallPreview(m.previewUrl),originalSrc:m.previewUrl,url:post.canonicalUrl,kind:m.kind,alt:post.authorHandle+(m.kind==='image'?' 사진':' 영상 미리보기')})),{label:'피드 사진',managed:true,onChange:i=>photoPositions.set(post.id,i)});
+ const viewer=window.reviewGallery(post.media.map(m=>({src:smallPreview(m.previewUrl),originalSrc:m.previewUrl,url:post.canonicalUrl,kind:m.kind,alt:post.authorHandle+(m.kind==='image'?' 사진':m.kind==='unknown'?' 미리보기':' 영상 미리보기')})),{label:'피드 사진',managed:true,onChange:i=>photoPositions.set(post.id,i)});
  viewer.element.classList.add('feed-gallery');viewer.element.style.setProperty('--photo-ratio',first.width&&first.height?String(first.width/first.height):'0.75');viewer.select(photoPositions.get(post.id)??0,false);feedViewers.push(viewer);article.append(viewer.element);}
 
  if(video)article.append(node('span','via','영상은 원문에서 재생'));

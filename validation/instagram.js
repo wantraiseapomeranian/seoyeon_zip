@@ -1,4 +1,8 @@
 const $=s=>document.querySelector(s);
+function hasFilters(){return ['month','media','author','kind'].some(key=>{const el=$('#review-'+key);return el&&el.value&&el.value!=='all';});}
+function filterQuery(){const q=new URLSearchParams();for(const key of ['month','media','author','kind']){const el=$('#review-'+key);if(el)q.set(key,el.value);}return '&'+q;}
+function updateAuthors(authors=[]){const el=$('#review-author'),value=el.value;el.replaceChildren(new Option('모든 계정',''),...[...new Set([...authors,...(value?[value]:[])])].sort().map(a=>new Option('@'+a,a)));el.value=value;}
+
 let status='pending',offset=0,busy=false;
 const labels={pending:'미검토',kept:'표시 중',held:'보류',excluded:'제외'};
 const errors={review_conflict:'다른 화면에서 수정된 글이에요. 새로고침 후 다시 확인해 주세요.',invalid_import:'JSON 배열 형식과 게시물 정보를 확인해 주세요. 한 번에 100개, 2MB까지 가져올 수 있어요.'};
@@ -12,16 +16,16 @@ function link(url,text,className){const n=el('a',text,className);n.href=url;n.ta
 function card(p){
   const article=el('article',null,'review-card');
   const images=p.images?.length?p.images:(p.image?[p.image]:[]);
-  const preview=window.reviewGallery(images.map((src,i)=>({src,url:p.url,alt:(p.author||'인스타그램')+' 사진 '+(i+1)})),{label:'게시물 사진'}).element;
+  const preview=window.reviewGallery(images.map((src,i)=>({src,url:p.url,kind:p.media?.find(m=>m.previewUrl===src)?.kind,alt:(p.author||'인스타그램')+' 사진 '+(i+1)})),{label:'게시물 사진'}).element;
   const body=el('div',null,'review-body'),meta=el('div',null,'review-meta');
   const time=el('time',p.publishedAt?new Date(p.publishedAt).toLocaleDateString('ko-KR'):'게시일 미상');if(p.publishedAt)time.dateTime=p.publishedAt;
   meta.append(el('h2',p.author?`@${p.author}`:'작성자 미상'),time);
-  const tags=el('div',null,'review-tags');tags.append(el('span',labels[p.status]),el('span',`미디어 ${p.mediaCount}개`));
+  const tags=el('div',null,'review-tags');tags.append(el('span',labels[p.status]),el('span',p.media?.some(m=>m.kind==='video')?(p.media.some(m=>m.kind==='image')?'사진·영상':'영상'):p.media?.every(m=>m.kind==='image')?'사진':'유형 미확인'),el('span',`미디어 ${p.mediaCount}개`));
   if(p.firstSeenInTrial!==null)tags.append(el('span',p.firstSeenInTrial?'시험 중 처음 발견':'기존 발견 글'));
   if(p.newlyPublished===true)tags.append(el('span','시험 시작 후 게시'));
   const reasons=el('ul',null,'review-reasons');p.reasons.forEach(r=>reasons.append(el('li',r)));
   if(images.length<p.mediaCount)tags.append(el('span','저장된 미리보기 '+images.length+'장 · 전체는 원문에서 확인'));
-  body.append(meta,tags,reasons,el('p',p.caption||'본문이 없는 게시물이에요.','review-caption'),link(p.url,'원문에서 전체 사진 보기 ↗','review-link'));
+  body.append(meta,tags,reasons,el('p',p.caption||'본문이 없는 게시물이에요.','review-caption'),link(p.url,'원문에서 보기 ↗','review-link'));
   const actions=el('div',null,'review-buttons');
   for(const value of ['kept','excluded','held','pending']){const button=el('button',value==='pending'?'판단 취소':value==='kept'?'피드에 표시':labels[value]);button.setAttribute('aria-pressed',String(p.status===value));button.disabled=p.status===value;button.addEventListener('click',async()=>{
     if(busy)return;busy=true;actions.querySelectorAll('button').forEach(b=>b.disabled=true);
@@ -31,11 +35,11 @@ function card(p){
 let generation=0;
 async function load(){
   const current=++generation;$('#items').setAttribute('aria-busy','true');
-  try{const data=await api(`?status=${status}&offset=${offset}`);if(current!==generation)return;
-    const total=Object.values(data.counts).reduce((a,b)=>a+b,0),count=status==='all'?total:(data.counts[status]??0);
+  try{const data=await api(`?status=${status}&offset=${offset}${filterQuery()}`);if(current!==generation)return;
+    updateAuthors(data.authors);const total=Object.values(data.counts).reduce((a,b)=>a+b,0),count=status==='all'?total:(data.counts[status]??0);
     if(offset&&offset>=count){offset=Math.max(0,offset-25);return load();}
     $('#items').replaceChildren(...data.items.map(card));
-    $('#empty').hidden=data.items.length>0;$('#empty h2').textContent={pending:'지금 검토할 글이 없어요.',kept:'표시 중인 글이 없어요.',held:'보류한 글이 없어요.',excluded:'제외한 글이 없어요.',all:'아직 가져온 게시물이 없어요.'}[status];$('#empty p').hidden=total>0;$('#empty p').textContent='상단의 결과 가져오기로 게시물을 추가할 수 있어요.';$('.pagination').hidden=count<=25;
+    $('#empty').hidden=data.items.length>0;$('#empty h2').textContent={pending:'지금 검토할 글이 없어요.',kept:'표시 중인 글이 없어요.',held:'보류한 글이 없어요.',excluded:'제외한 글이 없어요.',all:'아직 가져온 게시물이 없어요.'}[status];if(hasFilters())$('#empty h2').textContent='조건에 맞는 게시물이 없어요.';$('#empty p').hidden=total>0||hasFilters();$('#empty p').textContent='상단의 결과 가져오기로 게시물을 추가할 수 있어요.';$('.pagination').hidden=count<=25;
     $('#tabs').querySelectorAll('button').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.status===status));b.querySelector('span').textContent=b.dataset.status==='all'?total:(data.counts[b.dataset.status]??0);});
     $('#previous').disabled=offset===0;$('#next').disabled=offset+25>=count;$('#page').textContent=`${Math.floor(offset/25)+1}페이지`;
   }finally{if(current===generation)$('#items').setAttribute('aria-busy','false');}
@@ -51,4 +55,6 @@ $('#import-form').addEventListener('submit',async e=>{e.preventDefault();const b
   let rows;try{rows=JSON.parse($('#json').value);}catch{throw new Error('올바른 JSON 내용을 입력해 주세요.');}
   const result=await api('/import',rows);$('#import-dialog').close();$('#json').value='';$('#file').value='';offset=0;await load();$('#message').textContent=`${result.imported}개 게시물 정보를 가져왔어요. 기존 판단은 유지했어요.`;
 }catch(error){$('#import-error').textContent=error.message;}finally{button.disabled=false;}});
+for(const el of document.querySelectorAll('.review-filters input,.review-filters select'))el.addEventListener('change',()=>{offset=0;reload();});
+$('#review-reset').onclick=()=>{for(const key of ['month','media','author','kind']){const el=$('#review-'+key);if(el)el.value=['media','kind'].includes(key)?'all':'';}offset=0;reload();};
 reload();
