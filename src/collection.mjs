@@ -1,4 +1,5 @@
 import { classifyOfficial } from './official-policy.mjs';
+import { reviewReason } from './x-policy.mjs';
 import { Buffer } from 'node:buffer';
 const handlePattern = /^[A-Za-z0-9_]{1,15}$/;
 export class ProviderError extends Error {
@@ -51,6 +52,7 @@ export function normalizePage(json, source) {
       authorHandle: author, observedViaSource: source.handle, relationship,
       publishedAt: new Date(p.created_at).toISOString(), caption: p.text,
       matchReason: official ? verdict.reason : textMatch ? 'text' : 'verified-direct-author', contentKind: official ? 'official' : /(?<![\p{L}\p{N}])(?:cosmo|코스모(?:톡)?)(?![\p{L}\p{N}])/iu.test(p.text.normalize('NFKC')) ? 'cosmo' : directMatch ? 'fansite' : 'other', media };
+    normalized.moderationReason=reviewReason(normalized.caption);
     if(official&&verdict.decision==='review')reviewPosts.push({post:normalized,reason:verdict.reason,version:verdict.version});
     else posts.push(normalized);
   }

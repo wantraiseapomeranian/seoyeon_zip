@@ -17,7 +17,7 @@ export async function readFeed(db, params) {
     where.push(`${dateSql}>=? AND ${dateSql}<?`);args.push(start.toISOString(),next.toISOString());
   }
   const condition=()=>where.length?' WHERE '+where.join(' AND '):'';
-  const total=await db.prepare('SELECT COUNT(*) AS count FROM posts p'+condition()).bind(...args).first();
+  const total=await db.prepare('SELECT COUNT(*) AS count FROM x_feed_posts p'+condition()).bind(...args).first();
   const scope=JSON.stringify([sort,media,kind,source,month]);
   if(params.has('cursor')){
     if(params.get('cursor').length>2048)invalid();
@@ -25,8 +25,12 @@ export async function readFeed(db, params) {
     if(!cursor||cursor.scope!==scope||typeof cursor.id!=='string'||!/^(?:x:)?\d{1,30}$/.test(cursor.id)||typeof cursor.date!=='string'||!Number.isFinite(Date.parse(cursor.date)))invalid();
     where.push(`(${dateSql}${sort==='oldest'?'>':'<'}? OR (${dateSql}=? AND p.id>?))`);args.push(cursor.date,cursor.date,cursor.id);
   }
-  const {results}=await db.prepare(`SELECT p.id,p.data FROM posts p${condition()} ORDER BY ${dateSql} ${sort==='oldest'?'ASC':'DESC'},p.id ASC LIMIT 49`).bind(...args).all();
+  const {results}=await db.prepare(`SELECT p.id,p.data FROM x_feed_posts p${condition()} ORDER BY ${dateSql} ${sort==='oldest'?'ASC':'DESC'},p.id ASC LIMIT 49`).bind(...args).all();
   const page=results.slice(0,48), posts=page.map(r=>JSON.parse(r.data));
+  if(posts.length){
+    const related=await db.prepare("SELECT DISTINCT a.id,json_extract(p.data,'$.canonicalUrl') AS url,json_extract(p.data,'$.authorHandle') AS author FROM x_photo_rows a JOIN x_photo_rows b ON a.hash=b.hash AND a.id!=b.id JOIN posts p ON p.id=b.id WHERE a.rank=1 AND a.id IN (SELECT value FROM json_each(?))").bind(JSON.stringify(page.map(r=>r.id))).all();
+    for(const post of posts)post.duplicateSources=related.results.filter(r=>r.id===post.id).map(r=>({url:r.url,author:r.author}));
+  }
   const last=posts.at(-1);
   const state=await db.prepare('SELECT MAX(last_success_at) AS latest FROM collection_state').first();
   return {posts,total:total.count,collectedAt:state?.latest==null?null:new Date(state.latest*1000).toISOString(),nextCursor:results.length>48?btoa(JSON.stringify({scope,id:page.at(-1).id,date:last.publishedAt})):null};

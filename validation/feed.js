@@ -64,7 +64,7 @@ function card(post){
  const label=video?(photos?'사진 · 영상':'영상 · 원문에서 재생'):`사진 ${photos}장`;link.append(node('span','media-count',label));article.append(link);
  const meta=node('div','card-meta');meta.append(node('span','author',`@${post.authorHandle}`),node('span','category',kinds[post.contentKind]||'기타'));article.append(meta);const time=node('time',null,stamp(post.publishedAt));time.dateTime=post.publishedAt;article.append(time);
  const caption=displayCaption(post.caption);if(caption)article.append(node('p','caption',caption));
- if(post.authorHandle.toLowerCase()!==post.observedViaSource.toLowerCase())article.append(node('span','via',`발견 출처 @${post.observedViaSource}`));return article;
+ if(post.authorHandle.toLowerCase()!==post.observedViaSource.toLowerCase())article.append(node('span','via',`발견 출처 @${post.observedViaSource}`));for(const source of post.duplicateSources||[]){const a=node('a','via','같은 사진 출처 @'+source.author);a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';article.append(a);}return article;
 }
 function render(){
  const activeFilters=Number($('#kind').value!=='all')+Number($('#source').value!=='all');

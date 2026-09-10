@@ -10,8 +10,8 @@
   "d1_databases": [{ "binding": "DB", "database_name": "seoyeon-zip-validation", "database_id": "017ec07d-d095-45f9-80f7-0dffd6f48ba0", "migrations_dir": "migrations" }],
   // Owner identity and Access settings are managed in the Cloudflare dashboard.
   "keep_vars": true,
-  "limits": { "cpu_ms": 100 },
+  "limits": { "cpu_ms": 1000 },
   "vars": { "COLLECTION_ENABLED": "true" },
-  "triggers": { "crons": ["*/3 * * * *"] },
+  "triggers": { "crons": ["*/3 * * * *", "1-59/3 * * * *"] },
   "observability": { "enabled": true, "traces": { "enabled": true } }
 }

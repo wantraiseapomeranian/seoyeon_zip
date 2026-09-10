@@ -4,6 +4,8 @@ import { runDueSource } from './scheduler.mjs';
 import { listSources,scheduleRetry } from './collection-state.mjs';
 import { readFeed } from './feed.mjs';
 import { handleInstagramReview } from './instagram-review.mjs';
+import { handleXReview } from './x-review.mjs';
+import { maintainX } from './x-maintenance.mjs';
 const reply=(value,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 
 export async function authorize(request,env) {
@@ -20,6 +22,7 @@ export async function authorize(request,env) {
 // Internal router. The public fetch handler always authorizes first.
 export async function handleApi(request,env) {
   const url=new URL(request.url);
+  if(url.pathname==='/api/admin/x')return handleXReview(request,env);
   if(url.pathname==='/api/admin/instagram'||url.pathname.startsWith('/api/admin/instagram/')) return handleInstagramReview(request,env);
   if(url.pathname==='/api/feed' && request.method==='GET') {
     try { return reply(await readFeed(env.DB,url.searchParams)); }
@@ -27,7 +30,7 @@ export async function handleApi(request,env) {
   }
   if(url.pathname==='/api/probe') return reply({error:'manual_probe_retired'},410);
   if(url.pathname==='/api/samples' && request.method==='GET') {
-    const {results}=await env.DB.prepare("SELECT data FROM posts ORDER BY json_extract(data,'$.publishedAt') DESC LIMIT 48").all();
+    const {results}=await env.DB.prepare("SELECT data FROM x_feed_posts ORDER BY json_extract(data,'$.publishedAt') DESC LIMIT 48").all();
     const state=await env.DB.prepare('SELECT MAX(last_success_at) AS latest FROM collection_state').first();
     return reply({collectedAt:state?.latest==null?null:new Date(state.latest*1000).toISOString(),posts:results.map(r=>JSON.parse(r.data))});
   }
@@ -43,7 +46,7 @@ export async function handleApi(request,env) {
 }
 
 export default {
-  async scheduled(controller,env,ctx) { await runDueSource(env); },
+  async scheduled(controller,env,ctx) { if(controller.cron==='1-59/3 * * * *')await maintainX(env);else await runDueSource(env); },
   async fetch(request,env) {
     const auth=await authorize(request,env);
     if(auth!==200) return reply({error:auth===503?'private_access_not_configured':'access_denied'},auth);
@@ -52,6 +55,7 @@ export default {
       if(request.method!=='GET' && request.method!=='HEAD') return reply({error:'method_not_allowed'},405);
       const assetUrl=new URL(request.url);if(assetUrl.pathname==='/')assetUrl.pathname='/feed.html';
       if(assetUrl.pathname==='/admin/instagram'||assetUrl.pathname==='/admin/instagram/')assetUrl.pathname='/instagram.html';
+      if(assetUrl.pathname==='/admin/x'||assetUrl.pathname==='/admin/x/')assetUrl.pathname='/x-review';
       const asset=await env.ASSETS.fetch(new Request(assetUrl,request));const headers=new Headers(asset.headers);
       headers.set('Cache-Control','private, no-store');
       headers.set('Content-Security-Policy',"default-src 'self'; img-src https://pbs.twimg.com https://*.cdninstagram.com https://*.fbcdn.net 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");

@@ -527,3 +527,10 @@ scripts/validate-remaining-sources.mjs 실행. Pumpkin030806/hampuppy806 각2페
 - 인증 없는 /admin/instagram 및 /api/admin/instagram 요청은 모두 302 Access 로그인으로 이동. 정적 자산의 canonical URL 처리로 /admin/instagram 진입 시 /instagram으로 이동하며, 두 경로 모두 같은 소유자 인증을 거친다.
 - 원본 JSON과 수집 게시물·사진 URL은 GitHub에 추가하지 않았다. 자동 동기화 없이 결과 가져오기 방식이다.
 
+
+## X 품질 로컬 및 DB — 2026-09-10
+- 전체 52개 테스트 통과. stale merge/unmerge 409와 원자성, 숨김·고유 사진 유지, 일시 오류 상태 보존 확인. 별도 리뷰 Critical/Major 없음.
+- 실제 데이터 브라우저 harness: 사용자 셀카 4글→1글, 안내 3예시 및 원문 확인 불가 예시 숨김, 판단 저장, 1440/390px 넘침 없음. dry-run 148KiB 통과.
+- 원격 0010 및 사진 314장 지문/검토 사유 적용 성공. 두 셀카는 직접 8장 비교 후 수동 묶음 적용. 원본 데이터 삭제 없음.
+- 원본 SHA 동일 파일만 자동 확정. dHash 유사 후보는 수동 비교. 텍스트 규칙은 얼굴 판별이 아님. 원문은 provider의 명시적 NOT_FOUND를 확인하며 일시 오류는 보존.
+- 유지관리 별도 3분 예약(사진1장/원문1글). CPU 상한 100→1000ms: 로컬 한 장 약484ms. 원격 CPU/자동 배포는 후속 확인.
