@@ -509,3 +509,7 @@ scripts/validate-remaining-sources.mjs 실행. Pumpkin030806/hampuppy806 각2페
 - 일반 권한 dry-run은 로그/상위 디렉터리 접근 제한으로 실패. 확장 권한 빌드 및 원격 적용 결과는 후속 기록한다.
 - 확장 권한 dry-run 통과(60.72 KiB / gzip 17.25 KiB). 로컬 workerd/D1에서 2000년 게시물 21개 저장·중복 재생·SQL rollback·중지 중 응답 거절·429/401·HTTP 봉인 통과.
 - GitHub main=9a616376175f2060ac865ce74d2dfecedb18972a로 로컬과 일치, 보호 브랜치 아님. 기존 Workers Builds 체크 성공 확인. 원격 미적용 마이그레이션은 0008 한 개다.
+- 코드 리뷰: Critical/Major 없음(APPROVED, 읽기 전용).
+- GitHub b1f6bb1 자동 배포 성공(2026-09-09 23:57:49 UTC), 활성 버전 a50e425d-d345-4924-a87e-9ddc21438792 100%. 이후 0008 원격 적용 성공. 적용 직후 83개 보존, 11소스 boundary0/pages0/latest/활성 확인. 비로그인 /api/sources 302 유지, 배포 COLLECTION_ENABLED=true 및 */3 Cron 확인.
+- 2026-09-10 00:03:52 UTC(09:03:52 KST) 실제 Cron: Or1gin030806 latest, 응답20/upsert20, 오류null, history 1페이지 진행. 전체83→87, 기존 최저 게시일보다 오래된 글4개 저장. 최저 게시일2026-08-29T13:26:31Z. upsert20을 신규20개로 해석하지 않는다.
+- runs의 page_commit 비용 rows_read176 / rows_written105. lease·시간 조회·관측 로그는 제외. 해당 Cron의 CPU 표본은 확보하지 못했다(짧은 tail 창에서는 fetch만 관측). 나머지 소스/전체20페이지 완료와 장기 비용은 아직 미확인이다. 기존 교대 수집을 계속한다.
