@@ -1,8 +1,15 @@
 const $=s=>document.querySelector(s);
 function hasFilters(){return ['month','media','author','kind'].some(key=>{const el=$('#review-'+key);return el&&el.value&&el.value!=='all';});}
-function syncFilterLabel(){const count=['author','kind'].filter(key=>{const field=$('#review-'+key);return field&&field.value&&field.value!=='all';}).length;$('#review-more').textContent=count?'필터 · '+count:'필터';}
+function sizeFilterSelects(){
+ const context=document.createElement('canvas').getContext('2d');if(!context)return;
+ for(const select of document.querySelectorAll('.review-filters select')){
+  const style=getComputedStyle(select);context.font=style.font||style.fontSize+' '+style.fontFamily;
+  select.style.width=Math.ceil(context.measureText(select.selectedOptions[0]?.textContent||'').width+parseFloat(style.paddingLeft)+parseFloat(style.paddingRight)+28)+'px';
+ }
+}
+function syncFilterLabel(){sizeFilterSelects();const count=['author','kind'].filter(key=>{const field=$('#review-'+key);return field&&field.value&&field.value!=='all';}).length;$('#review-more').textContent=count?'필터 · '+count:'필터';}
 function filterQuery(){syncFilterLabel();const q=new URLSearchParams();for(const key of ['month','media','author','kind']){const el=$('#review-'+key);if(el)q.set(key,el.value);}return '&'+q;}
-function updateAuthors(authors=[]){const el=$('#review-author'),value=el.value;el.replaceChildren(new Option('모든 계정',''),...[...new Set([...authors,...(value?[value]:[])])].sort().map(a=>new Option('@'+a,a)));el.value=value;}
+function updateAuthors(authors=[]){const el=$('#review-author'),value=el.value;el.replaceChildren(new Option('모든 계정',''),...[...new Set([...authors,...(value?[value]:[])])].sort().map(a=>new Option('@'+a,a)));el.value=value;sizeFilterSelects();}
 
 let status='pending',offset=0,busy=false;
 const labels={pending:'미검토',kept:'표시 중',held:'보류',excluded:'제외'};
