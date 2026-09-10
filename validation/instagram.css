@@ -2,3 +2,6 @@
 @media(max-width:700px){.review-heading{padding:28px 0 24px;align-items:flex-start;flex-direction:column;gap:18px}h1{font-size:28px}.review-card{grid-template-columns:1fr;gap:18px}.review-image{width:100%;max-width:440px;justify-self:center}.review-image img{max-height:500px}.review-meta{flex-wrap:wrap;gap:6px}.review-toolbar{gap:4px;align-items:flex-start}.review-toolbar>button{padding-inline:4px;white-space:nowrap}#tabs{gap:0}#tabs button{padding:12px 7px;font-size:12px}#tabs span{margin-left:2px}.owner-label{font-size:11px}.review-caption{max-height:180px}.review-note{line-height:1.7}.review-buttons button{flex:1}}
 
 .review-heading>button:hover,.primary:hover{background:var(--ink);color:white}
+
+.review-nav{flex-shrink:0}.review-nav a{text-decoration:none}.review-nav a[aria-current="page"]{background:var(--soft);color:var(--ink)}
+.review-nav a:focus-visible{z-index:1}

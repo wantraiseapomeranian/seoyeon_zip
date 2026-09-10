@@ -547,3 +547,6 @@ scripts/validate-remaining-sources.mjs 실행. Pumpkin030806/hampuppy806 각2페
 
 ## 검토함 아이콘 — 2026-09-10
 피드 상단 검토함을 체크 문서 SVG로 교체하고 마지막 순서로 이동. 기존44px 아이콘 스타일 재사용, aria-label 및 hover/focus 설명 유지. Chromium 1440/390px에서 마지막 위치·44px·키보드 설명·가로 넘침 없음 확인.
+
+## 검토함 상호 이동 — 2026-09-10
+X·인스타 상단에 같은 X→인스타 아이콘 메뉴를 배치. aria-label/current 및 44px 클릭 영역·툴팁·포커스 유지. Chromium 1440/390/320px 양방향 클릭과 현재 페이지·가로 넘침 없음 통과. 별도 코드·320/1440px 시각 리뷰 APPROVED, Critical/Major 없음. 검토 판단 JS/API 변경 없음.
