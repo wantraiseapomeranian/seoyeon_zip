@@ -44,11 +44,12 @@ async function commitState(DB,lease,state,statements=[]) {
   }
 }
 
-export async function commitPage(DB,lease,page,nextState) {
+export async function commitPage(DB,lease,page,nextState,{stopAfterPage=false}={}) {
   const posts=JSON.stringify(page.posts);
   const ids=JSON.stringify(page.posts.map(p=>p.id));
   const media=JSON.stringify(page.posts.flatMap(p=>p.media.map(m=>({...m,postId:p.id}))));
   return commitState(DB,lease,nextState,[
+    ...(stopAfterPage?[DB.prepare('UPDATE collection_state SET enabled=0 WHERE source=?').bind(lease.source)]:[]),
     DB.prepare('UPDATE collection_state SET last_received_count=?,last_matched_count=?,last_review_count=? WHERE source=?')
       .bind(page.receivedCount??null,page.posts.length,(page.reviewPosts||[]).length,lease.source),
     ...((page.reviewPosts||[]).length?[DB.prepare("INSERT INTO official_review(post_id,source,reason,rule_version,data) SELECT json_extract(value,'$.post.id'),?,json_extract(value,'$.reason'),json_extract(value,'$.version'),json_extract(value,'$.post') FROM json_each(?) WHERE true ON CONFLICT(post_id) DO UPDATE SET reason=excluded.reason,rule_version=excluded.rule_version,data=excluded.data,last_seen_at=unixepoch()").bind(lease.source,JSON.stringify(page.reviewPosts))]:[]),

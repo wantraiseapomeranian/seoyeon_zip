@@ -39,12 +39,14 @@ export async function runDueSource(env) {
   }
   const now=(await env.DB.prepare('SELECT unixepoch() AS now').first()).now;
   const latest=state.next_lane==='latest';
-  const next=latest?advanceLatest(state,page,now):advanceCycle(state,page,now);
+  const next=latest&&!source.historyOnly?advanceLatest(state,page,now):advanceCycle(state,page,now);
+  const stopAfterPage=source.historyOnly&&(next.history_paused===1||next.cycle_started_at===null);
+  if(source.historyOnly)next.next_lane='history';
   // Normalize the entire response, but never persist posts outside the fixed requested range.
   const boundary=latest?0:state.cycle_boundary_at;
   const eligible={...page,reviewPosts:(page.reviewPosts||[]).filter(r=>Date.parse(r.post.publishedAt)/1000>=boundary),posts:page.posts.filter(p=>Date.parse(p.publishedAt)/1000>=boundary)};
   let results;
-  try { results=await commitPage(env.DB,lease,eligible,next); }
+  try { results=await commitPage(env.DB,lease,eligible,next,{stopAfterPage}); }
   catch(error){if(error.message==='stale_lease')return {status:'stale'};throw error;}
   const observation={status:'stored',source:lease.source,lane:state.next_lane,received:page.receivedCount,stored:eligible.posts.length,
     cycleStatus:next.catchup_status,...fetched.observation,

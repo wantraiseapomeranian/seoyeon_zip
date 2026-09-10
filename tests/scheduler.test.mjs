@@ -6,6 +6,24 @@ import { stopCollection } from '../src/collection-state.mjs';
 
 const direct=()=>({type:'status',id:'123',url:'https://x.com/Seowoo_0501/status/123',author:{screen_name:'Seowoo_0501'},reposted_by:null,text:'',created_at:new Date().toISOString(),media:{all:[{type:'photo',url:'https://pbs.twimg.com/media/example.jpg'}]}});
 const response=()=>Response.json({code:200,results:[direct()],cursor:{bottom:'next'}});
+
+test('archive source follows history and stops atomically at exhaustion or page limit',async t=>{
+ for(const limit of [false,true]){
+  const {DB,sqlite,enable}=testDatabase();try{
+   sqlite.exec("INSERT OR IGNORE INTO collection_state(source) VALUES('wavefunc0806')");enable('wavefunc0806');
+   t.mock.method(console,'log',()=>{});let calls=0;
+   const mock=t.mock.method(globalThis,'fetch',async url=>{calls++;if(calls===2)assert.equal(new URL(url).searchParams.get('cursor'),'next');return Response.json({code:200,results:[{...direct(),author:{screen_name:'wavefunc0806'},url:'https://x.com/wavefunc0806/status/123',text:'#윤서연'}],cursor:{bottom:calls===1||limit?'next':null}});});
+   assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'stored');
+   assert.equal(sqlite.prepare("SELECT next_lane FROM collection_state WHERE source='wavefunc0806'").get().next_lane,'history');
+   sqlite.exec("UPDATE collection_state SET next_due_at=0"+(limit?",pages_in_cycle=19,next_cursor='previous'":''));
+   if(limit)mock.mock.mockImplementation(async()=>Response.json({code:200,results:[],cursor:{bottom:'last'}}));
+   await runDueSource({DB,COLLECTION_ENABLED:'true'});
+   assert.equal(sqlite.prepare("SELECT enabled FROM collection_state WHERE source='wavefunc0806'").get().enabled,0);
+   assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM posts').get().n,1);
+   assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'idle');mock.mock.restore();
+  }finally{sqlite.close();}
+ }
+});
 test('disabled scheduler makes no DB or provider calls',async t=>{
   t.mock.method(globalThis,'fetch',()=>{throw Error('unexpected fetch');});
   assert.equal((await runDueSource({DB:{}})).status,'disabled');
@@ -43,12 +61,12 @@ test('stop during fetch rejects commit; no second provider call on stale executi
   assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'stale');
   assert.equal(fetch.mock.callCount(),1);assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM posts').get().n,0);
 });
-test('eleven due sources each get one turn; matching-zero pages still progress',async t=>{
+test('fifteen due sources each get one turn; matching-zero pages still progress',async t=>{
   const {DB,sqlite,enable}=testDatabase();t.after(()=>sqlite.close());enable();sqlite.exec('UPDATE collection_state SET enabled=1');
   t.mock.method(console,'log',()=>{});
   const seen=[];t.mock.method(globalThis,'fetch',async url=>{seen.push(new URL(url).pathname);return Response.json({code:200,results:[],cursor:{bottom:'next'}});});
-  for(let i=0;i<12;i++) assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'stored');
-  assert.equal(new Set(seen).size,12);assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'idle');
+  for(let i=0;i<15;i++) assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'stored');
+  assert.equal(new Set(seen).size,15);assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'idle');
 });
 
 test('concurrent invocations cannot collect the same leased source twice',async t=>{
