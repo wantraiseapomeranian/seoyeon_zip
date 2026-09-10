@@ -115,21 +115,24 @@ async function loadLive(append=false){
   try{const response=await fetch('/api/sources');if(!response.ok)throw Error('status');const data=await response.json();if(version!==requestVersion)return;states=data.sources;
    const current=$('#source').value;const names=new Set(['instagram','manual',...states.map(s=>s.source)]);if(current!=='all')names.add(current);
    $('#source').replaceChildren(new Option('모든 출처','all'),...[...names].sort().map(s=>new Option(s==='instagram'?'Instagram':s==='manual'?'직접 등록':`@${s}`,s)));$('#source').value=current;renderSources();
-   if(states.some(s=>s.last_error_code))$('#notice').textContent='일부 출처의 갱신이 지연되고 있어요. 수집 상태를 확인해 주세요.';
+   if(states.some(sourceHasError))$('#notice').textContent='일부 출처의 갱신이 지연되고 있어요. 수집 상태를 확인해 주세요.';
   }catch{if(version===requestVersion){states=[];renderSources();$('#notice').textContent='게시물은 불러왔지만 수집 상태는 확인하지 못했어요.';}}
  }catch(error){if(version!==requestVersion)return;if(!append){$('#gallery').replaceChildren();$('#count').textContent='목록 조회 실패';}$('#notice').textContent=error.message==='auth'?'로그인이 만료됐어요. 페이지를 새로고침해 로그인해 주세요.':'목록을 불러오지 못했어요. 다시 시도해 주세요.';}
  finally{if(version===requestVersion){$('#refresh').disabled=false;more.disabled=false;$('#gallery').setAttribute('aria-busy','false');}}
 }
 function changeFilters(){if(live){posts=[];loaded=false;render();loadLive();}else{render();syncUrl();}}
+const historyNotes=new Set(['history_window_unverified','unverified_exhaustion','repeated_cursor']);
+const sourceHasError=s=>s.catchup_status==='needs_attention'||!!s.last_error_code&&!historyNotes.has(s.last_error_code);
 function renderSources(){
  const host=$('#source-status');const focused=document.activeElement?.dataset.source;const expanded=new Set([...host.querySelectorAll('details[open]')].map(d=>d.dataset.source));host.replaceChildren();
  if(!states.length){host.append(node('p','muted','수집 상태를 확인하지 못했어요. 상태 새로고침으로 다시 시도해 주세요.'));return;}
  for(const s of states){
   const paused=!s.enabled||s.collection_enabled===false||s.collection_enabled===0;
   const attention=s.catchup_status==='needs_attention';
-  const text=paused?'수집 중지':attention?'확인 필요':s.last_error_code?'재시도 대기':!s.last_success_at?'첫 수집 대기':'수집 성공';
+  const historyNote=historyNotes.has(s.last_error_code),error=sourceHasError(s);
+  const text=paused?'수집 중지':attention?'확인 필요':error?'재시도 대기':!s.last_success_at?'첫 수집 대기':historyNote?'최신 수집 정상':'수집 성공';
   const row=node('section','source-row'),heading=node('div','source-heading');
-  heading.append(node('strong',null,`@${s.source}`),node('span',attention||s.last_error_code?'source-state warning':'source-state',text));row.append(heading);
+  heading.append(node('strong',null,`@${s.source}`),node('span',!paused&&error?'source-state warning':'source-state',text));row.append(heading);
   const toggle=node('button','source-toggle',s.enabled?'중지':'켜기');toggle.dataset.source=s.source;toggle.setAttribute('aria-label',s.source+' '+(s.enabled?'수집 중지':'수집 켜기'));toggle.disabled=!live||(!s.enabled&&!s.collection_enabled);heading.append(toggle);
   const feedback=node('p','source-feedback');feedback.setAttribute('role','status');
   toggle.onclick=async()=>{const hadFocus=document.activeElement===toggle;toggle.disabled=true;let message;try{await management('/api/sources/'+s.source,{enabled:!s.enabled,revision:s.revision},'PATCH');message=s.enabled?'수집 중지 · 저장된 글은 유지됩니다.':'수집 재개 · 기존 대기 순서로 진행합니다.';}catch(e){message=e.message;}finally{toggle.disabled=false;}const restore=hadFocus&&(document.activeElement===toggle||document.activeElement===document.body);await refreshSources();const current=[...host.querySelectorAll('.source-toggle')].find(b=>b.dataset.source===s.source);if(current){current.closest('.source-row').querySelector('.source-feedback').textContent=message;if(restore&&(document.activeElement===document.body||document.activeElement===toggle))current.focus({preventScroll:true});}};
@@ -142,7 +145,10 @@ function renderSources(){
     else if(s.last_matched_count===0)detail.append(node('p',null,'이 페이지에는 수집 조건과 기간에 맞는 게시물이 없었어요.'));
    }else detail.append(node('p',null,'상세 건수는 다음 수집 성공부터 표시해요.'));
   }else detail.append(node('p',null,'아직 수집 성공 기록이 없어요.'));
-  if(s.last_error_code){
+  if(historyNote&&!error){
+   row.append(node('p','source-last','과거 수집 범위 미확인'));
+   detail.append(node('p',null,'과거 자료를 모두 가져왔는지 확인되지 않아 과거 조회를 멈췄어요.'+(paused?'':' 최신 글은 계속 확인해요.')));
+  }else if(s.last_error_code){
    const code=s.last_error_code;
    const reason=code.includes('429')?'요청 한도에 도달했어요.':code.includes('timeout')?'응답 대기 시간이 초과됐어요.':code.includes('network')?'수집 서버에 연결하지 못했어요.':/401|403/.test(code)?'수집 서버가 접근을 거부했어요.':'수집 중 오류가 발생했어요.';
    row.append(node('p','source-error',reason+(paused?' 수집이 중지되어 있어요.':attention?' 설정 확인이 필요해요.':' 자동으로 다시 시도해요.')));
@@ -157,7 +163,7 @@ async function refreshSources(){
  try{
   const response=await fetch('/api/sources');if(!response.ok)throw Error('status');
   const data=await response.json();if(!Array.isArray(data.sources))throw Error('shape');
-  states=data.sources;renderSources();$('#status-message').textContent=live?'갱신 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}):'로컬 저장본이에요. 실제 운영 상태와 다를 수 있어요.';
+  states=data.sources;renderSources();if(!$('#notice').textContent||$('#notice').textContent==='일부 출처의 갱신이 지연되고 있어요. 수집 상태를 확인해 주세요.')$('#notice').textContent=states.some(sourceHasError)?'일부 출처의 갱신이 지연되고 있어요. 수집 상태를 확인해 주세요.':'';$('#status-message').textContent=live?'갱신 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}):'로컬 저장본이에요. 실제 운영 상태와 다를 수 있어요.';
  }catch{$('#status-message').textContent='상태 조회에 실패했어요. 다시 시도해 주세요. 아래는 이전 조회 결과예요.';}
  finally{button.disabled=false;}
 }
@@ -168,7 +174,7 @@ async function load(){
  try{const response=await fetch('/api/samples');if(!response.ok)throw Error('feed');const data=await response.json();if(!Array.isArray(data.posts))throw Error('shape');posts=[...data.posts].sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt)||a.id.localeCompare(b.id));collectedAt=data.collectedAt;loaded=true;
  const current=$('#source').value;const known=new Set(['instagram','manual',...posts.map(p=>p.observedViaSource)]);try{const response=await fetch('/api/sources');if(!response.ok)throw Error('status');states=(await response.json()).sources;states.forEach(s=>known.add(s.source));}catch{states=[];$('#notice').textContent='게시물은 불러왔지만 수집 상태는 확인하지 못했어요.';}
  $('#source').replaceChildren(new Option('모든 출처','all'),...[...known].sort().map(s=>new Option(s==='instagram'?'Instagram':s==='manual'?'직접 등록':`@${s}`,s)));const requested=loadedOnce?current:params.get('source');if(known.has(requested))$('#source').value=requested;loadedOnce=true;
- if(states.some(s=>s.last_error_code))$('#notice').textContent='일부 출처의 갱신이 지연되고 있어요. 수집 상태를 확인해 주세요.';
+ if(states.some(sourceHasError))$('#notice').textContent='일부 출처의 갱신이 지연되고 있어요. 수집 상태를 확인해 주세요.';
  render();renderSources();syncUrl();
  }catch{if(!loaded){$('#gallery').replaceChildren();$('#count').textContent='목록 조회 실패';}$('#notice').textContent='목록을 불러오지 못했어요. 목록 새로고침으로 다시 시도해 주세요.';}finally{$('#refresh').disabled=false;}
 }
