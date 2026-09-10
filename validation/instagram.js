@@ -1,6 +1,7 @@
 const $=s=>document.querySelector(s);
 function hasFilters(){return ['month','media','author','kind'].some(key=>{const el=$('#review-'+key);return el&&el.value&&el.value!=='all';});}
-function filterQuery(){const q=new URLSearchParams();for(const key of ['month','media','author','kind']){const el=$('#review-'+key);if(el)q.set(key,el.value);}return '&'+q;}
+function syncFilterLabel(){const count=['author','kind'].filter(key=>{const field=$('#review-'+key);return field&&field.value&&field.value!=='all';}).length;$('#review-more').textContent=count?'필터 · '+count:'필터';}
+function filterQuery(){syncFilterLabel();const q=new URLSearchParams();for(const key of ['month','media','author','kind']){const el=$('#review-'+key);if(el)q.set(key,el.value);}return '&'+q;}
 function updateAuthors(authors=[]){const el=$('#review-author'),value=el.value;el.replaceChildren(new Option('모든 계정',''),...[...new Set([...authors,...(value?[value]:[])])].sort().map(a=>new Option('@'+a,a)));el.value=value;}
 
 let status='pending',offset=0,busy=false;
@@ -23,7 +24,7 @@ function card(p){
   const tags=el('div',null,'review-tags');tags.append(el('span',labels[p.status]),el('span',p.media?.some(m=>m.kind==='video')?(p.media.some(m=>m.kind==='image')?'사진·영상':'영상'):p.media?.every(m=>m.kind==='image')?'사진':'유형 미확인'),el('span',`미디어 ${p.mediaCount}개`));
   if(p.firstSeenInTrial!==null)tags.append(el('span',p.firstSeenInTrial?'시험 중 처음 발견':'기존 발견 글'));
   if(p.newlyPublished===true)tags.append(el('span','시험 시작 후 게시'));
-  const reasons=el('ul',null,'review-reasons');p.reasons.forEach(r=>reasons.append(el('li',r)));
+  const reasons=el('ul',null,'review-reasons');p.reasons.filter(r=>r!=='그룹·인물 문맥 일치 · 사진은 직접 확인').forEach(r=>reasons.append(el('li',r)));reasons.hidden=!reasons.childElementCount;
   if(images.length<p.mediaCount)tags.append(el('span','저장된 미리보기 '+images.length+'장 · 전체는 원문에서 확인'));
   body.append(meta,tags,reasons,el('p',p.caption||'본문이 없는 게시물이에요.','review-caption'),link(p.url,'원문에서 보기 ↗','review-link'));
   const actions=el('div',null,'review-buttons');
@@ -58,3 +59,5 @@ $('#import-form').addEventListener('submit',async e=>{e.preventDefault();const b
 for(const el of document.querySelectorAll('.review-filters input,.review-filters select'))el.addEventListener('change',()=>{offset=0;reload();});
 $('#review-reset').onclick=()=>{for(const key of ['month','media','author','kind']){const el=$('#review-'+key);if(el)el.value=['media','kind'].includes(key)?'all':'';}offset=0;reload();};
 reload();
+
+$('#review-more').onclick=()=>{const button=$('#review-more'),open=button.getAttribute('aria-expanded')!=='true';button.setAttribute('aria-expanded',String(open));$('#review-extra').hidden=!open;};
