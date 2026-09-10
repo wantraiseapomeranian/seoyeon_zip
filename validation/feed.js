@@ -55,18 +55,23 @@ function displayCaption(text){
   repeated.add(key);return match;
  }).replace(/[ \t]+/g,' ').replace(/ *\n */g,'\n').replace(/\n{3,}/g,'\n\n').trim();
 }
+let feedViewers=[];const photoPositions=new Map();
+function clearViewers(){for(const v of feedViewers)v.destroy();feedViewers=[];}
+function smallPreview(value){try{const u=new URL(value);if(u.origin==='https://pbs.twimg.com'){u.searchParams.set('name','small');return u.href;}}catch{}return value;}
 function card(post){
  const article=node('article','card');article.dataset.id=post.id;article.dataset.date=post.publishedAt;
  const video=post.media.some(m=>m.kind==='video'||m.kind==='gif');const photos=post.media.filter(m=>m.kind==='image').length;
- const first=post.media[0];const link=node('a','preview');link.href=post.canonicalUrl;link.target='_blank';link.rel='noopener noreferrer';link.setAttribute('aria-label',`${post.authorHandle} ${video?'영상':'사진'} 원문 보기 (새 탭)`);
- const image=node('img');image.alt=`${post.authorHandle} ${first.kind==='image'?'사진':'영상 미리보기'}`;image.loading='lazy';image.decoding='async';if(first.width&&first.height){image.width=first.width;image.height=first.height;}else image.style.aspectRatio='1';
- image.addEventListener('error',()=>{const fallback=node('span','fallback');fallback.append(node('span',null,'미리보기를 불러오지 못했어요.'),node('strong',null,'원문 보기'));link.replaceChildren(fallback);article.dataset.preview='failed';},{once:true});image.addEventListener('load',()=>article.dataset.preview='loaded',{once:true});image.src=first.previewUrl||'/missing-preview.jpg';link.append(image);
- const label=video?(photos?'사진 · 영상':'영상 · 원문에서 재생'):`사진 ${photos}장`;link.append(node('span','media-count',label));article.append(link);
+ const first=post.media[0];
+ const viewer=window.reviewGallery(post.media.map(m=>({src:smallPreview(m.previewUrl),originalSrc:m.previewUrl,url:post.canonicalUrl,kind:m.kind,alt:post.authorHandle+(m.kind==='image'?' 사진':' 영상 미리보기')})),{label:'피드 사진',managed:true,onChange:i=>photoPositions.set(post.id,i)});
+ viewer.element.classList.add('feed-gallery');viewer.element.style.setProperty('--photo-ratio',first.width&&first.height?String(first.width/first.height):'0.75');viewer.select(photoPositions.get(post.id)??0,false);feedViewers.push(viewer);article.append(viewer.element);
+ if(video)article.append(node('span','via','영상은 원문에서 재생'));
+ const original=node('a','feed-original','원문 보기 ↗');original.href=post.canonicalUrl;original.target='_blank';original.rel='noopener noreferrer';article.append(original);
  const meta=node('div','card-meta');meta.append(node('span','author',`@${post.authorHandle}`),node('span','category',kinds[post.contentKind]||'기타'));article.append(meta);const time=node('time',null,stamp(post.publishedAt));time.dateTime=post.publishedAt;article.append(time);
  const caption=displayCaption(post.caption);if(caption)article.append(node('p','caption',caption));
  if(post.authorHandle.toLowerCase()!==post.observedViaSource.toLowerCase())article.append(node('span','via',`발견 출처 @${post.observedViaSource}`));for(const source of post.duplicateSources||[]){const a=node('a','via','같은 사진 출처 @'+source.author);a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';article.append(a);}return article;
 }
 function render(){
+ clearViewers();
  const activeFilters=Number($('#kind').value!=='all')+Number($('#source').value!=='all');
  $('#filter-toggle').textContent=activeFilters?`필터 · ${activeFilters}`:'필터';
  document.querySelectorAll('[data-sort]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.sort===$('#sort').value)));
@@ -100,7 +105,7 @@ async function loadLive(append=false){
  const version=++requestVersion;syncUrl();const query=new URLSearchParams(location.search);
  if(append&&nextCursor)query.set('cursor',nextCursor);
  $('#refresh').disabled=true;more.disabled=true;$('#notice').textContent='';$('#gallery').setAttribute('aria-busy','true');
- if(!append){posts=[];loaded=false;nextCursor=null;more.hidden=true;$('#empty').hidden=true;$('#count').textContent='불러오는 중…';$('#gallery').replaceChildren(...Array.from({length:6},()=>{const e=node('div','skeleton');e.setAttribute('aria-hidden','true');return e;}));}
+ if(!append){clearViewers();photoPositions.clear();posts=[];loaded=false;nextCursor=null;more.hidden=true;$('#empty').hidden=true;$('#count').textContent='불러오는 중…';$('#gallery').replaceChildren(...Array.from({length:6},()=>{const e=node('div','skeleton');e.setAttribute('aria-hidden','true');return e;}));}
  try{
   const response=await fetch(`/api/feed?${query}`);if(!response.ok)throw Error(response.status===401||response.status===403?'auth':'feed');
   const data=await response.json();if(!Array.isArray(data.posts))throw Error('shape');if(version!==requestVersion)return;
