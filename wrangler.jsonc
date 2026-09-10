@@ -11,7 +11,7 @@
   // Owner identity and Access settings are managed in the Cloudflare dashboard.
   "keep_vars": true,
   "limits": { "cpu_ms": 1000 },
-  "vars": { "COLLECTION_ENABLED": "true" },
-  "triggers": { "crons": ["*/3 * * * *", "1-59/3 * * * *"] },
+  "vars": { "COLLECTION_ENABLED": "true", "APIFY_SYNC_ENABLED": "true", "APIFY_TASK_ID": "W7bGic2wKjj2BKhSE" },
+  "triggers": { "crons": ["*/3 * * * *", "1-59/3 * * * *", "2-59/5 * * * *"] },
   "observability": { "enabled": true, "traces": { "enabled": true } }
 }

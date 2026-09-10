@@ -68,3 +68,6 @@ $('#review-reset').onclick=()=>{for(const key of ['month','media','author','kind
 reload();
 
 $('#review-more').onclick=()=>{const button=$('#review-more'),open=button.getAttribute('aria-expanded')!=='true';button.setAttribute('aria-expanded',String(open));$('#review-extra').hidden=!open;};
+
+async function loadSyncStatus(){try{const sync=await api('/sync');const text={unconfigured:'자동 가져오기 설정 대기',disabled:'자동 가져오기 중지됨',waiting:'새 수집 결과를 기다리고 있어요.',retry:'자동 가져오기에 실패했어요. 잠시 후 다시 시도해요.',connected:sync.syncedAt?'마지막 자동 가져오기 · '+new Date(sync.syncedAt).toLocaleString('ko-KR'):'자동 가져오기 연결됨'};$('#sync-status').textContent=text[sync.status]||'';}catch{$('#sync-status').textContent='자동 가져오기 상태를 확인하지 못했어요.';}}
+loadSyncStatus();$('#refresh').addEventListener('click',loadSyncStatus);

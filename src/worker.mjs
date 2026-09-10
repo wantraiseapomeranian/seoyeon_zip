@@ -1,4 +1,5 @@
 import {handleManagement} from './management.mjs';
+import {syncInstagram,instagramSyncStatus} from './instagram-sync.mjs';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { sources } from './sources.mjs';
 import { runDueSource } from './scheduler.mjs';
@@ -25,6 +26,7 @@ export async function handleApi(request,env) {
   const url=new URL(request.url);
   if(url.pathname==='/api/export'||url.pathname==='/api/manual-posts'||(request.method==='PATCH'&&/^\/api\/sources\/[A-Za-z0-9_]{1,15}$/.test(url.pathname)))return handleManagement(request,env);
   if(url.pathname==='/api/admin/x')return handleXReview(request,env);
+  if(url.pathname==='/api/admin/instagram/sync'&&request.method==='GET')return reply(await instagramSyncStatus(env));
   if(url.pathname==='/api/admin/instagram'||url.pathname.startsWith('/api/admin/instagram/')) return handleInstagramReview(request,env);
   if(url.pathname==='/api/feed' && request.method==='GET') {
     try { return reply(await readFeed(env.DB,url.searchParams)); }
@@ -48,7 +50,7 @@ export async function handleApi(request,env) {
 }
 
 export default {
-  async scheduled(controller,env,ctx) { if(controller.cron==='1-59/3 * * * *')await maintainX(env);else await runDueSource(env); },
+  async scheduled(controller,env,ctx) { if(controller.cron==='2-59/5 * * * *')console.log(JSON.stringify({event:'instagram_sync',...await syncInstagram(env)}));else if(controller.cron==='1-59/3 * * * *')await maintainX(env);else await runDueSource(env); },
   async fetch(request,env) {
     const auth=await authorize(request,env);
     if(auth!==200) return reply({error:auth===503?'private_access_not_configured':'access_denied'},auth);

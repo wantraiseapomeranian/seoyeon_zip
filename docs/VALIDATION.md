@@ -627,3 +627,10 @@ X·인스타·유사 사진 비교에 피드와 같은30px 원형 및 CSS 선 �
 - 390x850 및 1280x800 캡처 확인. 모바일 가로 넘침 없음, 본문 스크롤과 별도로 헤더 유지.
 - Impeccable detector: 헤더 하단 여백 경고 1건. 탭 선택 밑줄을 구분선에 맞춘 의도적 배치로 유지.
 - 운영 배포 결과는 코드 푸시 후 별도로 확인.
+
+## 인스타 결과 자동 연결 — 2026-09-10
+- 전체 Node 테스트 72개 통과. 중복/기존 판단 보존, checkpoint 실패 롤백, lease 충돌, 오류 재시도, 실패 실행 이후 정상 실행 처리, 비공개 상태 API 확인.
+- 로컬 workerd에서 실제 scheduled 분기와 D1을 사용하여 12행을 10+2행으로 가져옴. 모두 pending, 최종 checkpoint 완료. Apify 응답은 모의 데이터이며 실제 인증 API 검증을 뜻하지 않음.
+- 최종 Wrangler dry-run 통과: 170.64 KiB / gzip 41.96 KiB. 독립 코드 리뷰 APPROVED(Critical/Major 없음).
+- 0015를 원격 D1에 직접 적용 완료(3 queries). 기존 migration ledger와 직접 적용 이력의 차이 때문에 전체 migrations apply 대신 신규 파일만 적용. 기존 게시물 수정 없음.
+- Worker Secret 목록에 APIFY_TOKEN이 없어 실제 자동 가져오기는 설정 대기. 인증 키 등록 후 운영 결과 확인 필요. 기존 Apify 유료 실행 예약과 비용 제한은 변경하지 않음.
