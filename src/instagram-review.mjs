@@ -11,11 +11,12 @@ function normalize(p) {
   if(typeof author!=='string'||author.length>100)invalid();
   const date=p.timestamp??p.publishedAt;
   if(date!=null && (typeof date!=='string'||!Number.isFinite(Date.parse(date))))invalid();
-  let image=null;
-  try {
-    const u=new URL(p.displayUrl??p.thumbnailUrl);
-    if(u.protocol==='https:'&&!u.username&&!u.password&&!u.port&& /(^|\.)(cdninstagram\.com|fbcdn\.net)$/.test(u.hostname))image=u.href;
-  }catch{}
+  const safeImage=value=>{try{const u=new URL(value);if(u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&/(^|\.)(cdninstagram\.com|fbcdn\.net)$/.test(u.hostname))return u.href;}catch{}return null;};
+  const image=safeImage(p.displayUrl??p.thumbnailUrl);
+  const children=Array.isArray(p.childPosts)?p.childPosts.slice(0,100).map(c=>c?.displayUrl??c?.thumbnailUrl):[];
+  const supplied=Array.isArray(p.images)?p.images.slice(0,100):[];
+  const images=[...new Set((children.length?children:[image,...supplied]).map(safeImage).filter(Boolean))];
+  if(!images.length&&image)images.push(image);
   const text=caption.normalize('NFKC').toLowerCase();
   const reasons=[];
   if(/twitter|트위터|source\s*:\s*x/.test(text))reasons.push('X 출처 표기 · 사진 중복은 미확인');
@@ -23,7 +24,7 @@ function normalize(p) {
   if(!/triples|트리플\s*에스|트리플s/.test(text)||!/윤서연|seoyeon|서연/.test(text))reasons.push('그룹·인물 문맥 추가 확인 필요');
   if(['jeonghyerin','leejiwoo','kimchaeyeon','kimyooyeon','kimsumin'].filter(n=>text.includes(n)).length>=3)reasons.push('여러 멤버 이름이 반복된 게시물');
   if(!reasons.length)reasons.push('그룹·인물 문맥 일치 · 사진은 직접 확인');
-  return {code,url:`https://www.instagram.com/p/${code}/`,caption,author,publishedAt:date?new Date(date).toISOString():null,image,reasons,
+  return {code,url:`https://www.instagram.com/p/${code}/`,caption,author,publishedAt:date?new Date(date).toISOString():null,image:images[0]??null,images,reasons,
     firstSeenInTrial:typeof p.firstSeenInTrial==='boolean'?p.firstSeenInTrial:null,
     newlyPublished:typeof p.newlyPublished==='boolean'?p.newlyPublished:null,
     mediaCount:Number.isSafeInteger(p.mediaCount??p.childPosts?.length)?Math.max(1,Math.min(100,p.mediaCount??p.childPosts.length)):1};
@@ -54,7 +55,7 @@ export async function handleInstagramReview(request,env) {
     let posts;try{if(!Array.isArray(input)||!input.length||input.length>100)invalid();posts=[...new Map(input.map(p=>{const item=normalize(p);return[item.code,item];})).values()];}catch{return reply({error:'invalid_import'},400);}
     const now=new Date().toISOString();
     // Re-import enriches metadata but never resets a manual decision or its revision.
-    await env.DB.batch(posts.map(p=>env.DB.prepare("INSERT INTO instagram_review(code,data,imported_at) VALUES(?,?,?) ON CONFLICT(code) DO UPDATE SET data=excluded.data").bind(p.code,JSON.stringify(p),now)));
+    await env.DB.batch(posts.map(p=>env.DB.prepare("INSERT INTO instagram_review(code,data,imported_at) VALUES(?,?,?) ON CONFLICT(code) DO UPDATE SET data=CASE WHEN COALESCE(json_array_length(excluded.data,'$.images'),0)<COALESCE(json_array_length(instagram_review.data,'$.images'),0) THEN json_set(excluded.data,'$.images',json_extract(instagram_review.data,'$.images'),'$.mediaCount',MAX(COALESCE(json_extract(instagram_review.data,'$.mediaCount'),1),json_array_length(instagram_review.data,'$.images'))) ELSE excluded.data END").bind(p.code,JSON.stringify(p),now)));
     return reply({imported:posts.length});
   }
   const match=path.match(/^\/([A-Za-z0-9_-]{5,64})$/);

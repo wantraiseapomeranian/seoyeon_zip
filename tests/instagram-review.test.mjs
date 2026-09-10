@@ -33,3 +33,10 @@ test('import and decisions preserve manual review across duplicates; stale write
   assert.equal((await handleApi(req('/Example_123',{status:'published',revision:1}),env)).status,400);
   sqlite.close();
 });
+
+test('imports all safe carousel images and keeps them during summary-only reimport',async()=>{
+ const {sqlite,DB}=testDatabase();sqlite.exec(readFileSync(new URL('../migrations/0009_instagram_review.sql',import.meta.url),'utf8'));
+ await handleApi(req('/import',[{...record,childPosts:[{displayUrl:record.displayUrl},{displayUrl:'https://scontent.cdninstagram.com/two.jpg'},{displayUrl:'https://evil.test/no.jpg'}]}]),{DB});
+ let data=await (await handleApi(req(''),{DB})).json();assert.equal(data.items[0].images.length,2);
+ await handleApi(req('/import',[record]),{DB});data=await (await handleApi(req(''),{DB})).json();assert.equal(data.items[0].images.length,2);sqlite.close();
+});

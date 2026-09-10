@@ -11,9 +11,8 @@ function el(tag,text,className){const n=document.createElement(tag);if(text!=nul
 function link(url,text,className){const n=el('a',text,className);n.href=url;n.target='_blank';n.rel='noopener noreferrer';return n;}
 function card(p){
   const article=el('article',null,'review-card');
-  const preview=link(p.url,null,'review-image');preview.setAttribute('aria-label',`${p.author||'작성자 미상'} 게시물 원문 열기`);
-  const fallback=el('span',null,'fallback');fallback.append(el('span','미리보기를 표시할 수 없어요'),el('strong','인스타그램 원문 보기'));
-  if(p.image){const img=el('img');img.src=p.image;img.alt=`${p.author||'인스타그램'} 게시물 첫 사진`;img.loading='lazy';img.referrerPolicy='no-referrer';img.addEventListener('error',()=>preview.replaceChildren(fallback),{once:true});preview.append(img);}else preview.append(fallback);
+  const images=p.images?.length?p.images:(p.image?[p.image]:[]);
+  const preview=window.reviewGallery(images.map((src,i)=>({src,url:p.url,alt:(p.author||'인스타그램')+' 사진 '+(i+1)})),{label:'게시물 사진'}).element;
   const body=el('div',null,'review-body'),meta=el('div',null,'review-meta');
   const time=el('time',p.publishedAt?new Date(p.publishedAt).toLocaleDateString('ko-KR'):'게시일 미상');if(p.publishedAt)time.dateTime=p.publishedAt;
   meta.append(el('h2',p.author?`@${p.author}`:'작성자 미상'),time);
@@ -21,6 +20,7 @@ function card(p){
   if(p.firstSeenInTrial!==null)tags.append(el('span',p.firstSeenInTrial?'시험 중 처음 발견':'기존 발견 글'));
   if(p.newlyPublished===true)tags.append(el('span','시험 시작 후 게시'));
   const reasons=el('ul',null,'review-reasons');p.reasons.forEach(r=>reasons.append(el('li',r)));
+  if(images.length<p.mediaCount)tags.append(el('span','저장된 미리보기 '+images.length+'장 · 전체는 원문에서 확인'));
   body.append(meta,tags,reasons,el('p',p.caption||'본문이 없는 게시물이에요.','review-caption'),link(p.url,'원문에서 전체 사진 보기 ↗','review-link'));
   const actions=el('div',null,'review-buttons');
   for(const value of ['kept','excluded','held','pending']){const button=el('button',value==='pending'?'판단 취소':labels[value]);button.setAttribute('aria-pressed',String(p.status===value));button.disabled=p.status===value;button.addEventListener('click',async()=>{

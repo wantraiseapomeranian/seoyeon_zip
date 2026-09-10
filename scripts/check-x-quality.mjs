@@ -17,7 +17,7 @@ const server=createServer(async(req,res)=>{try{
  if(req.headers.host!=='127.0.0.1:4179'){res.writeHead(403).end();return;}
  const path=new URL(req.url,'http://127.0.0.1:4179').pathname;
  if(path.startsWith('/api/')){const chunks=[];for await(const c of req)chunks.push(c);const r=await handleApi(new Request('http://127.0.0.1:4179'+req.url,{method:req.method,headers:req.headers,...(req.method==='POST'?{body:Buffer.concat(chunks)}:{})}),{DB});res.writeHead(r.status,{'Content-Type':'application/json'});res.end(await r.text());return;}
- const file=path==='/admin/x'?'x-review.html':path.slice(1);if(!['x-review.html','x-review.js','instagram.css','feed.css'].includes(file)){res.writeHead(404).end();return;}
+ const file=path==='/admin/x'?'x-review.html':path.slice(1);if(!['x-review.html','x-review.js','instagram.css','feed.css','review-gallery.js'].includes(file)){res.writeHead(404).end();return;}
  res.writeHead(200,{'Content-Type':file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html'});res.end(readFileSync('validation/'+file));
  }catch(e){res.writeHead(500).end(e.message);}});
 await new Promise(r=>server.listen(4179,'127.0.0.1',r));let browser;

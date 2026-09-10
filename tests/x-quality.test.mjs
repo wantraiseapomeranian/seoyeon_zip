@@ -66,3 +66,12 @@ test('review tabs classify all posts before pagination and preserve hidden decis
  result=await get('?status=all&offset=25');assert.equal(result.items.length,3);
  assert.equal((await handleXReview(new Request('https://test.local/api/admin/x?status=oops'),{DB})).status,400);sqlite.close();
 });
+
+test('different-photo decisions remove both directions and stale group writes conflict',async()=>{
+ const {sqlite,DB}=testDatabase();for(const [id,image] of [['1','a'],['2','b']])sqlite.prepare('INSERT INTO posts VALUES(?,?)').run('x:'+id,JSON.stringify({id:'x:'+id,authorHandle:'author'+id,publishedAt:'2026-09-01',canonicalUrl:'https://x.com/author'+id+'/status/'+id,media:[{kind:'image',previewUrl:image}]}));
+ sqlite.exec("INSERT INTO x_fingerprints(url,hash,near_url) VALUES('a','ha','b'),('b','hb',NULL)");
+ const get=async()=> (await handleXReview(new Request('https://test.local/api/admin/x?status=all'),{DB})).json();let data=await get();assert.equal(data.items[0].comparisons[0].author,'author2');assert.equal(data.items[0].comparisons[0].visible,true);
+ const send=body=>handleXReview(new Request('https://test.local/api/admin/x',{method:'POST',headers:{origin:'https://test.local','content-type':'application/json','x-review-action':'review'},body:JSON.stringify(body)}),{DB});
+ assert.equal((await send({action:'different',left:'a',right:'b',groupRevision:0})).status,200);data=await get();assert.ok(data.items.every(p=>p.comparisons.length===0));assert.equal(data.counts.pending,0);
+ assert.equal((await send({action:'merge',left:'a',right:'b',groupRevision:0})).status,409);sqlite.close();
+});
