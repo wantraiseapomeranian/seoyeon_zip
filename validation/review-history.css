@@ -3,3 +3,6 @@
 @media(max-width:700px){.history-entry{grid-template-columns:minmax(0,1fr) auto;gap:8px 14px}.history-entry time{grid-column:1/-1}.history-entry h2{font-size:15px}.history-states{gap:14px}.history-images{gap:12px}.history-image img{height:180px}.history-detail{padding:18px}.history-facts{grid-template-columns:76px minmax(0,1fr);gap:8px 12px}.history-detail .dialog-heading h2{font-size:19px}}
 
 @media(max-width:600px){header:has(.review-nav){gap:8px}.history-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 8px}.history-filters label{width:100%}.history-filters input[type=date],.history-filters select,.history-filters button{height:44px;min-height:44px}.history-filters button{justify-self:start;min-width:64px}.history-intro{margin-block:8px 16px}}
+
+.history-more[aria-disabled=true]{opacity:.5;cursor:wait}
+@media(any-pointer:coarse){.history-filters input[type=date],.history-filters select,.history-filters button{height:44px;min-height:44px}}

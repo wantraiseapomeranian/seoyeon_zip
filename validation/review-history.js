@@ -16,15 +16,15 @@
   function row(item){const li=node('li',null,'history-entry'),date=node('time',time(item.reviewedAt).replace(' (한국시간)','')),body=node('div'),button=node('button','상세 보기');date.dateTime=item.reviewedAt;date.title='한국시간';body.append(node('h2',`${platforms[item.platform]||item.platform} · ${actions[item.action]||'검토 결정'}`),node('p',item.summary?.author?'@'+item.summary.author:'작성자 미상'),node('p',reason(item.reasonCode),'history-reason'));if(item.note)body.append(node('p',item.note,'history-note history-note-preview'));body.append(source(item.summary?.url));button.setAttribute('aria-label',`${actions[item.action]||'검토 결정'} 상세 보기 · ${time(item.reviewedAt)}`);button.onclick=()=>openDetail(item.id,button);li.append(date,body,button);return li;}
   async function load(append=false){
     if(append&&loading)return;
-    const current=++generation;loading=true;list.setAttribute('aria-busy','true');more.disabled=true;$('#history-error').textContent='';$('#history-status').textContent='내역을 불러오고 있어요.';
+    const current=++generation;loading=true;list.setAttribute('aria-busy','true');more.setAttribute('aria-disabled','true');$('#history-error').textContent='';$('#history-status').textContent='내역을 불러오고 있어요.';
     if(!append){list.replaceChildren();cursor=null;more.hidden=true;}
     const params=new URLSearchParams(query);if(append&&cursor)params.set('cursor',cursor);
     try{const data=await api('/api/admin/review-audit?'+params);if(current!==generation)return;
       if(data.startedAt)$('#history-start').textContent=`검토 내역은 ${time(data.startedAt)} 이후 이력 기록 기능을 통해 저장된 변경부터 표시됩니다.`;
       else $('#history-start').textContent='기록 시작 시각을 확인할 수 없어요. 새로고침해 주세요.';
-      const previousCount=list.children.length;list.append(...data.items.map(row));if(append)list.children[previousCount]?.querySelector('button')?.focus();cursor=data.nextCursor;more.hidden=!cursor;$('#history-status').textContent=list.children.length?`${list.children.length}건 표시 · 최신순`:'조건에 맞는 검토 내역이 없어요.';
+      const previousCount=list.children.length;list.append(...data.items.map(row));if(append&&document.activeElement===more)list.children[previousCount]?.querySelector('button')?.focus();cursor=data.nextCursor;more.hidden=!cursor;$('#history-status').textContent=list.children.length?`${list.children.length}건 표시 · 최신순`:'조건에 맞는 검토 내역이 없어요.';
     }catch(error){if(current!==generation)return;$('#history-error').textContent=error.message;$('#history-status').textContent='';}
-    finally{if(current===generation){loading=false;more.disabled=false;list.setAttribute('aria-busy','false');}}
+    finally{if(current===generation){loading=false;more.removeAttribute('aria-disabled');list.setAttribute('aria-busy','false');}}
   }
   function stateSection(label,state){const section=node('section');section.append(node('h3',label));if(!state){section.append(node('p','상태 미확인'));return section;}
     if(state.decision!=null||state.status!=null)section.append(node('p',states[state.decision??state.status]||'상태 미확인'));
