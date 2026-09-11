@@ -12,7 +12,7 @@ export async function handleXReview(request,env){
   const rejected=await DB.prepare('SELECT left_url,right_url FROM x_photo_differences').all();
   const pairKey=(a,b)=>JSON.stringify([a,b].sort());
   const excluded=new Set(rejected.results.map(r=>pairKey(r.left_url,r.right_url)));
-  const metadata=new Map(results.map(r=>{const p=JSON.parse(r.data);return[r.id,{author:p.authorHandle,publishedAt:p.publishedAt,visible:!!r.visible}];}));
+  const metadata=new Map(results.map(r=>{const p=JSON.parse(r.data);return[r.id,{author:p.authorHandle,publishedAt:p.publishedAt,visible:!!r.visible,decision:r.decision??'auto',revision:r.revision??0}];}));
   const comparisons=new Map();
   for(const a of photos.results){for(const b of photos.results){if(b.id===a.id||(a.hash!==b.hash&&excluded.has(pairKey(a.image,b.image)))||!((a.hash&&a.hash===b.hash)||a.near_url===b.image||b.near_url===a.image))continue;const list=comparisons.get(a.id)??[];list.push({postId:b.id,url:b.url,image:b.image,ownImage:a.image,exact:a.hash===b.hash,...metadata.get(b.id)});comparisons.set(a.id,list);}}
   const items=results.map(r=>({...JSON.parse(r.data),decision:r.decision??'auto',revision:r.revision??0,availability:r.availability??'unknown',visible:!!r.visible,checkedAt:r.checked_at,missingCount:r.missing_count??0,comparisons:comparisons.get(r.id)??[]}));

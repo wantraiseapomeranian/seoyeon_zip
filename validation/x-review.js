@@ -26,7 +26,7 @@ function card(p){const a=node('article',null,'review-card'),pictures=node('div')
   comparison.append(heading,other.element,info,actions);renderCandidate(0);
   function renderCandidate(i){const c=candidates[i];info.replaceChildren(node('strong','@'+(c.author||'작성자 미상')),node('span',new Date(c.publishedAt).toLocaleDateString('ko-KR')),node('span',c.visible?'피드에 표시 중':'피드에서 숨김'),link(c.url,'원문 보기 ↗'));actions.replaceChildren();
    for(const [action,label] of (c.exact?[['unmerge','묶음 해제']]:[['merge','같은 사진으로 묶기'],['different','다른 사진']])){const b=node('button',label);b.onclick=async()=>{if(loading)return;actions.querySelectorAll('button').forEach(x=>x.disabled=true);try{await api(action==='unmerge'?{action,groupRevision,image:c.ownImage}:{action,groupRevision,left:c.ownImage,right:c.image});await load();}catch(e){$('#message').textContent=e.message;actions.querySelectorAll('button').forEach(x=>x.disabled=false);}};actions.append(b);}
-   const hide=node('button','검토 중인 글 숨기기');hide.disabled=p.decision==='hidden';hide.onclick=async()=>{if(loading)return;hide.disabled=true;try{await api({id:p.id,revision:p.revision,decision:'hidden'});await load();}catch(e){$('#message').textContent=e.message;hide.disabled=false;}};actions.append(hide);
+   const hide=node('button','이 글 숨기기');hide.title='유사 게시물을 피드에서 숨기기';hide.disabled=c.decision==='hidden';hide.onclick=async()=>{if(loading)return;hide.disabled=true;try{await api({id:c.postId,revision:c.revision,decision:'hidden'});await load();}catch(e){$('#message').textContent=e.message;hide.disabled=false;}};actions.append(hide);
   }
  }
  const firstMatch=media.findIndex(m=>p.comparisons.some(c=>c.ownImage===m.previewUrl));if(firstMatch>=0)gallery.select(firstMatch,false);

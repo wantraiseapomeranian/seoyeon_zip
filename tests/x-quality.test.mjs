@@ -75,3 +75,17 @@ test('different-photo decisions remove both directions and stale group writes co
  assert.equal((await send({action:'different',left:'a',right:'b',groupRevision:0})).status,200);data=await get();assert.ok(data.items.every(p=>p.comparisons.length===0));assert.equal(data.counts.pending,0);
  assert.equal((await send({action:'merge',left:'a',right:'b',groupRevision:0})).status,409);sqlite.close();
 });
+
+test('candidate hide uses its revision and leaves the current post available for visibility approval',async()=>{
+ const {sqlite,DB}=testDatabase();try{
+ for(const [id,image] of [['1','a'],['2','b']])sqlite.prepare('INSERT INTO posts VALUES(?,?)').run('x:'+id,JSON.stringify({id:'x:'+id,authorHandle:'author'+id,publishedAt:'2026-09-01',media:[{kind:'image',previewUrl:image}]}));
+ sqlite.exec("INSERT INTO x_fingerprints(url,hash,near_url) VALUES('a','ha','b'),('b','hb',NULL); INSERT INTO x_quality(post_id,decision,revision) VALUES('x:2','visible',3)");
+ const get=async()=> (await handleXReview(new Request('https://test.local/api/admin/x?status=all&author=author1'),{DB})).json();
+ const send=body=>handleXReview(new Request('https://test.local/api/admin/x',{method:'POST',headers:{origin:'https://test.local','content-type':'application/json','x-review-action':'review'},body:JSON.stringify(body)}),{DB});
+ const current=(await get()).items[0],candidate=current.comparisons[0];assert.equal(candidate.postId,'x:2');assert.equal(candidate.revision,3);assert.equal(candidate.decision,'visible');
+ const hide={id:candidate.postId,revision:candidate.revision,decision:'hidden'};assert.equal((await send(hide)).status,200);assert.equal((await send(hide)).status,409);
+ assert.equal(sqlite.prepare("SELECT decision FROM x_quality WHERE post_id='x:1'").get(),undefined);
+ assert.equal((await send({id:current.id,revision:current.revision,decision:'visible'})).status,200);
+ const updated=(await get()).items[0];assert.equal(updated.visible,true);assert.equal(updated.comparisons[0].decision,'hidden');assert.equal(updated.comparisons[0].visible,false);assert.equal(updated.comparisons[0].revision,4);
+ }finally{sqlite.close();}
+});
