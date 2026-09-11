@@ -696,3 +696,5 @@ X·인스타·유사 사진 비교에 피드와 같은30px 원형 및 CSS 선 �
 - 로그인 역할 전환 전 요청한 오래된 상태 응답이 최신 상태를 지우지 않도록 stale/auth 예외를 별도 처리했다. 수정 후 두 브라우저 검증 스크립트 재통과, 독립 범위 리뷰 승인.
 - 최종 코드 리뷰: 검토 범위에서 Critical/Major 없음. Impeccable 기계 점검은 기존 관리 헤더 하단 경계 여백 경고1건; 모바일·데스크톱 실물 점검에서 내용 잘림/겹침이 없어 기존 탭 경계를 유지했다.
 - `wrangler deploy --dry-run`: 177.27KiB / gzip43.50KiB, PUBLIC_FEED_ENABLED=false 확인. 원격 배포 전 빌드 검증이며 배포 성공 증거와 구분한다.
+- 비공개 배포 완료: 코드 `8984db5`, GitHub Workers Builds success, 활성 버전 `d7158ed3-735b-4aa5-aae1-9a79e153b499` 100% (2026-09-11 01:23 UTC). 운영 설정에서 `PUBLIC_FEED_ENABLED=false`, `COLLECTION_ENABLED=true` 확인.
+- 배포 후 `/`, `/api/session`, `/api/collection-status`, `/admin/x`, `/api/export`의 비로그인 요청 모두 기존 Access 로그인으로302 이동함을 확인했다. 실제 소유자 로그인 세션이 없어 배포 후 소유자 화면 직접 조작은 미확인이다. 로컬 소유자 JWT/쿠키·브라우저 검증 결과와 구별한다.
