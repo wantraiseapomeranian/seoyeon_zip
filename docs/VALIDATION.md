@@ -716,3 +716,13 @@ X·인스타·유사 사진 비교에 피드와 같은30px 원형 및 CSS 선 �
 - Wrangler OAuth에는 Access 관리 권한이 없어 앱 개별 조회가 403이다. 이전 빈 앱 목록은 앱이 없다는 근거가 아니었으며, 브라우저에서는 기존 앱이 정상 조회됐다.
 - 같은 Access 앱에 seoyeon-zip.seoyeon-archive.workers.dev/admin을 추가 저장했고 기존 Worker 전체 대상은 유지했다. AUD와 운영자 정책 변경 없음.
 - PUBLIC_FEED_ENABLED=true 설정에 대해 전체 96개 테스트와 Wrangler dry-run 통과. 이 시점은 외부 공개 전이며 운영 Access 대상 전환 및 익명/운영자 검증 결과는 후속 기록한다.
+
+## 공개 전환 완료 — 2026-09-11
+- 코드 ae5f3d9 자동 배포 success, 활성 버전 7f80b93a-b54f-4f08-91ae-ae900764c4ce 100% (2026-09-11 02:04:28 UTC). PUBLIC_FEED_ENABLED=true, 요청 제한 60회/60초, 수집 enabled 및 기존 크론 유지.
+- 기존 Access 앱에서 Worker 전체 대상을 제거하고 seoyeon-zip.seoyeon-archive.workers.dev/admin만 남긴 것을 Applications 목록에서 확인했다. 같은 앱 ID/AUD와 me Allow 정책을 유지한다. /admin 및 /admin/·/admin/x·/admin/instagram 비로그인 요청 모두 Access 로그인302.
+- 운영 익명 HTTP 검증 통과: / 및 /feed.html은 공개 /feed로 정규화, /feed 200, /api/session visitor, /api/feed 200(48개 페이지/총1803개), /api/collection-status 200(15개, 공개 필드3개만). 관리 GET/API/정적 별칭 11종 401, 비로그인 관리 POST/PATCH 5종 401, 위조 JWT 403, 잘못된 cursor400. 빈 본문·존재하지 않는 테스트 소스 사용으로 운영 데이터 변경 없이 확인했다.
+- 실제 운영자 브라우저: 기존 Cloudflare 로그인부터 /admin → 피드 진입을 확인했다. 공개 전환 후 피드 새로고침에서도 검토함 표시, 수집 및 관리 모달·자료 관리 탭·15개 수집 중지 버튼 표시 및 상세 현황 조회 성공. 이는 공개 경로에서 운영자 쿠키가 인식되고 인증된 관리 API가 응답한 실제 검증이다. 중지/숨기기 등 운영 변경 버튼은 누르지 않았다.
+- 운영 /admin/x에서 검토 필요2·표시중1786·숨김25·전체1813 데이터를 조회했다. API 직접 탐색은 인앱 브라우저의 ERR_BLOCKED_BY_CLIENT로 열리지 않았으므로 역할 확인은 실제 피드/관리 화면의 성공으로 판단했다. 익명 화면의 분기는 이전 로컬 브라우저 fixture 검증이며, 이번 운영 익명 검증은 인증 없는 HTTP 요청이다.
+- 공개 후 마지막 수집 성공 시각이 02:03:13 → 02:06:13 UTC로 전진했고 공개 현황은 15개 모두 ok였다. 장기간 오류 추세나 대규모 부하를 검증했다는 의미는 아니다.
+- 독립 읽기 전용 리뷰 APPROVED: 공개 경로/메서드, JWT·쿠키 검증, 공개 데이터 투영 및 전환 설계에서 Critical/Major 없음. 96개 테스트와 dry-run 성공은 에이전트가 실행했고 리뷰어는 재실행하지 않았다.
+- 복구 필요 시 기존 Access 앱의 Destinations에 seoyeon-zip Worker(전체 production and preview URLs)를 다시 추가해 전체 접근을 먼저 봉인한다. 이어 wrangler.jsonc의 PUBLIC_FEED_ENABLED=false를 커밋·배포한다. 기존 /admin 대상과 운영자 정책은 유지하며 데이터와 cursor는 되돌리지 않는다.

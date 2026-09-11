@@ -321,3 +321,6 @@ triplescosmos 발견소스의 직접 작성+미디어+정확한 멤버태그 글
 - `/admin`은 인증된 소유자를 피드로 돌려보내는 고정 로그인 진입점이다. 서버는 Access JWT 헤더를 우선 검증하고 헤더가 없을 때만 단일 인증 쿠키를 검증한다. 서명·issuer·audience·만료·소유자 이메일 검사를 생략하지 않는다.
 - 화면은 방문자 상태로 시작하고 서버가 owner를 확인한 경우에만 관리 버튼을 표시한다. 방문자 제목은 '수집 현황', 관리자 제목은 '수집 및 관리'다. 관리 권한 만료 시 제어 및 내부 조회 결과를 지운다.
 - 공개 전에 실제 Access 경로 정책과 공개 경로에서의 소유자 인증 쿠키 전달을 별도로 검증한다. 소유자 토큰이 브라우저 쿠키에 있다는 사실만으로 Worker까지 전달된다고 가정하지 않는다. 근거: [Cloudflare JWT 검증 문서](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/).
+
+## 2026-09-11 공개 운영 상태
+사용자의 공개 전환 승인에 따라 운영 피드와 수집 현황의 읽기를 공개했다. 관리자 로그인은 /admin의 Cloudflare Access로 보호하며, Worker는 공개 GET/HEAD 경로 목록 외 모든 요청에 운영자 JWT 검증을 적용한다. 자료 관리·수집 변경·검토함은 운영자만 이용한다. PUBLIC_FEED_ENABLED=true이며 공개 API 3종은 IP당 60회/60초 제한을 공유한다. 문서 앞부분의 개인 전용·30분 갱신 등은 초기 제안 이력이며 현재 운영 상태는 PLAN.md와 VALIDATION.md의 최신 기록을 따른다.
