@@ -730,3 +730,4 @@ X·인스타·유사 사진 비교에 피드와 같은30px 원형 및 CSS 선 �
 ## 공개 피드 제목·주소 정리 — 2026-09-11
 - validation/feed.html 제목에서 피드 시안을 제거하고 홈 링크를 /로 변경했다. feed.js는 확정 디자인을 고정하고 시안 선택 UI와 URL 매개변수 생성을 제거한다. 필터 없는 기본 주소에는 /feed와 불필요한 물음표가 남지 않도록 /로 정리하며 실제 필터·해시는 유지한다.
 - node --check validation/feed.js 및 기존 scripts/check-public-admin.mjs 통과: 방문자/관리자 분리, 세션 실패와 만료, 모바일/데스크톱 넘침 없음. 운영 배포 후 제목·기존 시안 링크·필터 주소 확인은 후속 기록한다.
+- 운영 반영 확인: 코드 15b5c47 Workers Builds success. 기존 /feed?layout=a&mood=zine&icons=phosphor&background=mist 주소를 실제 브라우저에서 새로고침하자 제목 서연모음.zip, 주소 https://seoyeon-zip.seoyeon-archive.workers.dev/ 로 정리됐다. 콘텐츠 종류 직찍 선택 시 /?kind=fansite, 모든 종류 복원 시 /를 확인했다.
