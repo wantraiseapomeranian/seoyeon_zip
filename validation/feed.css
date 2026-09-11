@@ -54,9 +54,9 @@ header .actions .icon-button svg{pointer-events:none}
 
 /* Site identity and public information */
 .brand-group{--wordmark-size:44px;display:flex;align-items:flex-end;gap:4px;min-width:0}
-#open-about{position:relative;display:grid;place-items:center;width:44px;height:44px;min-width:44px;padding:11px;border:0;color:var(--muted)}
-/* Trim the wordmark's lower line-box space and the SVG's 1.75px inset. */
-#open-about svg{position:absolute;width:20px;height:20px;bottom:calc(var(--wordmark-size) * .2 - 1.75px)}
+#open-about{position:relative;display:grid;place-items:center;width:44px;height:44px;min-width:44px;padding:0;border:0;color:var(--muted);margin-bottom:calc(var(--wordmark-size) * .3 - 13.75px)}
+/* Move the whole target to the wordmark baseline; keep the icon centred. */
+#open-about svg{width:20px;height:20px;pointer-events:none}
 #about-dialog section{margin-top:24px}
 #about-dialog h3{font-size:15px;margin:0 0 8px}
 #about-dialog p{font-size:14px;line-height:1.75;margin:8px 0;overflow-wrap:anywhere}
@@ -64,7 +64,7 @@ header .actions .icon-button svg{pointer-events:none}
 .contact-address{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:13px;overflow-wrap:anywhere}
 #contact-feedback:empty{display:none}
 #contact-feedback{color:var(--muted)}
-@media(max-width:600px){.brand-group{--wordmark-size:30px}#open-about svg{width:16px;height:16px;bottom:calc(var(--wordmark-size) * .2 - 1.4px)}}
+@media(max-width:600px){.brand-group{--wordmark-size:30px}#open-about{margin-bottom:calc(var(--wordmark-size) * .3 - 15.4px)}#open-about svg{width:16px;height:16px}}
 @media(max-width:380px){header.shell{flex-wrap:wrap;justify-content:flex-end;padding-block:10px}header.shell .brand-group{--wordmark-size:26px;margin-right:auto}body[data-mood=zine] .brand-group .wordmark{font-size:26px}}
 .feed-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;min-height:28px}
 .feed-actions .via{margin:0;min-width:0;word-break:keep-all;overflow-wrap:normal}
