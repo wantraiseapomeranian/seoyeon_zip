@@ -3,6 +3,7 @@
 Retrieved 2026-09-09 from official repositories; SVG geometry retained and displayed at 22px in 44px accessible buttons. No React dependency or icon font introduced. Licenses are stored alongside this file.
 
 - Phosphor core: assets/regular/arrows-clockwise.svg and list-checks.svg, https://github.com/phosphor-icons/core (MIT).
+- Feed actions: Phosphor Regular arrow-square-out.svg and chat-circle-text.svg, retrieved from the same official repository on 2026-09-11; geometry retained.
 - Lucide: icons/refresh-cw.svg and list-checks.svg, https://github.com/lucide-icons/lucide (license text in Lucide.txt).
 - Tabler: icons/outline/refresh.svg and list-check.svg, https://github.com/tabler/tabler-icons (MIT).
 

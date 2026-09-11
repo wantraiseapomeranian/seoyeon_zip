@@ -77,6 +77,12 @@ function displayCaption(text){
 let feedViewers=[];const photoPositions=new Map();
 function clearViewers(){for(const v of feedViewers)v.destroy();feedViewers=[];}
 function smallPreview(value){try{const u=new URL(value);if(u.origin==='https://pbs.twimg.com'){u.searchParams.set('name','small');return u.href;}}catch{}return value;}
+function feedAction(tag,className,label,path){
+ const control=node(tag,`${className} icon-button`);control.setAttribute('aria-label',label);
+ const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 256 256');svg.setAttribute('fill','currentColor');svg.setAttribute('aria-hidden','true');svg.setAttribute('focusable','false');
+ const shape=document.createElementNS(svg.namespaceURI,'path');shape.setAttribute('d',path);svg.append(shape);
+ const tooltip=node('span','icon-tooltip',label);tooltip.setAttribute('aria-hidden','true');control.append(svg,tooltip);return control;
+}
 function card(post){
  const article=node('article','card');article.dataset.id=post.id;article.dataset.date=post.publishedAt;
  const video=post.media.some(m=>m.kind==='video'||m.kind==='gif');const photos=post.media.filter(m=>m.kind==='image').length;
@@ -85,9 +91,11 @@ function card(post){
  const viewer=window.reviewGallery(post.media.map(m=>({src:smallPreview(m.previewUrl),originalSrc:m.previewUrl,url:post.canonicalUrl,kind:m.kind,alt:post.authorHandle+(m.kind==='image'?' 사진':m.kind==='unknown'?' 미리보기':' 영상 미리보기')})),{label:'피드 사진',managed:true,onChange:i=>photoPositions.set(post.id,i)});
  viewer.element.classList.add('feed-gallery');viewer.element.style.setProperty('--photo-ratio',first.width&&first.height?String(first.width/first.height):'0.75');viewer.select(photoPositions.get(post.id)??0,false);feedViewers.push(viewer);article.append(viewer.element);}
 
- if(video)article.append(node('span','via','영상은 원문에서 재생'));
- const original=node('a','feed-original','원문 보기 ↗');original.href=post.canonicalUrl;original.target='_blank';original.rel='noopener noreferrer';article.append(original);
- const request=node('button','rights-request','수정·삭제 요청');request.type='button';request.addEventListener('click',()=>openAbout(post.canonicalUrl));article.append(request);
+ const actions=node('div','feed-actions');
+ if(video){const hint=node('span','via');hint.append(node('span','video-hint-prefix','영상은 '),document.createTextNode('원문에서 재생'));actions.append(hint);}
+ const controls=node('div','feed-action-controls');
+ const original=feedAction('a','feed-original','원문 보기','M224,104a8,8,0,0,1-16,0V59.32l-66.33,66.34a8,8,0,0,1-11.32-11.32L196.68,48H152a8,8,0,0,1,0-16h64a8,8,0,0,1,8,8Zm-40,24a8,8,0,0,0-8,8v72H48V80h72a8,8,0,0,0,0-16H48A16,16,0,0,0,32,80V208a16,16,0,0,0,16,16H176a16,16,0,0,0,16-16V136A8,8,0,0,0,184,128Z');original.href=post.canonicalUrl;original.target='_blank';original.rel='noopener noreferrer';controls.append(original);
+ const request=feedAction('button','rights-request','수정·삭제 요청','M168,112a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,112Zm-8,24H96a8,8,0,0,0,0,16h64a8,8,0,0,0,0-16Zm72-8A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Zm-16,0A88,88,0,1,0,51.81,172.06a8,8,0,0,1,.66,6.54L40,216,77.4,203.53a7.85,7.85,0,0,1,2.53-.42,8,8,0,0,1,4,1.08A88,88,0,0,0,216,128Z');request.type='button';request.setAttribute('aria-haspopup','dialog');request.setAttribute('aria-controls','about-dialog');request.addEventListener('click',()=>openAbout(post.canonicalUrl));controls.append(request);actions.append(controls);article.append(actions);
  const meta=node('div','card-meta');meta.append(node('span','author',post.authorHandle?`@${post.authorHandle}`:'직접 등록'),node('span','category',post.platform==='instagram'?'Instagram':(kinds[post.contentKind]||'기타')));article.append(meta);const time=node('time',null,(post.dateEstimated?(post.manual?'등록일 · ':'가져온 날짜 · '):'')+stamp(post.publishedAt));time.dateTime=post.publishedAt;article.append(time);
  const caption=displayCaption(post.caption);if(caption)article.append(node('p','caption',caption));
  if(!post.manual&&post.platform!=='instagram'&&post.authorHandle.toLowerCase()!==post.observedViaSource.toLowerCase())article.append(node('span','via',`발견 출처 @${post.observedViaSource}`));for(const source of post.duplicateSources||[]){const a=node('a','via','같은 사진 출처 @'+source.author);a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';article.append(a);}return article;

@@ -60,4 +60,10 @@ body[data-background=paper]{--bg:#F5F2EB;background:var(--bg)}body[data-backgrou
 #contact-feedback{color:var(--muted)}
 @media(max-width:600px){.brand-group{--wordmark-size:30px}#open-about svg{width:16px;height:16px;bottom:calc(var(--wordmark-size) * .2 - 1.4px)}}
 @media(max-width:380px){header.shell{flex-wrap:wrap;justify-content:flex-end;padding-block:10px}header.shell .brand-group{--wordmark-size:26px;margin-right:auto}body[data-mood=zine] .brand-group .wordmark{font-size:26px}}
-.rights-request{display:block;border:0;background:transparent;padding:8px 0;min-height:44px;font-size:11px;color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+.feed-actions{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:4px}
+.feed-actions .via{margin:0;min-width:0;word-break:keep-all;overflow-wrap:normal}
+.feed-action-controls{display:flex;flex:none;margin-left:auto}
+.feed-actions .icon-button{position:relative;display:grid;place-items:center;width:44px;height:44px;min-width:44px;margin:0;padding:11px;border:0;border-radius:8px;color:var(--muted);text-decoration:none}
+.feed-actions .icon-button:hover{background:var(--soft);color:var(--ink)}
+.feed-actions .icon-tooltip{top:auto;bottom:calc(100% + 6px)}
+@media(max-width:600px){.video-hint-prefix{display:none}}
