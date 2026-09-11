@@ -679,3 +679,5 @@ X·인스타·유사 사진 비교에 피드와 같은30px 원형 및 CSS 선 �
 - 보관한 실제 응답 재처리: received19/stored18/media24, 저장 성공 후 cursor 전진. 원본 응답은 .local에만 보관, 커밋 제외.
 - Wrangler dry-run 통과, 별도 코드 검토 Critical/Major 없음. 운영 복구는 배포 후 예약 실행으로 확인 예정.
 - 운영 Cron 로그에서도 D1_ERROR: UNIQUE constraint failed: media.post_id, media.position 예외 확인. 로컬 재현과 운영 원인이 일치함.
+- 운영 복구 1차: 5579b05 자동 배포 성공. 2026-09-11 09:30:13 KST Cron에서 WEV86_ received19/stored18 성공, 오류 없음, 다음 예약 09:35:13으로 이동. X 게시물 1699→1717. 기존 cursor 초기화·데이터 삭제 없음.
+- 운영 복구 2차: 09:33:13 KST 다음 Cron에서 TRIPLES_FAN_FR received20/stored0 정상 처리. 후보 불일치 0건 저장도 성공 기록 갱신. WEV86_ 반복 선택에 의한 전체 순서 교착 해소 확인. 전체 15소스의 장기 안정성은 추가 관찰 대상.
