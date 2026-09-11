@@ -53,3 +53,20 @@ test('malformed query maps to 400 and cursor cannot change filter scope',async()
  }
  }finally{sqlite.close();}
 });
+
+test('duplicate source links exclude hidden, pending and missing posts but keep approved duplicates',async()=>{
+ const {sqlite,DB}=testDatabase();try{
+  for(const [id,reason] of [['1',null],['2',null],['3',null],['4','review'],['5',null],['6','review']]){
+   sqlite.prepare('INSERT INTO posts VALUES (?,?)').run('x:'+id,JSON.stringify({id:'x:'+id,publishedAt:'2026-09-01',canonicalUrl:'https://x.com/source/status/'+id,authorHandle:'source'+id,moderationReason:reason,media:[{kind:'image',previewUrl:'photo'+id}]}));
+   sqlite.prepare('INSERT INTO x_fingerprints(url,hash) VALUES(?,?)').run('photo'+id,'same');
+  }
+  sqlite.exec("INSERT INTO x_quality(post_id,decision,availability) VALUES('x:3','hidden','unknown'),('x:5','auto','missing'),('x:6','visible','unknown')");
+  for(const [code,status] of [['kept1','kept'],['held1','held'],['pending1','pending'],['excluded1','excluded']]){
+   sqlite.prepare('INSERT INTO instagram_review(code,data,status,imported_at) VALUES(?,?,?,?)').run(code,JSON.stringify({url:'https://www.instagram.com/p/'+code+'/',author:code,images:['image'+code]}),status,'2026-09-01');
+   sqlite.prepare('INSERT INTO x_fingerprints(url,hash) VALUES(?,?)').run('image'+code,'same');
+  }
+  const result=await readFeed(DB,new URLSearchParams());
+  assert.equal(result.total,1);
+  assert.deepEqual(result.posts[0].duplicateSources.map(s=>s.author).sort(),['kept1','source2','source6']);
+ }finally{sqlite.close();}
+});
