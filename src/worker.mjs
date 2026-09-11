@@ -50,7 +50,7 @@ export default {
   async scheduled(controller,env,ctx) { if(controller.cron==='2-59/5 * * * *')console.log(JSON.stringify({event:'instagram_sync',...await syncInstagram(env)}));else if(controller.cron==='1-59/3 * * * *')await maintainX(env);else await runDueSource(env); },
   async fetch(request,env) {
     const url=new URL(request.url);
-    const publicAssets=new Set(['/','/feed','/feed.html','/feed.css','/feed.js','/review-gallery.js','/favicon.ico','/favicon-16.png','/favicon-32.png']);
+    const publicAssets=new Set(['/','/feed','/feed.html','/feed.css','/feed.js','/review-gallery.js','/favicon.ico','/favicon-16.png','/favicon-32.png','/manifest.webmanifest','/apple-touch-icon.png','/app-icon-192.png','/app-icon-512.png']);
     const publicApis=new Set(['/api/feed','/api/collection-status','/api/session']);
     const publicRequest=env.PUBLIC_FEED_ENABLED==='true'&&((['GET','HEAD'].includes(request.method)&&publicAssets.has(url.pathname))||(request.method==='GET'&&publicApis.has(url.pathname)));
     let auth,context;

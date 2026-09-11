@@ -39,7 +39,7 @@ test('audit routes and all static history aliases remain private in public mode'
 });
 
 test('all paths remain private when PUBLIC_FEED_ENABLED is absent or not exactly true',async()=>{
-  for(const flag of [undefined,'TRUE','1',' true']) for(const path of ['/','/api/feed']) {
+  for(const flag of [undefined,'TRUE','1',' true']) for(const path of ['/','/api/feed','/manifest.webmanifest','/apple-touch-icon.png','/app-icon-192.png','/app-icon-512.png']) {
     const {env,counts}=spies();env.PUBLIC_FEED_ENABLED=flag;
     const response=await worker.fetch(new Request(`https://example.test${path}`),env);
     assert.equal(response.status,401,`${flag}:${path}`);assert.deepEqual(counts(),{assets:0,db:0});
@@ -47,7 +47,7 @@ test('all paths remain private when PUBLIC_FEED_ENABLED is absent or not exactly
 });
 
 test('public mode permits only the exact asset method and path allowlist',async()=>{
-  for(const method of ['GET','HEAD']) for(const path of ['/','/feed','/feed.html','/feed.css','/feed.js','/review-gallery.js','/favicon.ico','/favicon-16.png','/favicon-32.png']) {
+  for(const method of ['GET','HEAD']) for(const path of ['/','/feed','/feed.html','/feed.css','/feed.js','/review-gallery.js','/favicon.ico','/favicon-16.png','/favicon-32.png','/manifest.webmanifest','/apple-touch-icon.png','/app-icon-192.png','/app-icon-512.png']) {
     const {env,counts}=spies();const response=await worker.fetch(new Request(`https://example.test${path}`,{method}),env);
     assert.equal(response.status,200,`${method} ${path}`);assert.deepEqual(counts(),{assets:1,db:0});
   }
@@ -55,7 +55,7 @@ test('public mode permits only the exact asset method and path allowlist',async(
     const {env,counts}=spies();const response=await worker.fetch(new Request(`https://example.test${path}`),env);
     assert.equal(response.status,401,path);assert.deepEqual(counts(),{assets:0,db:0});
   }
-  for(const [method,path] of [['HEAD','/api/feed'],['POST','/api/session'],['GET','/unknown']]) {
+  for(const [method,path] of [['HEAD','/api/feed'],['POST','/api/session'],['GET','/unknown'],['POST','/manifest.webmanifest'],['GET','/app-icon-private.png']]) {
     const {env,counts}=spies();const response=await worker.fetch(new Request(`https://example.test${path}`,{method}),env);
     assert.equal(response.status,401,`${method} ${path}`);assert.deepEqual(counts(),{assets:0,db:0});
   }

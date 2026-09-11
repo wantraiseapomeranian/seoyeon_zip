@@ -281,3 +281,9 @@ X·Instagram·검토 내역의 새로고침 버튼 전체를 오른쪽으로 이
 ## 2026-09-11 검토 내역 목록 아이콘 정렬
 - 요청: 원문 아이콘의 왼쪽 시각 경계를 판정 이유 글자 시작선에 맞추고 상세 보기를 문서 SVG 아이콘으로 변경.
 - 두 아이콘은 44px 클릭 영역과 툴팁/접근성 이름을 유지. 상세 열기 및 포커스 복귀 동작 유지.
+
+## 2026-09-11 홈 화면 웹 앱
+- 이름 `서연모음.zip`, 시작 URL/ID/scope `/`, `display: standalone`. 공개 피드에 manifest 및 Apple 홈 화면 메타데이터 연결.
+- 기존 아이스바 모티프를 단순 SVG로 다시 제작(`docs/assets/home-screen-icon.svg`), 회청색 불투명 배경의 PNG 180/192/512px 제공. 소스 SVG는 배포 자산에 포함하지 않음.
+- 설치용 네 파일의 정확한 GET/HEAD 경로만 공개 허용. 오프라인 캐시와 서비스 워커는 이번 범위에 포함하지 않음.
+- 참고: https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/ 및 https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/ConfiguringWebApplications.html

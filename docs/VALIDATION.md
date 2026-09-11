@@ -848,3 +848,11 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - `node scripts/check-review-audit.mjs` 통과: 320/390/768/1280px 원문 아이콘 시각 왼쪽 경계와 이유 텍스트 시작선 오차 1px 미만, 두 버튼 44x44px 및 비중첩 확인.
 - 상세 SVG, 상세 열기/닫기 및 포커스 복귀, 기존 필터/페이지 이동/오류 처리 확인. 모바일 캡처 확인.
 - `git diff --check` 통과. 운영 자동 배포 결과는 최종 응답에 별도 기록.
+
+## 2026-09-11 홈 화면 웹 앱 검증
+- 접근 테스트에서 manifest 미허용 401 실패를 먼저 확인한 뒤 정확한 자산 경로만 추가. `node --test tests/access.test.mjs` 14/14, `npm test` 141/141 통과.
+- Wrangler 로컬 런타임에서 인증 없는 PNG 세 경로 200/image/png 및 실제 180/192/512 크기·불투명 배경 확인.
+- 설치된 Chrome으로 CDP `Page.getAppManifest`: 파싱 오류 없음, 이름/standalone/start_url/scope 확인. 390px 공개 피드(빈 데이터 mock) 가로 넘침 없음, Apple icon 연결 확인.
+- iPhone 실기기의 홈 화면 추가 및 독립 창 실행은 미검증. 오프라인/푸시 기능 없음.
+- 최초 로컬 실행은 sandbox 로그/빌드 읽기 제한으로 실패, 허용된 로컬 실행으로 복구. Playwright 기본 번들 부재는 설치된 Chrome 채널로 검증.
+- 운영 배포와 공개 자산 검증 결과는 최종 응답에 별도 보고.
