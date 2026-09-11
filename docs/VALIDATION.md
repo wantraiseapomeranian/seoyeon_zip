@@ -814,4 +814,7 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - npx wrangler deploy --dry-run 통과. 약197.6KiB(압축48.8KiB) Worker 번들.
 - 독립 Critical/Major 코드 검토에서 동시 replay와 selected/group snapshot 경쟁을 수정하고 회귀 테스트 추가 후 APPROVED. UI 요청·재시도·텍스트/링크 처리 검토도 APPROVED.
 - 운영 DB는 0001~0011 및0018 이력 확인. 0012~0017은 이번 작업에서 재실행하지 않는다. 신규0019만 문장별로 적용하고 스키마 확인 후 이력 등록.
-- 운영 마이그레이션/배포 확인은 진행 중. 실제 콘텐츠 판정의 운영 쓰기 검증은 첫 실제 관리자 판단 전까지 미확인. 테스트용 과거 이벤트나 콘텐츠 변경은 생성하지 않는다.
+- 운영0019 적용 완료: 테이블2개·조회 인덱스3개·UPDATE/DELETE 차단 트리거2개·candidate_metadata_json 컬럼을 sqlite_master/pragma에서 확인하고 d1_migrations에 완료 기록. started_at=2026-09-11T07:25:10.277Z (한국시간16:25:10), 최초 이벤트0건.
+- 구현 커밋7835156: GitHub 푸시 및 Cloudflare Workers Builds completed/success 확인. 실제 Chrome 관리자에서 검토 내역 빈 목록과 시작 시각 안내 정상. X 검토함의 내역 링크·이유/메모 입력창·취소 후 포커스 복귀 확인. 판단 저장은 누르지 않았다.
+- 익명 GET /api/admin/review-audit, /review-history, /review-history.html, /review-history.js는401, 공개 /api/feed?limit=1은200.
+- 실제 콘텐츠 판정의 운영 쓰기 검증은 첫 실제 관리자 판단 전까지 미확인. 테스트용 과거 이벤트나 콘텐츠 변경은 생성하지 않았다.
