@@ -311,3 +311,13 @@ COSMO Talk 출시일, 전체 과거 데이터 범위, 미러 계정의 완전한
 
 triplescosmos 발견소스의 직접 작성+미디어+정확한 멤버태그 글만 official로 자동포함한다. 공지·재게시·인용·불명확 관계는 제외한다. 이름과 포토 비하인드 제목은 별도검토로 보존한다. COSMO 앱 문구는 공식 글을 cosmo로 바꾸지 않는다. 검토데이터도 날짜 제한 없이 동일 저장경계를 적용하며, 페이지/cursor와 함께 원자적 저장한다. 검토 UI는 후속 범위다.
 현재10소스/3분1소스, 한순회약30분/초기교대 최신약60분으로 이전9소스 주기 설명을 갱신한다.
+
+## 방문자·관리자 권한 분리 — 2026-09-11
+
+- 배포 기본값은 `PUBLIC_FEED_ENABLED=false`로 기존 전체 비공개 인증을 유지한다. 공개 전환은 별도 사용자 요청으로만 수행한다.
+- 공개 모드에서는 `GET /api/feed`, `GET /api/collection-status`, `GET /api/session`과 피드에 필요한 정적 자산만 익명 접근을 허용한다. 피드 경로는 `/`, `/feed.html`, Workers Assets의 표준 이동 대상 `/feed`를 포함한다.
+- 공개 수집 현황은 계정, paused/waiting/ok/attention 상태, 마지막 성공 시각만 반환한다. 공개 피드도 표시 필드를 명시적으로 투영하며 검토 사유와 수집 내부 메타데이터를 반환하지 않는다.
+- 중지·켜기·재시도, URL 등록, 내보내기, X/Instagram 검토함 및 원본 HTML/별칭은 소유자 전용이다. Origin/액션 헤더 및 revision 검사를 유지한다.
+- `/admin`은 인증된 소유자를 피드로 돌려보내는 고정 로그인 진입점이다. 서버는 Access JWT 헤더를 우선 검증하고 헤더가 없을 때만 단일 인증 쿠키를 검증한다. 서명·issuer·audience·만료·소유자 이메일 검사를 생략하지 않는다.
+- 화면은 방문자 상태로 시작하고 서버가 owner를 확인한 경우에만 관리 버튼을 표시한다. 방문자 제목은 '수집 현황', 관리자 제목은 '수집 및 관리'다. 관리 권한 만료 시 제어 및 내부 조회 결과를 지운다.
+- 공개 전에 실제 Access 경로 정책과 공개 경로에서의 소유자 인증 쿠키 전달을 별도로 검증한다. 소유자 토큰이 브라우저 쿠키에 있다는 사실만으로 Worker까지 전달된다고 가정하지 않는다. 근거: [Cloudflare JWT 검증 문서](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/).

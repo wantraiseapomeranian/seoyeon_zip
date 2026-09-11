@@ -4,6 +4,7 @@
 @media(max-width:1000px){.gallery,body[data-layout=b] .gallery{grid-template-columns:repeat(3,minmax(0,1fr));gap:24px 16px}.shell{width:calc(100% - 40px)}}
 @media(max-width:600px){.shell{width:calc(100% - 24px)}header{min-height:82px;gap:6px}.wordmark{font-size:22px}.actions{gap:0}.actions button{font-size:12px;padding:8px}.filters{flex-wrap:wrap;gap:12px}.selects{width:auto;gap:6px}.selects label{flex:none;min-width:0}.selects select{width:156px;max-width:100%;padding-inline:8px;font-size:13px;background:transparent}.selects #kind{width:108px}.gallery,body[data-layout=b] .gallery{grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 10px}.card-meta{flex-wrap:wrap;gap:2px;margin-top:9px}.author{max-width:100%;font-size:12px}.category{font-size:11px}.caption{font-size:13px}.media-count{font-size:11px;bottom:6px;right:6px}.fallback{min-height:200px;padding:12px}footer{display:block}footer p+p{margin-top:8px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
+[hidden]{display:none!important}
 
 
 /* Optional visual directions. The unselected A feed keeps its existing styling. */

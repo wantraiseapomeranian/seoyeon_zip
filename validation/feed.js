@@ -38,14 +38,34 @@ if(mood&&!background&&!iconFamily){
  document.body.prepend(nav);
 }
 let media=['all','image','video'].includes(params.get('media'))?params.get('media'):'all';
-let posts=[],states=[],collectedAt=null,loaded=false;
+let posts=[],states=[],collectedAt=null,loaded=false,role='visitor',roleGeneration=0;
 const live=!['127.0.0.1','localhost'].includes(location.hostname)||params.get('data')==='live';
 let nextCursor=null,total=0,requestVersion=0;
+const sourceEndpoint=()=>role==='owner'?'/api/sources':'/api/collection-status';
 const more=node('button',null,'더 보기');more.id='load-more';more.hidden=true;$('#gallery').after(more);
 more.addEventListener('click',()=>loadLive(true));
 if(live){$('#range').textContent='저장된 게시물을 표시해요. 목록 새로고침은 수집을 실행하지 않아요.';$('#count').title='선택한 조건에 맞는 전체 저장 게시물 수';$('#updated').title='수집 데이터가 마지막으로 저장된 시각입니다.';}
 const stamp=value=>value?new Date(value).toLocaleString('ko-KR',{month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}):'아직 저장 기록 없음';
 function node(tag,className,text){const e=document.createElement(tag);if(className)e.className=className;if(text!=null)e.textContent=text;return e;}
+function applyRole(){
+ const owner=role==='owner';$('.review-entry').hidden=!owner;$('#login-link').hidden=owner;$('.management-tabs').hidden=!owner;$('#tools-tab').hidden=!owner;$('#manual-form').hidden=!owner;
+ $('#status-title').textContent=owner?'수집 및 관리':'수집 현황';$('.collection-note').hidden=!owner;
+ if(owner){$('#collection-panel').setAttribute('role','tabpanel');$('#collection-panel').setAttribute('aria-labelledby','collection-tab');}
+ else{$('#collection-panel').setAttribute('role','region');$('#collection-panel').setAttribute('aria-labelledby','status-title');$('#tools-panel').hidden=true;$('#manual-url').value='';$('#management-message').textContent='';selectManagementTab($('#collection-tab'));}
+}
+function setRole(next){if(next===role)return false;role=next;roleGeneration++;states=[];applyRole();renderSources();return true;}
+function demote(){setRole('visitor');$('#status-message').textContent='관리자 로그인이 필요해요.';refreshSources({preserveMessage:true});}
+async function detectRole(){
+ const generation=roleGeneration;
+ try{const response=await fetch('/api/session');if(!response.ok)throw Error('session');const data=await response.json();if(generation!==roleGeneration)return;if(data.role==='owner'&&setRole('owner'))refreshSources();}
+ catch{setRole('visitor');}
+}
+async function fetchSourceState(){
+ const generation=roleGeneration,endpoint=sourceEndpoint(),admin=role==='owner';const response=await fetch(endpoint);
+ if(admin&&(response.status===401||response.status===403)){if(generation===roleGeneration)demote();throw Error('auth');}
+ if(!response.ok)throw Error('status');const data=await response.json();if(!Array.isArray(data.sources))throw Error('shape');
+ if(generation!==roleGeneration||endpoint!==sourceEndpoint())throw Error('stale');return data.sources;
+}
 function syncUrl(){const q=new URLSearchParams();if(params.get('data')==='live')q.set('data','live');if($("#month").value)q.set("date",$("#month").value);if($("#sort").value==="oldest")q.set("sort","oldest");q.set('layout',document.body.dataset.layout);if(mood)q.set('mood',mood);if(iconFamily)q.set('icons',iconFamily);if(background)q.set('background',background);if(media!=='all')q.set('media',media);if($('#kind').value!=='all')q.set('kind',$('#kind').value);if($('#source').value!=='all')q.set('source',$('#source').value);history.replaceState(null,'',`${location.pathname}?${q}`);}
 function displayCaption(text){
  const repeated=new Set();const contextTags=new Set(['triples','트리플에스','윤서연','seoyeon','서연','ソヨン']);
@@ -112,21 +132,25 @@ async function loadLive(append=false){
   const response=await fetch(`/api/feed?${query}`);if(!response.ok)throw Error(response.status===401||response.status===403?'auth':'feed');
   const data=await response.json();if(!Array.isArray(data.posts))throw Error('shape');if(version!==requestVersion)return;
   const known=new Set(posts.map(p=>p.id));posts.push(...data.posts.filter(p=>!known.has(p.id)));total=data.total;nextCursor=data.nextCursor;collectedAt=data.collectedAt;loaded=true;render();
-  try{const response=await fetch('/api/sources');if(!response.ok)throw Error('status');const data=await response.json();if(version!==requestVersion)return;states=data.sources;
+  try{const nextStates=await fetchSourceState();if(version!==requestVersion)return;states=nextStates;
    const current=$('#source').value;const names=new Set(['instagram','manual',...states.map(s=>s.source)]);if(current!=='all')names.add(current);
    $('#source').replaceChildren(new Option('모든 출처','all'),...[...names].sort().map(s=>new Option(s==='instagram'?'Instagram':s==='manual'?'직접 등록':`@${s}`,s)));$('#source').value=current;renderSources();
    if(states.some(sourceHasError))$('#notice').textContent='일부 출처의 갱신이 지연되고 있어요. 수집 상태를 확인해 주세요.';
-  }catch{if(version===requestVersion){states=[];renderSources();$('#notice').textContent='게시물은 불러왔지만 수집 상태는 확인하지 못했어요.';}}
+  }catch(error){if(version===requestVersion&&error.message!=='stale'&&error.message!=='auth'){states=[];renderSources();$('#notice').textContent='게시물은 불러왔지만 수집 상태는 확인하지 못했어요.';}}
  }catch(error){if(version!==requestVersion)return;if(!append){$('#gallery').replaceChildren();$('#count').textContent='목록 조회 실패';}$('#notice').textContent=error.message==='auth'?'로그인이 만료됐어요. 페이지를 새로고침해 로그인해 주세요.':'목록을 불러오지 못했어요. 다시 시도해 주세요.';}
  finally{if(version===requestVersion){$('#refresh').disabled=false;more.disabled=false;$('#gallery').setAttribute('aria-busy','false');}}
 }
 function changeFilters(){if(live){posts=[];loaded=false;render();loadLive();}else{render();syncUrl();}}
 const historyNotes=new Set(['history_window_unverified','unverified_exhaustion','repeated_cursor']);
-const sourceHasError=s=>s.catchup_status==='needs_attention'||!!s.last_error_code&&!historyNotes.has(s.last_error_code);
+const sourceHasError=s=>s.state==='attention'||s.catchup_status==='needs_attention'||!!s.last_error_code&&!historyNotes.has(s.last_error_code);
 function renderSources(){
  const host=$('#source-status');const focused=document.activeElement?.dataset.source;const expanded=new Set([...host.querySelectorAll('details[open]')].map(d=>d.dataset.source));host.replaceChildren();
  if(!states.length){host.append(node('p','muted','수집 상태를 확인하지 못했어요. 상태 새로고침으로 다시 시도해 주세요.'));return;}
  for(const s of states){
+  if(role!=='owner'){
+   const labels={paused:'수집 중지',waiting:'첫 수집 대기',ok:'수집 성공',attention:'확인 필요'};const row=node('section','source-row'),heading=node('div','source-heading');
+   heading.append(node('strong',null,`@${s.source}`),node('span',s.state==='attention'?'source-state warning':'source-state',labels[s.state]||'상태 확인'));row.append(heading,node('p','source-last',s.lastSuccessAt?'마지막 성공 · '+stamp(s.lastSuccessAt):'아직 수집 기록 없음'));host.append(row);continue;
+  }
   const paused=!s.enabled||s.collection_enabled===false||s.collection_enabled===0;
   const attention=s.catchup_status==='needs_attention';
   const historyNote=historyNotes.has(s.last_error_code),error=sourceHasError(s);
@@ -158,13 +182,11 @@ function renderSources(){
   host.append(row);if(focused===s.source)toggle.focus({preventScroll:true});
  }
 }
-async function refreshSources(){
- const button=$('#refresh-status');button.disabled=true;$('#status-message').textContent='상태를 불러오는 중…';
+async function refreshSources(options={}){
+ const button=$('#refresh-status');button.disabled=true;if(!options.preserveMessage)$('#status-message').textContent='상태를 불러오는 중…';
  try{
-  const response=await fetch('/api/sources');if(!response.ok)throw Error('status');
-  const data=await response.json();if(!Array.isArray(data.sources))throw Error('shape');
-  states=data.sources;renderSources();if(!$('#notice').textContent||$('#notice').textContent==='일부 출처의 갱신이 지연되고 있어요. 수집 상태를 확인해 주세요.')$('#notice').textContent=states.some(sourceHasError)?'일부 출처의 갱신이 지연되고 있어요. 수집 상태를 확인해 주세요.':'';$('#status-message').textContent=live?'갱신 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}):'로컬 저장본이에요. 실제 운영 상태와 다를 수 있어요.';
- }catch{$('#status-message').textContent='상태 조회에 실패했어요. 다시 시도해 주세요. 아래는 이전 조회 결과예요.';}
+  states=await fetchSourceState();renderSources();if(role==='owner'&&(!$('#notice').textContent||$('#notice').textContent==='일부 출처의 갱신이 지연되고 있어요. 수집 상태를 확인해 주세요.'))$('#notice').textContent=states.some(sourceHasError)?'일부 출처의 갱신이 지연되고 있어요. 수집 상태를 확인해 주세요.':'';if(!options.preserveMessage)$('#status-message').textContent=live?'갱신 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}):'로컬 저장본이에요. 실제 운영 상태와 다를 수 있어요.';
+ }catch(error){if(error.message!=='auth'&&error.message!=='stale')$('#status-message').textContent='상태 조회에 실패했어요. 다시 시도해 주세요. 아래는 이전 조회 결과예요.';}
  finally{button.disabled=false;}
 }
 async function load(){
@@ -172,7 +194,7 @@ async function load(){
  $('#refresh').disabled=true;$('#notice').textContent='';
  if(!loaded)$('#gallery').replaceChildren(...Array.from({length:6},()=>{const e=node('div','skeleton');e.setAttribute('aria-hidden','true');return e;}));
  try{const response=await fetch('/api/samples');if(!response.ok)throw Error('feed');const data=await response.json();if(!Array.isArray(data.posts))throw Error('shape');posts=[...data.posts].sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt)||a.id.localeCompare(b.id));collectedAt=data.collectedAt;loaded=true;
- const current=$('#source').value;const known=new Set(['instagram','manual',...posts.map(p=>p.observedViaSource)]);try{const response=await fetch('/api/sources');if(!response.ok)throw Error('status');states=(await response.json()).sources;states.forEach(s=>known.add(s.source));}catch{states=[];$('#notice').textContent='게시물은 불러왔지만 수집 상태는 확인하지 못했어요.';}
+ const current=$('#source').value;const known=new Set(['instagram','manual',...posts.map(p=>p.observedViaSource)]);try{states=await fetchSourceState();states.forEach(s=>known.add(s.source));}catch(error){if(error.message==='stale'||error.message==='auth')return;states=[];$('#notice').textContent='게시물은 불러왔지만 수집 상태는 확인하지 못했어요.';}
  $('#source').replaceChildren(new Option('모든 출처','all'),...[...known].sort().map(s=>new Option(s==='instagram'?'Instagram':s==='manual'?'직접 등록':`@${s}`,s)));const requested=loadedOnce?current:params.get('source');if(known.has(requested))$('#source').value=requested;loadedOnce=true;
  if(states.some(sourceHasError))$('#notice').textContent='일부 출처의 갱신이 지연되고 있어요. 수집 상태를 확인해 주세요.';
  render();renderSources();syncUrl();
@@ -196,9 +218,10 @@ document.querySelectorAll('[data-media]').forEach(b=>b.addEventListener('click',
 for(const id of ['#kind','#source'])$(id).addEventListener('change',()=>{changeFilters();});$('#reset').addEventListener('click',()=>{media='all';$("#month").value='';$('#kind').value='all';$('#source').value='all';changeFilters();});$('#refresh').addEventListener('click',load);$('#open-status').addEventListener('click',()=>{$('#source-dialog').showModal();refreshSources();});$('#refresh-status').addEventListener('click',refreshSources);$('#close-status').addEventListener('click',()=>$('#source-dialog').close());
 load();
 
-async function management(path,body,method='POST'){const response=await fetch(path,{method,headers:{'Content-Type':'application/json','X-Management-Action':'manage'},body:JSON.stringify(body)});if(!response.ok){const messages={400:'X 또는 인스타 게시물 URL과 입력값을 확인해 주세요.',409:'수집 상태가 바뀌었거나 전체 수집이 중지돼 있어요. 상태를 확인하고 다시 시도해 주세요.',401:'다시 로그인해 주세요.',403:'접근 권한을 확인해 주세요.'};throw Error(messages[response.status]||'저장하지 못했어요. 잠시 후 다시 시도해 주세요.');}return response.json();}
+async function management(path,body,method='POST'){const response=await fetch(path,{method,headers:{'Content-Type':'application/json','X-Management-Action':'manage'},body:JSON.stringify(body)});if(!response.ok){if(response.status===401||response.status===403){demote();throw Error('관리자 로그인이 필요해요.');}const messages={400:'X 또는 인스타 게시물 URL과 입력값을 확인해 주세요.',409:'수집 상태가 바뀌었거나 전체 수집이 중지돼 있어요. 상태를 확인하고 다시 시도해 주세요.'};throw Error(messages[response.status]||'저장하지 못했어요. 잠시 후 다시 시도해 주세요.');}return response.json();}
 $('#manual-form').addEventListener('submit',async e=>{e.preventDefault();const button=$('#manual-submit');button.disabled=true;try{const result=await management('/api/manual-posts',{url:$('#manual-url').value});$('#management-message').textContent=result.existing?'이미 저장된 게시물이에요. 검토 상태와 필터에 따라 피드에 표시돼요.':'원문 링크를 등록했어요.';$('#manual-url').value='';if(!result.existing)await load();}catch(error){$('#management-message').textContent=error.message;}finally{button.disabled=false;}});
 
 const managementTabs=[...document.querySelectorAll('.management-tabs [role=tab]')];
 function selectManagementTab(tab){managementTabs.forEach(t=>{const active=t===tab;t.setAttribute('aria-selected',String(active));t.tabIndex=active?0:-1;document.getElementById(t.getAttribute('aria-controls')).hidden=!active;});$('.management-body').scrollTop=0;}
 managementTabs.forEach((tab,index)=>{tab.addEventListener('click',()=>selectManagementTab(tab));tab.addEventListener('keydown',event=>{let next;if(event.key==='ArrowRight'||event.key==='ArrowLeft')next=managementTabs[1-index];if(event.key==='Home')next=managementTabs[0];if(event.key==='End')next=managementTabs[1];if(next){event.preventDefault();selectManagementTab(next);next.focus();}});});
+applyRole();detectRole();

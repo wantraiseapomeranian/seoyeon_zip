@@ -113,3 +113,18 @@ test('/admin and /admin/ redirect authenticated owners to root',async()=>{
     assert.equal(response.status,302);assert.equal(response.headers.get('location'),'https://example.test/');assert.equal(response.headers.get('cache-control'),'private, no-store');
   }} finally {globalThis.fetch=originalFetch;}
 });
+
+test('verified owner cookie reaches management while Origin and revision still guard writes',async t=>{
+ const {testDatabase}=await import('./helpers/d1.mjs');const {sqlite,DB,enable}=testDatabase();enable();
+ t.mock.method(globalThis,'fetch',async input=>{assert.equal(String(input),`${accessEnv.TEAM_DOMAIN}/cdn-cgi/access/certs`);return Response.json({keys:[jwk]});});
+ try{
+  const token=await signedToken();const env={...accessEnv,PUBLIC_FEED_ENABLED:'true',COLLECTION_ENABLED:'true',DB};
+  const source='Seowoo_0501';const before=sqlite.prepare('SELECT enabled,revision FROM collection_state WHERE source=?').get(source);
+  const send=origin=>worker.fetch(new Request('https://example.test/api/sources/'+source,{method:'PATCH',headers:{origin,cookie:`CF_Authorization=${token}`,'content-type':'application/json','x-management-action':'manage'},body:JSON.stringify({enabled:false,revision:before.revision})}),env);
+  assert.equal((await send('https://other.test')).status,403);
+  assert.deepEqual(sqlite.prepare('SELECT enabled,revision FROM collection_state WHERE source=?').get(source),before);
+  assert.equal((await send('https://example.test')).status,200);
+  assert.equal(sqlite.prepare('SELECT enabled FROM collection_state WHERE source=?').get(source).enabled,0);
+  assert.equal((await send('https://example.test')).status,409);
+ }finally{sqlite.close();}
+});
