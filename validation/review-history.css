@@ -6,3 +6,7 @@
 
 .history-more[aria-disabled=true]{opacity:.5;cursor:wait}
 @media(any-pointer:coarse){.history-filters input[type=date],.history-filters select,.history-filters button{height:44px;min-height:44px}}
+
+/* Move the whole refresh target, keeping the 22px SVG centred in its 44px hit area. */
+.review-toolbar>#refresh,.review-heading>#history-refresh{flex:0 0 44px;margin-right:-13.841667px;outline-offset:-3px}
+@media(max-width:600px){.review-toolbar>#refresh,.review-heading>#history-refresh{margin-right:-12px}}
