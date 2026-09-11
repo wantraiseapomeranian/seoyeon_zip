@@ -3,6 +3,14 @@
 
 .review-heading>button:hover{background:var(--soft)}.primary:hover{background:var(--ink);color:white}
 
+/* Keep every review status reachable without sideways scrolling. */
+#tabs{flex:1;min-width:0;flex-wrap:wrap;overflow-x:visible}
+#import-dialog .dialog-heading{align-items:flex-start;gap:8px}
+#import-title{min-width:0;word-break:keep-all;overflow-wrap:anywhere}
+#close-import{flex-shrink:0;white-space:nowrap}
+#import-error{color:var(--warning)}
+@media(max-width:480px){#import-dialog{padding:16px}#import-title{font-size:18px}}
+
 .review-nav{flex-shrink:0}.review-nav a{text-decoration:none}.review-nav a[aria-current="page"]{background:var(--soft);color:var(--ink)}
 .review-nav a:focus-visible{z-index:1}
 

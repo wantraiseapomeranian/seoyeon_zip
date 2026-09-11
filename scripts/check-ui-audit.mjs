@@ -42,6 +42,10 @@ try{
   });
   assert.deepEqual(result.failures,[],`${currentRole} ${route} ${width}: painted icon must hit its own button`);
   assert.ok(Math.abs(result.edgeGap)<.1,JSON.stringify(result));assert.equal(result.overflow,false);
+  if(route!=='/'){
+   await page.locator('#tabs button span').evaluateAll(spans=>spans.forEach(s=>s.textContent='2018'));
+   assert.equal(await page.locator('#tabs').evaluate(e=>e.scrollWidth>e.clientWidth),false,`${route} ${width}: all status tabs fit without horizontal scrolling`);
+  }
  }
  // Exercise the shared photo viewer without changing any server data.
  await page.evaluate(()=>{
@@ -53,6 +57,12 @@ try{
  await page.keyboard.press('Escape');assert.equal(await trigger.evaluate(e=>e===document.activeElement),true);
  await page.getByRole('button',{name:'결과 가져오기',exact:true}).click();
  await page.getByRole('dialog',{name:'수집 결과 가져오기',exact:true}).waitFor();
+ await page.setViewportSize({width:320,height:568});
+ assert.equal(await page.locator('#close-import').evaluate(e=>{const range=document.createRange();range.selectNodeContents(e);return range.getClientRects().length;}),1,'close label stays on one line');
+ let importRequests=0;page.on('request',request=>{if(request.method()==='POST'&&request.url().includes('/import'))importRequests++;});
+ await page.locator('#import-submit').click();await page.getByRole('alert').filter({hasText:'올바른 JSON 내용을 입력해 주세요.'}).waitFor();
+ assert.equal(importRequests,0,'empty input is rejected before any import request');
+ assert.equal(await page.locator('#import-dialog').evaluate(e=>e.scrollWidth>e.clientWidth),false);
  await page.keyboard.press('Escape');assert.equal(await page.locator('#open-import').evaluate(e=>e===document.activeElement),true);
  console.log('PASS: visible icon hit targets and right edges at 320/390/768/1280px; named dialogs and focus return');
 }finally{await browser?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}

@@ -784,3 +784,6 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 
 ## UI 감사 지적 1·2 수정 — 2026-09-11
 새 scripts/check-ui-audit.mjs로 기존 320px 방문자 상단 아이콘의 오클릭 실패를 재현한 뒤 수정했다. 방문자/관리자 피드 및 X/인스타 검토함의 320/390/768/1280px에서 실제 SVG 도형을 0.5px 간격으로 표본 추출해 hit target 일치·오른쪽 정렬·넘침 없음을 확인. 피드 아이콘도 포함. 사진 확대/가져오기 dialog 이름 및 Esc 후 포커스 복귀 통과. 기존 check-public-admin 전체와 node --check review-gallery.js, detector 빈 배열, diff --check 통과. 실제 공개 페이지에 로컬 CSS 적용 후 390/1280px 배치 확인. 최종 배포 결과는 최종 응답에 기록한다.
+
+## 좁은 화면 검토함·가져오기 보완 — 2026-09-11
+기존320px 검토함 탭의 가로 스크롤 실패를 재현 후 수정. check-ui-audit 통과: 320/390/768/1280px 아이콘 hit target/정렬, 각 탭2018개 표본에서 가로 스크롤 없음, 320px 닫기 텍스트 한 줄, 빈 JSON 오류 alert 표시 및 import POST0회, dialog 넘침 없음·Esc 포커스 복귀. detector 빈 배열, diff --check 통과. 운영 화면/빈 입력 제출 결과는 최종 응답 기준.
