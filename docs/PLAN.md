@@ -197,3 +197,6 @@ WEV86_ 응답의 동일 게시물 반복으로 media 복합키 충돌이 나고,
 ## 공개 전 요청 제한 보완 — 2026-09-11
 사용자 승인에 따라 비공개 상태에서 공개 API 보호를 준비한다. 공개 모드의 GET /api/feed, /api/collection-status, /api/session을 Cloudflare 제공 IP 기준 공통 60회/60초로 제한한다. 초과는 DB·JWT 처리 전 429와 Retry-After:60, 바인딩 누락·장애는 503으로 닫는다. 정적 자산과 관리자 인증 경계, 수집 주기는 유지한다. 잘못된 페이지 cursor 검증은 COUNT 조회 앞으로 옮긴다. PUBLIC_FEED_ENABLED=false와 기존 Access를 유지해 자동 배포한다.
 공유 IP 사용자는 같은 한도를 사용하며 Cloudflare 위치별 비동기 제한이므로 정확한 전역 비용 상한은 아니다. 공개 정책 적용 후 관리자 로그인·쿠키 전달은 실제 전환 단계에서 별도 확인한다.
+
+## 공개 전환 실행 — 2026-09-11
+사용자가 공개 전환을 명시적으로 승인했다. 기존 Access 앱의 소유자 정책·AUD·24시간 세션·HTTP Only·호스트 범위 쿠키는 유지하고 보호 대상을 /admin 경로로 좁힌다. 나머지 경로는 Worker가 정확한 공개 GET/HEAD 목록과 관리자 JWT 검증으로 통제한다. /api/* 전체 허용 규칙은 만들지 않는다. 전체 Access 보호를 유지한 상태에서 PUBLIC_FEED_ENABLED=true를 먼저 배포하고, 이후 Worker 전체 Access 대상을 제거한다. 익명 피드/현황과 관리 API 차단, 운영자 로그인 및 쿠키 전달을 운영에서 확인한다. 실패 시 같은 Access 앱에 seoyeon-zip Worker 전체 대상을 복원한 뒤 플래그를 false로 배포한다. 데이터·수집 주기는 변경하지 않는다.

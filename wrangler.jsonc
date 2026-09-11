@@ -3,7 +3,7 @@
   "main": "src/worker.mjs",
   "compatibility_date": "2026-09-09",
   "compatibility_flags": ["nodejs_compat"],
-  // Access login redirects verified on the production hostname.
+  // Access protects /admin; the Worker enforces the public-read allowlist and owner-only APIs.
   "workers_dev": true,
   "preview_urls": false,
   "assets": { "directory": "validation", "binding": "ASSETS", "run_worker_first": true },
@@ -12,7 +12,7 @@
   "keep_vars": true,
   "limits": { "cpu_ms": 1000 },
   "ratelimits": [{ "name": "PUBLIC_RATE_LIMITER", "namespace_id": "2026091101", "simple": { "limit": 60, "period": 60 } }],
-  "vars": { "COLLECTION_ENABLED": "true", "APIFY_SYNC_ENABLED": "true", "APIFY_TASK_ID": "W7bGic2wKjj2BKhSE", "PUBLIC_FEED_ENABLED": "false" },
+  "vars": { "COLLECTION_ENABLED": "true", "APIFY_SYNC_ENABLED": "true", "APIFY_TASK_ID": "W7bGic2wKjj2BKhSE", "PUBLIC_FEED_ENABLED": "true" },
   "triggers": { "crons": ["*/3 * * * *", "1-59/3 * * * *", "2-59/5 * * * *"] },
   "observability": { "enabled": true, "traces": { "enabled": true } }
 }

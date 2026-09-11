@@ -710,3 +710,9 @@ X·인스타·유사 사진 비교에 피드와 같은30px 원형 및 CSS 선 �
 - Access apps 조회는 성공 응답이지만 빈 목록이므로 관리형 보호의 세부 경로 정책을 확정할 수 없다. 보호가 없다는 뜻으로 해석하지 않는다. 기존 전체 Access 보호를 변경하지 않았고, 공개 전환 후 관리자 로그인 쿠키 전달은 미확인이다.
 - Cloudflare 공식 rate-limit 문서 기준 이 제한은 위치별·비동기이며, 공유 IP 이용자는 합산된다. 전역 DDoS 차단 또는 비용 상한으로 보장하지 않는다. https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/
 - 비공개 자동 배포 완료: 코드 5d9b664, GitHub Workers Builds success. 활성 버전 73f3b2ca-6e72-4377-a41d-56152dff18b7 100% (2026-09-11 01:51:28 UTC). 운영 PUBLIC_RATE_LIMITER(namespace 2026091101, 60회/60초) 등록과 PUBLIC_FEED_ENABLED=false를 확인했다. 배포 후 위 7개 경로 모두 Access 로그인 302 유지. 운영에서 익명 rate-limit 분기는 비공개 플래그 때문에 아직 활성화되지 않았으며, 실제 429 동작 증거는 로컬 런타임 검증이다.
+
+## 공개 전환 준비 검증 — 2026-09-11
+- 사용자 공개 전환 승인 후 기존 Access 앱을 브라우저에서 확인했다. 앱 ID 8197ec24-c513-40e2-a9ad-2be10fbe7249, 기존 운영자 me Allow 정책, 24시간 세션, HTTP Only=true, path cookie=false(호스트 범위)를 확인했다. 복원할 원래 Worker 전체 대상 설정은 .local/public-access-backup.json에 보관한다.
+- Wrangler OAuth에는 Access 관리 권한이 없어 앱 개별 조회가 403이다. 이전 빈 앱 목록은 앱이 없다는 근거가 아니었으며, 브라우저에서는 기존 앱이 정상 조회됐다.
+- 같은 Access 앱에 seoyeon-zip.seoyeon-archive.workers.dev/admin을 추가 저장했고 기존 Worker 전체 대상은 유지했다. AUD와 운영자 정책 변경 없음.
+- PUBLIC_FEED_ENABLED=true 설정에 대해 전체 96개 테스트와 Wrangler dry-run 통과. 이 시점은 외부 공개 전이며 운영 Access 대상 전환 및 익명/운영자 검증 결과는 후속 기록한다.
