@@ -88,7 +88,7 @@ test('secondary sources require names and recognize Korean COSMO labels',()=>{
 
 test('secondary configuration never grants nameless direct-post exception',async()=>{
  const {sources}=await import('../src/sources.mjs');
- for(const handle of ['sogeumdwarf','hamhamm806','S2O806'])assert.equal(sources.find(s=>s.handle===handle).verifiedDirect,false);
+ for(const handle of ['sogeumdwarf','hamhamm806','S2O806','myeongsim_'])assert.equal(sources.find(s=>s.handle===handle).verifiedDirect,false);
 });
 
 test('duplicate IDs do not skip validation of later occurrences',()=>{

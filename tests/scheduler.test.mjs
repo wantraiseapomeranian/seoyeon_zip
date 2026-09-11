@@ -61,12 +61,12 @@ test('stop during fetch rejects commit; no second provider call on stale executi
   assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'stale');
   assert.equal(fetch.mock.callCount(),1);assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM posts').get().n,0);
 });
-test('fifteen due sources each get one turn; matching-zero pages still progress',async t=>{
+test('sixteen due sources each get one turn; matching-zero pages still progress',async t=>{
   const {DB,sqlite,enable}=testDatabase();t.after(()=>sqlite.close());enable();sqlite.exec('UPDATE collection_state SET enabled=1');
   t.mock.method(console,'log',()=>{});
   const seen=[];t.mock.method(globalThis,'fetch',async url=>{seen.push(new URL(url).pathname);return Response.json({code:200,results:[],cursor:{bottom:'next'}});});
-  for(let i=0;i<15;i++) assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'stored');
-  assert.equal(new Set(seen).size,15);assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'idle');
+  for(let i=0;i<16;i++) assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'stored');
+  assert.equal(new Set(seen).size,16);assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'idle');
 });
 
 test('concurrent invocations cannot collect the same leased source twice',async t=>{
