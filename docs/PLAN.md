@@ -205,3 +205,6 @@ WEV86_ 응답의 동일 게시물 반복으로 media 복합키 충돌이 나고,
 
 ## 공개 피드 시안 흔적 정리 — 2026-09-11
 탭 제목을 서연모음.zip으로 바꾸고 기본 표시 주소를 /로 정리한다. 시안용 layout/mood/icons/background/compare 옵션과 비교 선택 UI를 제거하고 확정된 zine/phosphor/mist 디자인을 고정한다. 실제 date/sort/media/kind/source 조건과 해시 링크는 유지하며 기존 /feed 링크도 읽은 뒤 주소를 정리한다.
+
+## 로그인 아이콘 통일 — 2026-09-11
+로그인 텍스트 링크를 기존 상단 icon-button 스타일의 진입 화살표 SVG로 변경한다. /admin 링크·역할에 따른 숨김은 유지하며 관리자 로그인 툴팁·aria-label을 제공한다.
