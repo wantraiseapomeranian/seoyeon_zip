@@ -1,3 +1,5 @@
+import {requireActor,auditFailure} from './review-audit.mjs';
+import {decideInstagram} from './review-mutations.mjs';
 import {normalize,importInstagram} from './instagram-import.mjs';
 export {normalize};
 import {reviewFilters} from './review-filters.mjs';
@@ -12,7 +14,7 @@ async function body(request) {
   const bytes=new Uint8Array(size);let offset=0;for(const c of chunks){bytes.set(c,offset);offset+=c.length;}
   return JSON.parse(new TextDecoder().decode(bytes));
 }
-export async function handleInstagramReview(request,env) {
+export async function handleInstagramReview(request,env,context) {
   const url=new URL(request.url),path=url.pathname.slice('/api/admin/instagram'.length);
   if(request.method==='GET'&&path==='') {
     const status=url.searchParams.get('status')??'pending';
@@ -40,9 +42,6 @@ export async function handleInstagramReview(request,env) {
   }
   const match=path.match(/^\/([A-Za-z0-9_-]{5,64})$/);
   if(!match)return reply({error:'not_found'},404);
-  if(!input||!statuses.includes(input.status)||!Number.isSafeInteger(input.revision)||input.revision<0)return reply({error:'invalid_decision'},400);
-  const result=await env.DB.prepare('UPDATE instagram_review SET status=?,revision=revision+1,reviewed_at=? WHERE code=? AND revision=?').bind(input.status,new Date().toISOString(),match[1],input.revision).run();
-  if(result.meta.changes===1)return reply({saved:true});
-  const exists=await env.DB.prepare('SELECT code FROM instagram_review WHERE code=?').bind(match[1]).first();
-  return reply({error:exists?'review_conflict':'not_found'},exists?409:404);
+  try{return reply(await decideInstagram(env.DB,match[1],input,requireActor(context)));}
+  catch(error){return auditFailure(error);}
 }

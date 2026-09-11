@@ -1,6 +1,6 @@
 # 검토 결정 감사 로그 및 검토 내역 구현 계획
 
-> **For agentic workers:** 구현 승인 이후 `executing-plans` 스킬로 아래 작업을 순서대로 실행한다. 지금은 계획 검토 단계이며 코드·DB·배포 변경은 승인되지 않았다.
+> **For agentic workers:** 구현 승인 이후 `executing-plans` 스킬로 아래 작업을 순서대로 실행한다. 사용자가 계획서 커밋과 구현 착수를 승인했다 (2026-09-11).
 
 **Goal:** 모든 수동 콘텐츠 검토 결정의 변경 전후와 근거를 덮어쓰지 않고 기록하고, 관리자 검토함에서 조회한다.
 
@@ -10,7 +10,7 @@
 
 **Spec:** 이 문서의 ‘요구사항과 저장 계약’이 이번 기능의 설계 기준이다. 사용자와 합의한 현재 상태/append-only 로그 분리, 인증된 검토자, 선택식 이유, 임의 과거 복원 금지를 구체화한다.
 
-**상태:** 사용자 검토용 초안. 구현 착수·마이그레이션·푸시·배포는 하지 않는다.
+**상태:** 구현 및 로컬 검증 완료. 호환 스키마 적용과 자동 배포 검증 진행 중.
 
 ## 1. 현재 확인한 구조
 
@@ -207,11 +207,11 @@ Files: `src/access.mjs`, `src/worker.mjs`, 신규 `src/review-audit.mjs`, `migra
 
 Interfaces: `authorizeOwnerContext(request,env)`, `auditRequest(input,actor)` → 정규화 요청/서명, `findAuditReplay(DB,request)` → 기존 이벤트 또는 null, `auditInsert(DB,event)` → batch에 넣을 prepared statement.
 
-- [ ] 인증된 actor 전달, 클라이언트 사칭 거부, 감사 테이블 UPDATE/DELETE 차단 테스트를 먼저 작성한다.
-- [ ] `node --test tests/access.test.mjs tests/review-audit.test.mjs`로 새 기능 부재에 따른 실패를 확인한다.
-- [ ] 스키마 및 위 인터페이스 구현. 요청 이유·메모·UUID 및 JSON 크기 제한을 검증한다.
-- [ ] 동일 ID 동일 요청은 동일 이벤트, 다른 요청은409인 사례를 통과시킨다.
-- [ ] 비공개 API 기존 인증 테스트를 유지하고 파일 단위 diff 검토 후 커밋한다. 배포는 마지막 단계까지 하지 않는다.
+- [x] 인증된 actor 전달, 클라이언트 사칭 거부, 감사 테이블 UPDATE/DELETE 차단 테스트를 먼저 작성한다.
+- [x] `node --test tests/access.test.mjs tests/review-audit.test.mjs`로 새 기능 부재에 따른 실패를 확인한다.
+- [x] 스키마 및 위 인터페이스 구현. 요청 이유·메모·UUID 및 JSON 크기 제한을 검증한다.
+- [x] 동일 ID 동일 요청은 동일 이벤트, 다른 요청은409인 사례를 통과시킨다.
+- [x] 비공개 API 기존 인증 테스트를 유지하고 파일 단위 diff 검토 후 커밋한다. 배포는 마지막 단계까지 하지 않는다.
 
 ### 작업 2 — X/Instagram 게시물 결정의 원자적 기록
 
@@ -219,11 +219,11 @@ Files: `src/x-review.mjs`, `src/instagram-review.mjs`, `src/worker.mjs`, `tests/
 
 Interfaces: 기존 요청 필드에 `{requestId,reasonCode,note?}` 추가, 서버 인자로 actor context 전달. 반환 `{saved:true,changed:boolean,auditId?:string}`.
 
-- [ ] X 최초 결정/숨김→표시→숨김3건, Instagram4상태 전환, 비교 후보 숨김의 실제 target_id를 검사한다.
-- [ ] 감사 INSERT 실패를 유발했을 때 상태와 revision이 그대로인 테스트를 작성한다.
-- [ ] 경쟁 요청은 한 개만 성공하며 실패한 요청은 로그0건인지 검증한다.
-- [ ] 변경 없는 결정은 로그0건, 인증 시각/사용자는 서버 값인지 확인한다.
-- [ ] 상태 변경과 감사 저장을 동일 guarded batch에 넣고 관련 테스트를 통과시킨다.
+- [x] X 최초 결정/숨김→표시→숨김3건, Instagram4상태 전환, 비교 후보 숨김의 실제 target_id를 검사한다.
+- [x] 감사 INSERT 실패를 유발했을 때 상태와 revision이 그대로인 테스트를 작성한다.
+- [x] 경쟁 요청은 한 개만 성공하며 실패한 요청은 로그0건인지 검증한다.
+- [x] 변경 없는 결정은 로그0건, 인증 시각/사용자는 서버 값인지 확인한다.
+- [x] 상태 변경과 감사 저장을 동일 guarded batch에 넣고 관련 테스트를 통과시킨다.
 
 테스트의 핵심 assertion 형태:
 
@@ -241,11 +241,11 @@ assert.equal(sqlite.prepare('SELECT count(*) AS n FROM review_audit_log').get().
 
 Files: `src/x-maintenance.mjs`, `src/x-review.mjs`, `tests/x-quality.test.mjs`, `tests/review-audit.test.mjs`.
 
-- [ ] 두 기존 그룹을 합치는 사례에서 전체 구성원의 전후 상태가 로그에 있는지 검증한다.
-- [ ] ‘다른 사진’ 중복 클릭, 묶음 해제, hash와 groupRevision 동시 변경 충돌을 검사한다.
-- [ ] 신규 후보 생성 근거와 legacy 후보의 unknown 처리가 서로 구분되는지 검증한다.
-- [ ] 기존 파일 동일성 비교와 dHash ≤4/종횡비 <0.02 판정은 바꾸지 않고 근거 저장만 추가한다.
-- [ ] 로그 실패 시 confirmed_hash·differences·groupRevision까지 모두 롤백되는지 확인한다.
+- [x] 두 기존 그룹을 합치는 사례에서 전체 구성원의 전후 상태가 로그에 있는지 검증한다.
+- [x] ‘다른 사진’ 중복 클릭, 묶음 해제, hash와 groupRevision 동시 변경 충돌을 검사한다.
+- [x] 신규 후보 생성 근거와 legacy 후보의 unknown 처리가 서로 구분되는지 검증한다.
+- [x] 기존 파일 동일성 비교와 dHash ≤4/종횡비 <0.02 판정은 바꾸지 않고 근거 저장만 추가한다.
+- [x] 로그 실패 시 confirmed_hash·differences·groupRevision까지 모두 롤백되는지 확인한다.
 
 ### 작업 4 — 관리자 기록 조회 API
 
@@ -253,20 +253,20 @@ Files: 신규 `src/review-audit-api.mjs`, `src/worker.mjs`, `tests/access.test.m
 
 Interface: `handleReviewAudit(request,env,context)` → 목록/상세 Response. 쓰기 route는 만들지 않는다.
 
-- [ ] 익명401/위조403/소유자200, 다른 정적 alias 접근 차단을 검사한다.
-- [ ] 같은 시각의 여러 이벤트도 페이지 이동 시 중복/누락이 없는지 검사한다.
-- [ ] 한국시간 날짜 경계, 플랫폼·결정 조합, 잘못된 cursor400, 없는 ID404를 검사한다.
-- [ ] 목록 응답은 요약만, 상세만 metadata 전체를 반환하도록 구현한다.
+- [x] 익명401/위조403/소유자200, 다른 정적 alias 접근 차단을 검사한다.
+- [x] 같은 시각의 여러 이벤트도 페이지 이동 시 중복/누락이 없는지 검사한다.
+- [x] 한국시간 날짜 경계, 플랫폼·결정 조합, 잘못된 cursor400, 없는 ID404를 검사한다.
+- [x] 목록 응답은 요약만, 상세만 metadata 전체를 반환하도록 구현한다.
 
 ### 작업 5 — 이유 입력과 검토 내역 화면
 
 Files: `validation/x-review.html`, `validation/x-review.js`, `validation/instagram.html`, `validation/instagram.js`, 신규 `validation/review-decision.js`, `validation/review-history.html`, `validation/review-history.js`, `validation/review-history.css`, 신규 `scripts/check-review-audit.mjs`.
 
-- [ ] 기존 HTML/CSS 패턴을 확인하고 공통 이유 선택창·각 검토함의 기록 링크를 추가한다.
-- [ ] 비교 동작은 기본 이유 선택, 다른 결정은 적절한 선택 목록과 optional note를 제공한다.
-- [ ] 브라우저 모의 API로 성공/취소/중복클릭/네트워크 재시도/409/503 흐름을 확인한다.
-- [ ] 목록 필터·더 보기·상세·Esc/포커스 복귀·이미지 실패 대체·긴 메모/XSS 문자열을 검사한다.
-- [ ] 390px/1280px에서 읽기 쉬움과 가로 넘침을 확인한다. 확인용 이벤트를 운영 DB에 임의 생성하지 않는다.
+- [x] 기존 HTML/CSS 패턴을 확인하고 공통 이유 선택창·각 검토함의 기록 링크를 추가한다.
+- [x] 비교 동작은 기본 이유 선택, 다른 결정은 적절한 선택 목록과 optional note를 제공한다.
+- [x] 브라우저 모의 API로 성공/취소/중복클릭/네트워크 재시도/409/503 흐름을 확인한다.
+- [x] 목록 필터·더 보기·상세·Esc/포커스 복귀·이미지 실패 대체·긴 메모/XSS 문자열을 검사한다.
+- [x] 390px/1280px에서 읽기 쉬움과 가로 넘침을 확인한다. 확인용 이벤트를 운영 DB에 임의 생성하지 않는다.
 
 ## 8. 배포 계약
 
@@ -293,4 +293,13 @@ Files: `validation/x-review.html`, `validation/x-review.js`, `validation/instagr
 
 ## 10. 사용자 검토 요약
 
-이번 제안은 ‘현재 상태 유지 + 판정 이력 별도 축적 + 관리자 검토 내역’이다. 이유 선택 단계가 추가되지만 메모는 선택이다. 내역은 새 기능을 통한 결정부터 남으며 과거 결정·사진 원본은 복원하지 않는다. 통계와 되돌리기는 제외한다. 구현 여부는 이 계획 검토 후 결정한다.
+이번 제안은 ‘현재 상태 유지 + 판정 이력 별도 축적 + 관리자 검토 내역’이다. 이유 선택 단계가 추가되지만 메모는 선택이다. 내역은 새 기능을 통한 결정부터 남으며 과거 결정·사진 원본은 복원하지 않는다. 통계와 되돌리기는 제외한다. 사용자 승인에 따라 구현한다.
+
+## 실행 기록 — 2026-09-11
+
+- 계획 커밋: `3c33250`. `codex/review-audit` 작업 공간에서 구현.
+- 공통 원자적 변경 로직을 `src/review-mutations.mjs`에 분리했다. 기존 공개 API 허용 목록은 유지한다.
+- 원래 계획의 작업별 커밋 대신, 서버와 UI의 요청 계약을 함께 배포할 수 있도록 구현을 하나의 기능 커밋으로 묶는다.
+- 독립 코드 검토에서 지적한 동시 요청 replay 경로와 사진 최초 조회/저장 스냅샷 사이 경쟁을 수정하고 회귀 검사를 추가했다.
+- 후보 근거 없는 기존 사진은 `legacy_unavailable`로 기록한다. 새 후보만 생성 당시 근거를 저장한다.
+- 실제 콘텐츠를 검증 목적으로 변경하지 않는다. 운영 쓰기 연결은 첫 실제 관리자 판단까지 미확인으로 남긴다.

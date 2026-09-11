@@ -2,11 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { testDatabase } from './helpers/d1.mjs';
-import worker, { handleApi } from '../src/worker.mjs';
+import worker, { handleApi as rawHandleApi } from '../src/worker.mjs';
 
+const handleApi=(request,env)=>rawHandleApi(request,env,{actor:{id:'owner@example.test'}});
 const base='https://example.test';
 const record={shortCode:'Example_123',caption:'윤서연 tripleS',ownerUsername:'example',timestamp:'2026-09-10T00:00:00Z',displayUrl:'https://scontent.cdninstagram.com/photo.jpg'};
-function req(path,body,headers={}) {return new Request(base+'/api/admin/instagram'+path,{method:body?'POST':'GET',headers:{origin:base,'content-type':'application/json','x-review-action':'review',...headers},...(body?{body:JSON.stringify(body)}:{})});}
+function req(path,body,headers={}) {return new Request(base+'/api/admin/instagram'+path,{method:body?'POST':'GET',headers:{origin:base,'content-type':'application/json','x-review-action':'review',...headers},...(body?{body:JSON.stringify(Array.isArray(body)?body:{...body,requestId:crypto.randomUUID(),reasonCode:({kept:'SEOYEON_CONFIRMED',excluded:'NOT_SEOYEON',held:'NEEDS_REVIEW',pending:'NEEDS_REVIEW'})[body.status]??'OTHER'})}:{})});}
 test('review endpoints reject unauthenticated callers before touching data',async()=>{
   const env={TEAM_DOMAIN:'https://test.cloudflareaccess.com',POLICY_AUD:'aud',OWNER_EMAIL:'owner@example.test'};
   for(const path of ['/admin/instagram','/api/admin/instagram','/api/admin/instagram/import']) {

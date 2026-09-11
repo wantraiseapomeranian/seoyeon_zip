@@ -16,7 +16,7 @@ const labels={pending:'미검토',kept:'표시 중',held:'보류',excluded:'제�
 const errors={review_conflict:'다른 화면에서 수정된 글이에요. 새로고침 후 다시 확인해 주세요.',invalid_import:'JSON 배열 형식과 게시물 정보를 확인해 주세요. 한 번에 100개, 2MB까지 가져올 수 있어요.'};
 async function api(path='',body){
   const response=await fetch('/api/admin/instagram'+path,{headers:body?{'Content-Type':'application/json','X-Review-Action':'review'}:{},...(body?{method:'POST',body:JSON.stringify(body)}:{})});
-  if(!response.ok){let data;try{data=await response.json();}catch{}throw new Error(errors[data?.error]??([401,403].includes(response.status)?'로그인을 확인하고 페이지를 다시 열어 주세요.':'요청을 완료하지 못했어요. 잠시 후 다시 시도해 주세요.'));}
+  if(!response.ok){let data;try{data=await response.json();}catch{}const error=new Error(errors[data?.error]??([401,403].includes(response.status)?'로그인을 확인하고 페이지를 다시 열어 주세요.':'요청을 완료하지 못했어요. 잠시 후 다시 시도해 주세요.'));error.status=response.status;error.code=data?.error;throw error;}
   return response.json();
 }
 function el(tag,text,className){const n=document.createElement(tag);if(text!=null)n.textContent=text;if(className)n.className=className;return n;}
@@ -37,7 +37,7 @@ function card(p){
   const actions=el('div',null,'review-buttons');
   for(const value of ['kept','excluded','held','pending']){const button=el('button',value==='pending'?'판단 취소':value==='kept'?'피드에 표시':labels[value]);button.setAttribute('aria-pressed',String(p.status===value));button.disabled=p.status===value;button.addEventListener('click',async()=>{
     if(busy)return;busy=true;actions.querySelectorAll('button').forEach(b=>b.disabled=true);
-    try{await api('/'+p.code,{status:value,revision:p.revision});await load();$('#message').textContent=`${labels[value]} 상태로 저장했어요.`;}catch(e){$('#message').textContent=e.message;actions.querySelectorAll('button').forEach(b=>b.disabled=b.getAttribute('aria-pressed')==='true');}finally{busy=false;}
+    try{if(await window.reviewDecision({action:value,label:button.textContent,submit:details=>api('/'+p.code,{status:value,revision:p.revision,...details})})){await load();$('#message').textContent=`${labels[value]} 상태로 저장했어요.`;}else actions.querySelectorAll('button').forEach(b=>b.disabled=b.getAttribute('aria-pressed')==='true');}catch(e){$('#message').textContent=e.message;actions.querySelectorAll('button').forEach(b=>b.disabled=b.getAttribute('aria-pressed')==='true');}finally{busy=false;}
   });actions.append(button);}body.append(actions);article.append(preview,body);return article;
 }
 let generation=0;

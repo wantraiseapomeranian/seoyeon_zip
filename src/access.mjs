@@ -35,11 +35,20 @@ function cookieToken(request) {
   return matches.length===1 && matches[0]?matches[0]:null;
 }
 
-export async function authorize(request,env,keyResolver) {
+async function authorizeStatus(request,env,keyResolver) {
   if (!configured(env)) return 503;
   const header=request.headers.get('cf-access-jwt-assertion');
   if (header!==null) return header?verifyOwnerToken(header,env,keyResolver ?? createRemoteJWKSet(new URL(`${env.TEAM_DOMAIN}/cdn-cgi/access/certs`))):401;
   const token=cookieToken(request);
   if (!token) return 401;
   return verifyOwnerToken(token,env,keyResolver ?? createRemoteJWKSet(new URL(`${env.TEAM_DOMAIN}/cdn-cgi/access/certs`)));
+}
+
+export async function authorizeOwnerContext(request,env,keyResolver) {
+  const status=await authorizeStatus(request,env,keyResolver);
+  return status===200?{status,actor:{id:env.OWNER_EMAIL.toLowerCase()}}:{status};
+}
+
+export async function authorize(request,env,keyResolver) {
+  return (await authorizeOwnerContext(request,env,keyResolver)).status;
 }

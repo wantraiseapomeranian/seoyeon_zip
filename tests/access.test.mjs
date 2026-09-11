@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import worker, { authorize } from '../src/worker.mjs';
 import { verifyOwnerToken } from '../src/access.mjs';
+import * as access from '../src/access.mjs';
 
 const accessEnv = {TEAM_DOMAIN:'https://test.cloudflareaccess.com',POLICY_AUD:'aud',OWNER_EMAIL:'owner@example.test'};
 const keys = await generateKeyPair('RS256');
@@ -19,6 +20,23 @@ function spies() {
   let assets=0,db=0;
   return {env:{...accessEnv,PUBLIC_FEED_ENABLED:'true',PUBLIC_RATE_LIMITER:{limit:async()=>({success:true})},ASSETS:{fetch:async()=>{assets++;return new Response('asset');}},DB:{prepare:()=>{db++;throw new Error('unexpected database access');}}},counts:()=>({assets,db})};
 }
+
+test('owner context is created only after token verification and canonicalizes configured email',async()=>{
+  assert.equal(typeof access.authorizeOwnerContext,'function');
+  const request=new Request('https://example.test',{headers:{'cf-access-jwt-assertion':await signedToken(),email:'attacker@example.test'}});
+  assert.deepEqual(await access.authorizeOwnerContext(request,{...accessEnv,OWNER_EMAIL:'Owner@Example.Test'},localKeyResolver),{status:200,actor:{id:'owner@example.test'}});
+  assert.deepEqual(await access.authorizeOwnerContext(new Request('https://example.test'),accessEnv,localKeyResolver),{status:401});
+  assert.deepEqual(await access.authorizeOwnerContext(new Request('https://example.test',{headers:{'cf-access-jwt-assertion':await signedToken({email:'other@example.test'})}}),accessEnv,localKeyResolver),{status:403});
+});
+
+test('audit routes and all static history aliases remain private in public mode',async()=>{
+  for(const path of ['/api/admin/review-audit','/api/admin/review-audit/event','/admin/review-history','/admin/review-history/','/review-history','/review-history.html','/review-history.js','/review-history.css','/review-decision.js']) {
+    const {env,counts}=spies();
+    assert.equal((await worker.fetch(new Request(`https://example.test${path}`),env)).status,401,path);
+    assert.equal((await worker.fetch(new Request(`https://example.test${path}`,{headers:{'cf-access-jwt-assertion':'forged'}}),env)).status,403,path);
+    assert.deepEqual(counts(),{assets:0,db:0});
+  }
+});
 
 test('all paths remain private when PUBLIC_FEED_ENABLED is absent or not exactly true',async()=>{
   for(const flag of [undefined,'TRUE','1',' true']) for(const path of ['/','/api/feed']) {
@@ -94,6 +112,21 @@ test('private mode owner can read session through the worker',async()=>{
     const response=await worker.fetch(new Request('https://example.test/api/session',{headers:{'cf-access-jwt-assertion':await signedToken()}}),{...accessEnv,PUBLIC_FEED_ENABLED:'false'});
     assert.equal(response.status,200);assert.deepEqual(await response.json(),{role:'owner'});assert.equal(response.headers.get('cache-control'),'private, no-store');
   } finally {globalThis.fetch=originalFetch;}
+});
+
+test('verified owner reaches audit reads and protected history asset alias',async t=>{
+  const {testDatabase}=await import('./helpers/d1.mjs');const {sqlite,DB}=testDatabase();
+  t.mock.method(globalThis,'fetch',async()=>Response.json({keys:[jwk]}));
+  try {
+    const headers={'cf-access-jwt-assertion':await signedToken()};let fetchedPath;
+    const env={...accessEnv,PUBLIC_FEED_ENABLED:'true',DB,ASSETS:{fetch:async request=>{fetchedPath=new URL(request.url).pathname;return new Response('history');}}};
+    const list=await worker.fetch(new Request('https://example.test/api/admin/review-audit',{headers}),env);
+    assert.equal(list.status,200);assert.deepEqual((await list.json()).items,[]);
+    for(const path of ['/admin/review-history','/admin/review-history/']) {
+      const asset=await worker.fetch(new Request('https://example.test'+path,{headers}),env);
+      assert.equal(asset.status,200);assert.equal(fetchedPath,'/review-history.html');assert.equal(asset.headers.get('cache-control'),'private, no-store');
+    }
+  }finally{sqlite.close();}
 });
 
 test('public session does not downgrade missing configuration or JWKS failure to visitor',async()=>{

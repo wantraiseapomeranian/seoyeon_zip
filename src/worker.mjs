@@ -1,7 +1,8 @@
 import {publicSource,publicPost} from './public-data.mjs';
 import {handleManagement} from './management.mjs';
 import {syncInstagram,instagramSyncStatus} from './instagram-sync.mjs';
-import { authorize } from './access.mjs';
+import { authorize,authorizeOwnerContext } from './access.mjs';
+import { handleReviewAudit } from './review-audit-api.mjs';
 import { sources } from './sources.mjs';
 import { runDueSource } from './scheduler.mjs';
 import { listSources,scheduleRetry } from './collection-state.mjs';
@@ -16,12 +17,13 @@ export { authorize } from './access.mjs';
 
 
 // Internal router. fetch enforces owner authentication except for explicit public reads.
-export async function handleApi(request,env) {
+export async function handleApi(request,env,context) {
   const url=new URL(request.url);
   if(url.pathname==='/api/export'||url.pathname==='/api/manual-posts'||(request.method==='PATCH'&&/^\/api\/sources\/[A-Za-z0-9_]{1,15}$/.test(url.pathname)))return handleManagement(request,env);
-  if(url.pathname==='/api/admin/x')return handleXReview(request,env);
+  if(url.pathname==='/api/admin/review-audit'||url.pathname.startsWith('/api/admin/review-audit/'))return handleReviewAudit(request,env,context);
+  if(url.pathname==='/api/admin/x')return handleXReview(request,env,context);
   if(url.pathname==='/api/admin/instagram/sync'&&request.method==='GET')return reply(await instagramSyncStatus(env));
-  if(url.pathname==='/api/admin/instagram'||url.pathname.startsWith('/api/admin/instagram/')) return handleInstagramReview(request,env);
+  if(url.pathname==='/api/admin/instagram'||url.pathname.startsWith('/api/admin/instagram/')) return handleInstagramReview(request,env,context);
   if(url.pathname==='/api/feed' && request.method==='GET') {
     try { const data=await readFeed(env.DB,url.searchParams);return reply({...data,posts:data.posts.map(publicPost)}); }
     catch(error) { if(error.status===400)return reply({error:'invalid_feed_query'},400);throw error; }
@@ -51,7 +53,7 @@ export default {
     const publicAssets=new Set(['/','/feed','/feed.html','/feed.css','/feed.js','/review-gallery.js','/favicon.ico','/favicon-16.png','/favicon-32.png']);
     const publicApis=new Set(['/api/feed','/api/collection-status','/api/session']);
     const publicRequest=env.PUBLIC_FEED_ENABLED==='true'&&((['GET','HEAD'].includes(request.method)&&publicAssets.has(url.pathname))||(request.method==='GET'&&publicApis.has(url.pathname)));
-    let auth;
+    let auth,context;
     if(publicRequest&&publicApis.has(url.pathname)) {
       try {
         // Cloudflare supplies this header. Do not use client-controlled forwarding headers.
@@ -68,17 +70,18 @@ export default {
       return privateReply({role:auth===200?'owner':'visitor'},200);
     }
     if(!publicRequest) {
-      auth=await authorize(request,env);
+      context=await authorizeOwnerContext(request,env);auth=context.status;
       if(auth!==200)return reply({error:auth===503?'private_access_not_configured':'access_denied'},auth);
       if(url.pathname==='/api/session'&&request.method==='GET')return privateReply({role:'owner'},200);
     }
     try {
-      if(url.pathname.startsWith('/api/')) return await handleApi(request,env);
+      if(url.pathname.startsWith('/api/')) return await handleApi(request,env,context);
       if(request.method!=='GET' && request.method!=='HEAD') return reply({error:'method_not_allowed'},405);
       if(!publicRequest&&(url.pathname==='/admin'||url.pathname==='/admin/'))return new Response(null,{status:302,headers:{Location:new URL('/',url),'Cache-Control':'private, no-store'}});
       const assetUrl=new URL(request.url);if(assetUrl.pathname==='/')assetUrl.pathname='/feed.html';
       if(assetUrl.pathname==='/admin/instagram'||assetUrl.pathname==='/admin/instagram/')assetUrl.pathname='/instagram.html';
       if(assetUrl.pathname==='/admin/x'||assetUrl.pathname==='/admin/x/')assetUrl.pathname='/x-review';
+      if(assetUrl.pathname==='/admin/review-history'||assetUrl.pathname==='/admin/review-history/')assetUrl.pathname='/review-history.html';
       const asset=await env.ASSETS.fetch(new Request(assetUrl,request));const headers=new Headers(asset.headers);
       headers.set('Cache-Control','private, no-store');
       headers.set('Content-Security-Policy',"default-src 'self'; img-src https://pbs.twimg.com https://*.cdninstagram.com https://*.fbcdn.net 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");

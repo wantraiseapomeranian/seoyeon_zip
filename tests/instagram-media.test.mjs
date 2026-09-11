@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {testDatabase} from './helpers/d1.mjs';
-import {handleInstagramReview} from '../src/instagram-review.mjs';
+import {handleInstagramReview as rawHandleInstagramReview} from '../src/instagram-review.mjs';
 import {readFeed} from '../src/feed.mjs';
+const handleInstagramReview=(request,env)=>rawHandleInstagramReview(request,env,{actor:{id:'owner@example.test'}});
 const image='https://scontent.cdninstagram.com/reel.jpg';
-const request=(path,body)=>new Request('https://example.test/api/admin/instagram'+path,{method:body?'POST':'GET',headers:{origin:'https://example.test','content-type':'application/json','x-review-action':'review'},...(body?{body:JSON.stringify(body)}:{})});
+const request=(path,body)=>new Request('https://example.test/api/admin/instagram'+path,{method:body?'POST':'GET',headers:{origin:'https://example.test','content-type':'application/json','x-review-action':'review'},...(body?{body:JSON.stringify(Array.isArray(body)?body:{...body,requestId:crypto.randomUUID(),reasonCode:({kept:'SEOYEON_CONFIRMED',excluded:'NOT_SEOYEON',held:'NEEDS_REVIEW',pending:'NEEDS_REVIEW'})[body.status]??'OTHER'})}:{})});
 test('reels and mixed media survive reimport and only approved items enter video feed',async()=>{
  const {sqlite,DB}=testDatabase();try{
  const reel={shortCode:'Reel_123',type:'Video',productType:'clips',displayUrl:image,timestamp:'2026-08-31T15:00:00Z',ownerUsername:'official'};

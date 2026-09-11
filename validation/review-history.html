@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>검토 내역 · 서연모음.zip</title><link rel="stylesheet" href="/feed.css"><link rel="stylesheet" href="/instagram.css"><link rel="stylesheet" href="/review-history.css"><script src="/review-decision.js" defer></script><script src="/review-history.js" defer></script><link rel="icon" href="/favicon.ico"></head>
+<body data-background="mist"><a class="skip" href="#main">검토 내역으로 건너뛰기</a><div class="shell">
+<header><a class="wordmark" href="/">서연모음<span>.zip</span></a><nav class="actions history-nav" aria-label="검토함 이동"><a href="/admin/x">X 검토함</a><a href="/admin/instagram">인스타 검토함</a></nav></header>
+<main id="main"><section class="review-heading"><h1>검토 내역</h1><button id="history-refresh">새로고침</button></section>
+<p id="history-start" class="history-intro">기록 시작 시각을 확인하고 있어요.</p>
+<form id="history-filters" class="review-filters history-filters" aria-label="검토 내역 필터">
+<label>플랫폼<select id="history-platform" name="platform"><option value="">전체</option><option value="X">X</option><option value="INSTAGRAM">Instagram</option></select></label>
+<label>결정<select id="history-action" name="action"><option value="">전체 결정</option></select></label>
+<label>시작일 (한국시간)<input id="history-from" name="from" type="date"></label><label>종료일 (한국시간)<input id="history-to" name="to" type="date"></label>
+<button type="submit">조회</button><button type="reset">초기화</button>
+</form>
+<p id="history-error" class="history-error" role="alert"></p><p id="history-status" class="history-status" role="status" aria-live="polite"></p>
+<ol id="history-list" class="history-list" aria-label="저장된 검토 결정"></ol><button id="history-more" class="history-more" hidden>더 보기</button>
+</main><footer><a href="/">피드로 돌아가기</a><span>소유자 전용</span></footer></div>
+<dialog id="history-detail" class="history-detail" aria-labelledby="history-detail-title"><div class="dialog-heading"><h2 id="history-detail-title">검토 결정 상세</h2><button id="history-close" type="button">닫기</button></div><div id="history-detail-content"></div></dialog>
+</body></html>

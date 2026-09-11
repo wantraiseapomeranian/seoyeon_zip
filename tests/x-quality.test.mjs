@@ -4,10 +4,12 @@ import {testDatabase} from './helpers/d1.mjs';
 import {readFeed} from '../src/feed.mjs';
 import {reviewReason} from '../src/x-policy.mjs';
 import {checkOriginal,maintainX} from '../src/x-maintenance.mjs';
-import {handleXReview} from '../src/x-review.mjs';
+import {handleXReview as rawHandleXReview} from '../src/x-review.mjs';
+const handleXReview=(request,env)=>rawHandleXReview(request,env,{actor:{id:'owner@example.test'}});
+const auditFields=body=>({...body,requestId:crypto.randomUUID(),reasonCode:({merge:'DUPLICATE_IMAGE',different:'DISTINCT_IMAGE',unmerge:'GROUP_CORRECTION'})[body.action]??({hidden:'NOT_SEOYEON',visible:'SEOYEON_CONFIRMED',auto:'RETURN_TO_AUTO'})[body.decision]});
 test('origin guard and revision prevent unauthorized or stale review writes',async()=>{
  const {sqlite,DB}=testDatabase();sqlite.prepare('INSERT INTO posts VALUES(?,?)').run('x:1',JSON.stringify({id:'x:1',caption:'서연',publishedAt:'2026-09-01',media:[]}));
- const request=(revision,origin='https://test.local')=>new Request('https://test.local/api/admin/x',{method:'POST',headers:{origin,'content-type':'application/json','x-review-action':'review'},body:JSON.stringify({id:'x:1',decision:'hidden',revision})});
+ const request=(revision,origin='https://test.local')=>new Request('https://test.local/api/admin/x',{method:'POST',headers:{origin,'content-type':'application/json','x-review-action':'review'},body:JSON.stringify(auditFields({id:'x:1',decision:'hidden',revision}))});
  assert.equal((await handleXReview(request(0,'https://evil.test'),{DB})).status,403);
  assert.equal((await handleXReview(request(0),{DB})).status,200);
  assert.equal((await handleXReview(request(0),{DB})).status,409);sqlite.close();
@@ -38,8 +40,8 @@ test('hidden posts and duplicate photos do not leak into feed; unique second pho
 });
 
 test('stale merge and unmerge roll back without changing newer groups',async()=>{
- const {sqlite,DB}=testDatabase();sqlite.exec("INSERT INTO x_fingerprints(url,hash) VALUES('a','a'),('b','b'),('c','c')");
- const send=body=>handleXReview(new Request('https://test.local/api/admin/x',{method:'POST',headers:{origin:'https://test.local','content-type':'application/json','x-review-action':'review'},body:JSON.stringify(body)}),{DB});
+ const {sqlite,DB}=testDatabase();sqlite.exec("INSERT INTO x_fingerprints(url,hash) VALUES('a','a'),('b','b'),('c','c')");for(const [i,url] of ['a','b','c'].entries())sqlite.prepare('INSERT INTO posts VALUES(?,?)').run('x:'+(i+1),JSON.stringify({id:'x:'+(i+1),media:[{kind:'image',previewUrl:url}]}));
+ const send=body=>handleXReview(new Request('https://test.local/api/admin/x',{method:'POST',headers:{origin:'https://test.local','content-type':'application/json','x-review-action':'review'},body:JSON.stringify(auditFields(body))}),{DB});
  assert.equal((await send({action:'merge',left:'a',right:'b',groupRevision:0})).status,200);
  const before=sqlite.prepare('SELECT * FROM x_fingerprints ORDER BY url').all();
  assert.equal((await send({action:'unmerge',image:'a',groupRevision:0})).status,409);
@@ -71,7 +73,7 @@ test('different-photo decisions remove both directions and stale group writes co
  const {sqlite,DB}=testDatabase();for(const [id,image] of [['1','a'],['2','b']])sqlite.prepare('INSERT INTO posts VALUES(?,?)').run('x:'+id,JSON.stringify({id:'x:'+id,authorHandle:'author'+id,publishedAt:'2026-09-01',canonicalUrl:'https://x.com/author'+id+'/status/'+id,media:[{kind:'image',previewUrl:image}]}));
  sqlite.exec("INSERT INTO x_fingerprints(url,hash,near_url) VALUES('a','ha','b'),('b','hb',NULL)");
  const get=async()=> (await handleXReview(new Request('https://test.local/api/admin/x?status=all'),{DB})).json();let data=await get();assert.equal(data.items[0].comparisons[0].author,'author2');assert.equal(data.items[0].comparisons[0].visible,true);
- const send=body=>handleXReview(new Request('https://test.local/api/admin/x',{method:'POST',headers:{origin:'https://test.local','content-type':'application/json','x-review-action':'review'},body:JSON.stringify(body)}),{DB});
+ const send=body=>handleXReview(new Request('https://test.local/api/admin/x',{method:'POST',headers:{origin:'https://test.local','content-type':'application/json','x-review-action':'review'},body:JSON.stringify(auditFields(body))}),{DB});
  assert.equal((await send({action:'different',left:'a',right:'b',groupRevision:0})).status,200);data=await get();assert.ok(data.items.every(p=>p.comparisons.length===0));assert.equal(data.counts.pending,0);
  assert.equal((await send({action:'merge',left:'a',right:'b',groupRevision:0})).status,409);sqlite.close();
 });
@@ -81,7 +83,7 @@ test('candidate hide uses its revision and leaves the current post available for
  for(const [id,image] of [['1','a'],['2','b']])sqlite.prepare('INSERT INTO posts VALUES(?,?)').run('x:'+id,JSON.stringify({id:'x:'+id,authorHandle:'author'+id,publishedAt:'2026-09-01',media:[{kind:'image',previewUrl:image}]}));
  sqlite.exec("INSERT INTO x_fingerprints(url,hash,near_url) VALUES('a','ha','b'),('b','hb',NULL); INSERT INTO x_quality(post_id,decision,revision) VALUES('x:2','visible',3)");
  const get=async()=> (await handleXReview(new Request('https://test.local/api/admin/x?status=all&author=author1'),{DB})).json();
- const send=body=>handleXReview(new Request('https://test.local/api/admin/x',{method:'POST',headers:{origin:'https://test.local','content-type':'application/json','x-review-action':'review'},body:JSON.stringify(body)}),{DB});
+ const send=body=>handleXReview(new Request('https://test.local/api/admin/x',{method:'POST',headers:{origin:'https://test.local','content-type':'application/json','x-review-action':'review'},body:JSON.stringify(auditFields(body))}),{DB});
  const current=(await get()).items[0],candidate=current.comparisons[0];assert.equal(candidate.postId,'x:2');assert.equal(candidate.revision,3);assert.equal(candidate.decision,'visible');
  const hide={id:candidate.postId,revision:candidate.revision,decision:'hidden'};assert.equal((await send(hide)).status,200);assert.equal((await send(hide)).status,409);
  assert.equal(sqlite.prepare("SELECT decision FROM x_quality WHERE post_id='x:1'").get(),undefined);

@@ -1,6 +1,8 @@
+import {requireActor,auditFailure} from './review-audit.mjs';
+import {decideXPost,decidePhotos} from './review-mutations.mjs';
 import {reviewFilters} from './review-filters.mjs';
 const reply=(data,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'private, no-store'}});
-export async function handleXReview(request,env){
+export async function handleXReview(request,env,context){
  const url=new URL(request.url),DB=env.DB;
  if(request.method==='GET'){
   const status=url.searchParams.get('status')??'pending';if(!['pending','visible','hidden','all'].includes(status))return reply({error:'invalid_query'},400);
@@ -25,30 +27,10 @@ export async function handleXReview(request,env){
  if(request.headers.get('origin')!==url.origin||request.headers.get('x-review-action')!=='review')return reply({error:'invalid_origin'},403);
  if(!request.headers.get('content-type')?.startsWith('application/json'))return reply({error:'invalid_input'},400);
  const reader=request.body?.getReader();if(!reader)return reply({error:'invalid_input'},400);
- let text='',size=0;const decoder=new TextDecoder();while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>2048){await reader.cancel();return reply({error:'invalid_input'},400);}text+=decoder.decode(value,{stream:true});}text+=decoder.decode();
+ let text='',size=0;const decoder=new TextDecoder();while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>16384){await reader.cancel();return reply({error:'invalid_input'},400);}text+=decoder.decode(value,{stream:true});}text+=decoder.decode();
  let value;try{value=JSON.parse(text);}catch{return reply({error:'invalid_input'},400);}
- if(['merge','unmerge','different'].includes(value?.action)){
-  if(!Number.isSafeInteger(value.groupRevision)||value.groupRevision<0)return reply({error:'invalid_input'},400);
-  let change;
-  if(value.action==='merge'||value.action==='different'){
-   if(typeof value.left!=='string'||typeof value.right!=='string'||value.left===value.right)return reply({error:'invalid_input'},400);
-   const found=await DB.prepare('SELECT COUNT(*) AS n FROM x_fingerprints WHERE url IN (?,?) AND hash IS NOT NULL').bind(value.left,value.right).first();
-   if(found.n!==2)return reply({error:'invalid_input'},400);
-   if(value.action==='different'){const [left,right]=[value.left,value.right].sort();change=DB.prepare('INSERT OR IGNORE INTO x_photo_differences(left_url,right_url) VALUES(?,?)').bind(left,right);}else change=DB.prepare('UPDATE x_fingerprints SET confirmed_hash=? WHERE COALESCE(confirmed_hash,hash) IN (SELECT COALESCE(confirmed_hash,hash) FROM x_fingerprints WHERE url IN (?,?))').bind('review:'+crypto.randomUUID(),value.left,value.right);
-  }else{
-   if(typeof value.image!=='string')return reply({error:'invalid_input'},400);
-   change=DB.prepare('UPDATE x_fingerprints SET confirmed_hash=NULL WHERE url=?').bind(value.image);
-  }
-  const token=crypto.randomUUID();
-  try{await DB.batch([
-   DB.prepare('INSERT INTO commit_guard(token,ok) SELECT ?,CASE WHEN revision=? THEN 1 ELSE 0 END FROM x_group_control WHERE id=1').bind(token,value.groupRevision),
-   change,DB.prepare('UPDATE x_group_control SET revision=revision+1 WHERE id=1'),DB.prepare('DELETE FROM commit_guard WHERE token=?').bind(token)
-  ]);}catch(e){if(/CHECK constraint failed/i.test(String(e)))return reply({error:'review_conflict'},409);throw e;}
-  return reply({saved:true});
- }
- if(!value||!/^x:\d{1,30}$/.test(value.id)||!['auto','visible','hidden'].includes(value.decision)||!Number.isSafeInteger(value.revision)||value.revision<0)return reply({error:'invalid_input'},400);
- if(!await DB.prepare('SELECT id FROM posts WHERE id=?').bind(value.id).first())return reply({error:'not_found'},404);
- await DB.prepare('INSERT OR IGNORE INTO x_quality(post_id) VALUES(?)').bind(value.id).run();
- const r=await DB.prepare('UPDATE x_quality SET decision=?,revision=revision+1 WHERE post_id=? AND revision=?').bind(value.decision,value.id,value.revision).run();
- return r.meta.changes===1?reply({saved:true}):reply({error:'review_conflict'},409);
+ try {
+  const actor=requireActor(context);
+  return reply(await (['merge','unmerge','different'].includes(value?.action)?decidePhotos(DB,value,actor):decideXPost(DB,value,actor)));
+ }catch(error){return auditFailure(error);}
 }

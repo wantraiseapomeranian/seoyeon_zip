@@ -804,3 +804,14 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 안내 버튼의 SVG 절대 하단 배치를 제거하고 버튼 전체에 로고 크기별 하단 여백을 적용했다. SVG는 20px/모바일16px, 클릭 영역44px 중앙 정렬을 유지한다.
 - 수정 CSS를 적용한 공개 피드 1280px/390px 캡처를 확인했다. 로고와 안내 아이콘 하단 정렬 및 가로 넘침 없음.
 - node scripts/check-ui-audit.mjs 통과. 최초 공개 캡처는 네트워크 권한 제한으로 실패했으며 허용된 재실행에서 완료했다.
+
+## 검토 결정 감사 로그 — 2026-09-11
+- 계획 커밋 3c33250 후 codex/review-audit에서 구현. 현재 판정 상태와 append-only 이력을 분리하고 서버 인증 actor·UTC 시각을 저장한다.
+- npm test: 139/139 통과. 실패 주입 롤백, X/Instagram 상태 변경, 그룹 전체 스냅샷, concurrent replay, revision/fingerprint 경합, 1,000자 한글 메모, 256KiB 제한, 후보 생성 근거, UPDATE/DELETE 차단, KST 날짜·키셋 페이지 검사 포함.
+- node scripts/check-review-audit.mjs 통과: 이유 선택·취소·중복 클릭·동일 요청 재시도·409/503·필터·상세·XSS·이미지 실패·390/1280px.
+- node scripts/check-photo-comparison.mjs / check-instagram.mjs 통과: 실제 로컬 SQLite/router에서 후보 숨김·표시·묶기·다른 사진 및 Instagram 승인/보류와 감사 이벤트 연결 확인.
+- node scripts/check-public-admin.mjs 통과: 방문자/소유자 분리 및 세션 실패·만료 회귀.
+- npx wrangler deploy --dry-run 통과. 약197.6KiB(압축48.8KiB) Worker 번들.
+- 독립 Critical/Major 코드 검토에서 동시 replay와 selected/group snapshot 경쟁을 수정하고 회귀 테스트 추가 후 APPROVED. UI 요청·재시도·텍스트/링크 처리 검토도 APPROVED.
+- 운영 DB는 0001~0011 및0018 이력 확인. 0012~0017은 이번 작업에서 재실행하지 않는다. 신규0019만 문장별로 적용하고 스키마 확인 후 이력 등록.
+- 운영 마이그레이션/배포 확인은 진행 중. 실제 콘텐츠 판정의 운영 쓰기 검증은 첫 실제 관리자 판단 전까지 미확인. 테스트용 과거 이벤트나 콘텐츠 변경은 생성하지 않는다.
