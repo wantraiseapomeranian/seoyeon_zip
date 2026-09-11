@@ -10,3 +10,7 @@
 /* Move the whole refresh target, keeping the 22px SVG centred in its 44px hit area. */
 .review-toolbar>#refresh,.review-heading>#history-refresh{flex:0 0 44px;margin-right:-13.841667px;outline-offset:-3px}
 @media(max-width:600px){.review-toolbar>#refresh,.review-heading>#history-refresh{margin-right:-12px}}
+
+/* All review headers end with the same history icon and share its optical edge. */
+header .review-nav{--action-outset:12.772416px}.review-nav a:focus-visible{outline-offset:-3px}
+@media(max-width:600px){header .review-nav{--edge-room:12px}}
