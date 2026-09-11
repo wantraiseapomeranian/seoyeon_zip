@@ -37,6 +37,32 @@ try{
  assert.equal(await page.locator('.review-entry').isVisible(),false);assert.equal(await page.locator('#tools-tab').isVisible(),false);assert.equal(await page.locator('#manual-form').isVisible(),false);
  releaseSession();await navigation;await page.locator('.review-entry').waitFor({state:'visible'});
 
+ console.log('CHECK: site information');await goto(page,'visitor');
+ for(const width of [320,390,1280]){
+  await page.setViewportSize({width,height:850});await page.locator('#open-about').click();
+  await page.getByRole('dialog',{name:'사이트 안내',exact:true}).waitFor();
+  assert.equal(await page.locator('#contact-address').textContent(),'wantraiseapomeranian9@gmail.com');
+  assert.match(await page.locator('#contact-email').getAttribute('href'),/^mailto:wantraiseapomeranian9@gmail\.com\?subject=/);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  assert.equal(await page.locator('#about-dialog').evaluate(el=>el.scrollWidth>el.clientWidth),false);
+  await page.screenshot({path:`.local/site-info-${width}.png`});
+  await page.keyboard.press('Escape');assert.equal(await page.locator('#about-dialog').isVisible(),false);
+  assert.equal(await page.locator('#open-about').evaluate(el=>el===document.activeElement),true);
+ }
+ await page.locator('#open-about').click();await page.locator('#close-about').click();
+ assert.equal(await page.locator('#about-dialog').isVisible(),false);
+ console.log('CHECK: request context and clipboard');
+ const originalUrl='https://x.com/example/status/123?ref=a&other=b';
+ await page.route('**/api/feed*',route=>route.fulfill({json:{posts:[{id:'request-fixture',manual:true,platform:'x',media:[],canonicalUrl:originalUrl,publishedAt:'2026-09-11T00:00:00Z',contentKind:'other',caption:'',authorHandle:'example'}],total:1,nextCursor:null}}));
+ await goto(page,'visitor');await page.locator('.rights-request').click();
+ const mail=new URL(await page.locator('#contact-email').getAttribute('href'));
+ assert.equal(mail.searchParams.get('body').includes(originalUrl),true);
+ await page.context().grantPermissions(['clipboard-read','clipboard-write']);
+ await page.locator('#copy-contact').click();await page.getByText('이메일 주소를 복사했어요.',{exact:true}).waitFor();
+ assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),'wantraiseapomeranian9@gmail.com');
+ await page.locator('#close-about').click();await page.locator('#open-about').click();
+ assert.equal(new URL(await page.locator('#contact-email').getAttribute('href')).searchParams.get('body').includes(originalUrl),false);
+ await page.unroute('**/api/feed*');
  console.log('CHECK: visitor');await goto(page,'visitor');await page.locator('#open-status').click();await page.locator('#source-status .source-row').waitFor();
  assert.equal(await page.locator('#status-title').textContent(),'수집 현황');assert.equal(await page.getByRole('button',{name:/수집 (중지|켜기)/}).count(),0);
  assert.equal(await page.locator('#tools-tab').isVisible(),false);assert.equal(requests.includes('/api/sources'),false);assert.equal(requests.includes('/api/collection-status'),true);
