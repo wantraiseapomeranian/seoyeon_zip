@@ -47,7 +47,17 @@ export async function runDueSource(env) {
   const eligible={...page,reviewPosts:(page.reviewPosts||[]).filter(r=>Date.parse(r.post.publishedAt)/1000>=boundary),posts:page.posts.filter(p=>Date.parse(p.publishedAt)/1000>=boundary)};
   let results;
   try { results=await commitPage(env.DB,lease,eligible,next,{stopAfterPage}); }
-  catch(error){if(error.message==='stale_lease')return {status:'stale'};throw error;}
+  catch(error){
+    if(error.message==='stale_lease')return {status:'stale'};
+    // The page transaction rolled back: retry from the original cursor, not next.
+    const failureNow=(await env.DB.prepare('SELECT unixepoch() AS now').first()).now;
+    try { await recordFailure(env.DB,lease,state,{code:'storage_error',
+      nextDueAt:retryAt(failureNow,state.failures),status:'retry'}); }
+    catch(failure){if(failure.message==='stale_lease')return {status:'stale'};throw failure;}
+    const result={status:'retry',source:lease.source,error:'storage_error'};
+    console.log(JSON.stringify({event:'collection_failure',...result}));
+    return result;
+  }
   const observation={status:'stored',source:lease.source,lane:state.next_lane,received:page.receivedCount,stored:eligible.posts.length,
     cycleStatus:next.catchup_status,...fetched.observation,
     sqlScope:'page_commit',sqlStatements:results.length,

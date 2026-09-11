@@ -671,3 +671,11 @@ X·인스타·유사 사진 비교에 피드와 같은30px 원형 및 CSS 선 �
 - x-quality 테스트 9개 통과. 후보의 revision 전달 누락을 실패로 재현한 뒤 수정. 후보가 필터 밖에 있어도 정확한 ID/수정 번호로 숨기며 stale 쓰기는 409, 현재 글 판단은 보존됨.
 - Chrome check-photo-comparison 통과: 현재 선택된 후보 숨기기→버튼 비활성→왼쪽 피드 표시 허용→현재 글 피드 노출 및 후보 제외 확인. 기존 사진/후보 이동·묶기·다른 사진·확대와 1440/390/320px 레이아웃 검증 유지.
 - 모바일 캡처에서 '이 글 숨기기' 확인. diff 공백 검사 및 UI 검사 통과. 자동 배포는 후속 확인.
+
+## X 수집 중복 페이지 교착 복구 — 2026-09-11
+- 운영 WEV86_의 오래된 next_due_at과 반복 last_attempt_at, 02:36 KST 이후 다른 소스 성공 중단 확인.
+- 현재 공급자 응답 19건에 같은 ID 2회(본문/미디어 동일, reposted_by만 다름). 로컬에서 UNIQUE constraint failed: media.post_id, media.position 재현.
+- 3개 회귀 테스트의 실패 확인 후 수정. 전체 79개 통과. 후행 중복 항목도 URL 등 전부 검증, 마지막 적격 스냅샷의 본문/미디어 일치, 저장 오류 롤백과 원래 cursor/lease/backoff 및 다음 소스 진행 확인.
+- 보관한 실제 응답 재처리: received19/stored18/media24, 저장 성공 후 cursor 전진. 원본 응답은 .local에만 보관, 커밋 제외.
+- Wrangler dry-run 통과, 별도 코드 검토 Critical/Major 없음. 운영 복구는 배포 후 예약 실행으로 확인 예정.
+- 운영 Cron 로그에서도 D1_ERROR: UNIQUE constraint failed: media.post_id, media.position 예외 확인. 로컬 재현과 운영 원인이 일치함.

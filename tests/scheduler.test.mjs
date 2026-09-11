@@ -96,3 +96,22 @@ test('old official review items are stored separately from the feed',async t=>{
   assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM official_review').get().n,1);
   assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM posts').get().n,0);
 });
+
+test('duplicate post snapshots in one provider page save once and allow the next source',async t=>{
+ const {DB,sqlite,enable}=testDatabase();t.after(()=>sqlite.close());enable();sqlite.exec("UPDATE collection_state SET enabled=1,next_due_at=1 WHERE source='WEV86_'");t.mock.method(console,'log',()=>{});
+ const first={...direct(),text:'윤서연'},last={...first,reposted_by:{screen_name:'Seowoo_0501'}};
+ t.mock.method(globalThis,'fetch',async()=>Response.json({code:200,results:[first,last],cursor:{bottom:'next'}}));
+ const result=await runDueSource({DB,COLLECTION_ENABLED:'true'});assert.equal(result.received,2);assert.equal(result.stored,1);
+ assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM posts').get().n,1);assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM media').get().n,1);
+ assert.equal(JSON.parse(sqlite.prepare('SELECT data FROM posts').get().data).relationship,'repost');
+ assert.equal(sqlite.prepare("SELECT next_cursor FROM collection_state WHERE source='Seowoo_0501'").get().next_cursor,'next');
+ assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).source,'WEV86_');
+});
+
+test('page storage failure preserves cursor, records retry, and does not starve another source',async t=>{
+ const {DB,sqlite,enable}=testDatabase();t.after(()=>sqlite.close());enable();sqlite.exec("UPDATE collection_state SET next_cursor='keep-me',next_lane='history',cycle_started_at=unixepoch(),cycle_boundary_at=0 WHERE source='Seowoo_0501'; UPDATE collection_state SET enabled=1,next_due_at=1 WHERE source='WEV86_'; CREATE TRIGGER reject_media BEFORE INSERT ON media BEGIN SELECT RAISE(ABORT,'test storage failure'); END;");
+ t.mock.method(console,'log',()=>{});t.mock.method(globalThis,'fetch',async()=>response());
+ const result=await runDueSource({DB,COLLECTION_ENABLED:'true'});assert.equal(result.status,'retry');assert.equal(result.error,'storage_error');
+ const state=sqlite.prepare("SELECT * FROM collection_state WHERE source='Seowoo_0501'").get();assert.equal(state.next_cursor,'keep-me');assert.equal(state.last_success_at,null);assert.equal(state.lease_token,null);assert.equal(state.failures,1);assert.ok(state.next_due_at>state.last_attempt_at);assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM posts').get().n,0);
+ sqlite.exec('DROP TRIGGER reject_media');assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).source,'WEV86_');
+});

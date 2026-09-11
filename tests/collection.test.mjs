@@ -90,3 +90,9 @@ test('secondary configuration never grants nameless direct-post exception',async
  const {sources}=await import('../src/sources.mjs');
  for(const handle of ['sogeumdwarf','hamhamm806','S2O806'])assert.equal(sources.find(s=>s.handle===handle).verifiedDirect,false);
 });
+
+test('duplicate IDs do not skip validation of later occurrences',()=>{
+ assert.throws(()=>page([post(1),post(1,{media:{all:[{type:'photo',url:'http://127.0.0.1/private'}]}})]));
+ const p=page([post(1),post(1,{media:{all:[{type:'photo',url:'https://pbs.twimg.com/media/updated.jpg'},{type:'photo',url:'https://pbs.twimg.com/media/second.jpg'}]}})]);
+ assert.equal(p.receivedCount,2);assert.equal(p.posts.length,1);assert.equal(p.posts[0].media.length,2);
+});

@@ -56,7 +56,10 @@ export function normalizePage(json, source) {
     if(official&&verdict.decision==='review')reviewPosts.push({post:normalized,reason:verdict.reason,version:verdict.version});
     else posts.push(normalized);
   }
-  return { posts, ...(source.handle.toLowerCase()==='triplescosmos'?{officialDecisions,reviewPosts}:{}), receivedCount: json.results.length, nextCursor: json.cursor.bottom,
+  // Validate every occurrence before collapsing repeated IDs. The last eligible
+  // snapshot supplies both post metadata and its complete media list.
+  const uniquePosts=[...new Map(posts.map(post=>[post.id,post])).values()];
+  return { posts:uniquePosts, ...(source.handle.toLowerCase()==='triplescosmos'?{officialDecisions,reviewPosts}:{}), receivedCount: json.results.length, nextCursor: json.cursor.bottom,
     // Null cursor is observed exhaustion, not proof that the requested range is complete.
     traversal:{exhausted:json.cursor.bottom===null,boundaryVerified:false,exhaustionVerified:false} };
 }
