@@ -65,7 +65,35 @@ try{
  let importRequests=0;page.on('request',request=>{if(request.method()==='POST'&&request.url().includes('/import'))importRequests++;});
  await page.locator('#import-submit').click();await page.getByRole('alert').filter({hasText:'올바른 JSON 내용을 입력해 주세요.'}).waitFor();
  assert.equal(importRequests,0,'empty input is rejected before any import request');
+ assert.equal(await page.locator('#json').getAttribute('aria-invalid'),'true','invalid JSON is identified on its input');
+ assert.ok((await page.locator('#json').getAttribute('aria-describedby')||'').split(' ').includes('import-error'),'JSON error is associated with the input');
+ assert.equal(await page.locator('#json').evaluate(e=>e===document.activeElement),true,'invalid JSON receives focus');
+ await page.locator('#json').fill('[]');
+ assert.notEqual(await page.locator('#json').getAttribute('aria-invalid'),'true','editing clears stale invalid state');
+ assert.equal(await page.locator('#import-error').textContent(),'','editing clears stale error text');
  assert.equal(await page.locator('#import-dialog').evaluate(e=>e.scrollWidth>e.clientWidth),false);
  await page.keyboard.press('Escape');assert.equal(await page.locator('#open-import').evaluate(e=>e===document.activeElement),true);
- console.log('PASS: visible icon hit targets and right edges at 320/390/768/1280px; named dialogs and focus return');
+ const post=id=>({id,manual:true,platform:'x',media:[],canonicalUrl:`https://x.com/example/status/${id}`,publishedAt:id==='first'?'2026-09-11T00:00:00Z':'2026-09-10T00:00:00Z',contentKind:'other',caption:'',authorHandle:'example'});
+ let releaseAppend;
+ await page.route('**/api/feed?*',async route=>{
+  const append=new URL(route.request().url()).searchParams.has('cursor');
+  if(append)await new Promise(resolve=>releaseAppend=resolve);
+  await route.fulfill({json:{posts:[post(append?'second':'first')],total:2,nextCursor:append?null:'next'}});
+ });
+ await page.route('**/api/sources',route=>route.fulfill({json:{sources:[]}}));
+ await page.route('**/api/collection-status',route=>route.fulfill({json:{sources:[]}}));
+ await page.goto(origin+'/?data=live');await page.locator('#load-more:not([disabled])').waitFor();
+ await page.locator('#load-more').focus();await page.keyboard.press('Enter');
+ await page.waitForFunction(()=>document.querySelector('#gallery').getAttribute('aria-busy')==='true');
+ while(!releaseAppend)await new Promise(r=>setTimeout(r,10));releaseAppend();
+ await page.locator('.card[data-id="second"]').waitFor();
+ assert.equal(await page.locator('.card[data-id="second"]').evaluate(e=>e===document.activeElement),true,'load more focuses the first new post, including the last page');
+ await page.keyboard.press('Tab');
+ assert.equal(await page.evaluate(()=>document.activeElement.closest('.card')?.dataset.id),'second','Tab continues inside the new post');
+ releaseAppend=null;await page.goto(origin+'/?data=live');await page.locator('#load-more:not([disabled])').waitFor();
+ await page.locator('#load-more').focus();await page.keyboard.press('Enter');
+ while(!releaseAppend)await new Promise(r=>setTimeout(r,10));
+ await page.locator('#open-about').focus();releaseAppend();await page.locator('.card[data-id="second"]').waitFor();
+ assert.equal(await page.locator('#open-about').evaluate(e=>e===document.activeElement),true,'append does not steal focus after the user moves away');
+ console.log('PASS: icon geometry and responsive layouts; named dialogs; JSON error association and correction; load-more focus, final page and no focus theft');
 }finally{await browser?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}

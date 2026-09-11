@@ -42,7 +42,8 @@ const live=!['127.0.0.1','localhost'].includes(location.hostname)||params.get('d
 let nextCursor=null,total=0,requestVersion=0;
 const sourceEndpoint=()=>role==='owner'?'/api/sources':'/api/collection-status';
 const more=node('button',null,'더 보기');more.id='load-more';more.hidden=true;$('#gallery').after(more);
-more.addEventListener('click',()=>loadLive(true));
+more.addEventListener('click',()=>{if(more.getAttribute('aria-disabled')!=='true')loadLive(true);});
+const appendStatus=node('p','sr-only');appendStatus.setAttribute('role','status');more.after(appendStatus);
 if(live){$('#range').textContent='저장된 게시물을 표시해요. 목록 새로고침은 수집을 실행하지 않아요.';$('#count').title='선택한 조건에 맞는 전체 저장 게시물 수';$('#updated').title='수집 데이터가 마지막으로 저장된 시각입니다.';}
 const stamp=value=>value?new Date(value).toLocaleString('ko-KR',{month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}):'아직 저장 기록 없음';
 function node(tag,className,text){const e=document.createElement(tag);if(className)e.className=className;if(text!=null)e.textContent=text;return e;}
@@ -134,19 +135,29 @@ function render(){
 async function loadLive(append=false){
  const version=++requestVersion;syncUrl();const query=new URLSearchParams(location.search);
  if(append&&nextCursor)query.set('cursor',nextCursor);
- $('#refresh').disabled=true;more.disabled=true;$('#notice').textContent='';$('#gallery').setAttribute('aria-busy','true');
+ $('#refresh').disabled=true;more.setAttribute('aria-disabled','true');appendStatus.textContent='';$('#notice').textContent='';$('#gallery').setAttribute('aria-busy','true');
  if(!append){clearViewers();photoPositions.clear();posts=[];loaded=false;nextCursor=null;more.hidden=true;$('#empty').hidden=true;$('#count').textContent='불러오는 중…';$('#gallery').replaceChildren(...Array.from({length:6},()=>{const e=node('div','skeleton');e.setAttribute('aria-hidden','true');return e;}));}
  try{
   const response=await fetch(`/api/feed?${query}`);if(!response.ok)throw Error(response.status===401||response.status===403?'auth':'feed');
   const data=await response.json();if(!Array.isArray(data.posts))throw Error('shape');if(version!==requestVersion)return;
-  const known=new Set(posts.map(p=>p.id));posts.push(...data.posts.filter(p=>!known.has(p.id)));total=data.total;nextCursor=data.nextCursor;collectedAt=data.collectedAt;loaded=true;render();
+  const known=new Set(posts.map(p=>p.id)),added=data.posts.filter(p=>!known.has(p.id));
+  const continueFromMore=append&&document.activeElement===more;
+  posts.push(...added);total=data.total;nextCursor=data.nextCursor;collectedAt=data.collectedAt;loaded=true;render();
+  if(append){
+   appendStatus.textContent=`게시물 ${added.length}개를 추가로 불러왔어요.${nextCursor?'':' 마지막 게시물이에요.'}`;
+   if(continueFromMore){
+    const cards=[...$('#gallery').querySelectorAll('.card')];
+    const target=cards.find(e=>!known.has(e.dataset.id))||(more.hidden?cards.at(-1):more);
+    if(target){if(target!==more)target.tabIndex=-1;target.focus();}
+   }
+  }
   try{const nextStates=await fetchSourceState();if(version!==requestVersion)return;states=nextStates;
    const current=$('#source').value;const names=new Set(['instagram','manual',...states.map(s=>s.source)]);if(current!=='all')names.add(current);
    $('#source').replaceChildren(new Option('모든 출처','all'),...[...names].sort().map(s=>new Option(s==='instagram'?'Instagram':s==='manual'?'직접 등록':`@${s}`,s)));$('#source').value=current;renderSources();
    if(states.some(sourceHasError))$('#notice').textContent='일부 출처의 갱신이 지연되고 있어요. 수집 상태를 확인해 주세요.';
   }catch(error){if(version===requestVersion&&error.message!=='stale'&&error.message!=='auth'){states=[];renderSources();$('#notice').textContent='게시물은 불러왔지만 수집 상태는 확인하지 못했어요.';}}
  }catch(error){if(version!==requestVersion)return;if(!append){$('#gallery').replaceChildren();$('#count').textContent='목록 조회 실패';}$('#notice').textContent=error.message==='auth'?'로그인이 만료됐어요. 페이지를 새로고침해 로그인해 주세요.':'목록을 불러오지 못했어요. 다시 시도해 주세요.';}
- finally{if(version===requestVersion){$('#refresh').disabled=false;more.disabled=false;$('#gallery').setAttribute('aria-busy','false');}}
+  finally{if(version===requestVersion){$('#refresh').disabled=false;more.removeAttribute('aria-disabled');$('#gallery').setAttribute('aria-busy','false');}}
 }
 function changeFilters(){if(live){posts=[];loaded=false;render();loadLive();}else{render();syncUrl();}}
 const historyNotes=new Set(['history_window_unverified','unverified_exhaustion','repeated_cursor']);

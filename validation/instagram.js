@@ -58,11 +58,14 @@ $('#refresh').addEventListener('click',reload);
 $('#previous').addEventListener('click',()=>{offset=Math.max(0,offset-25);reload();});$('#next').addEventListener('click',()=>{offset+=25;reload();});
 $('#open-import').addEventListener('click',()=>$('#import-dialog').showModal());
 $('#close-import').addEventListener('click',()=>$('#import-dialog').close());
-$('#file').addEventListener('change',async()=>{const file=$('#file').files[0];if(!file)return;if(file.size>2_000_000){$('#import-error').textContent='파일은 2MB까지 가져올 수 있어요.';return;}$('#json').value=await file.text();$('#import-error').textContent='';});
-$('#import-form').addEventListener('submit',async e=>{e.preventDefault();const button=$('#import-submit');button.disabled=true;$('#import-error').textContent='';try{
-  let rows;try{rows=JSON.parse($('#json').value);}catch{throw new Error('올바른 JSON 내용을 입력해 주세요.');}
+function clearImportError(){for(const id of ['json','file'])$('#'+id).removeAttribute('aria-invalid');$('#import-error').textContent='';}
+for(const id of ['json','file'])$('#'+id).setAttribute('aria-describedby','import-error');
+$('#json').addEventListener('input',clearImportError);
+$('#file').addEventListener('change',async()=>{clearImportError();const file=$('#file').files[0];if(!file)return;if(file.size>2_000_000){$('#file').setAttribute('aria-invalid','true');$('#import-error').textContent='파일은 2MB까지 가져올 수 있어요.';return;}$('#json').value=await file.text();});
+$('#import-form').addEventListener('submit',async e=>{e.preventDefault();const button=$('#import-submit');button.disabled=true;clearImportError();try{
+  let rows;try{rows=JSON.parse($('#json').value);}catch{$('#json').setAttribute('aria-invalid','true');throw new Error('올바른 JSON 내용을 입력해 주세요.');}
   const result=await api('/import',rows);$('#import-dialog').close();$('#json').value='';$('#file').value='';offset=0;await load();$('#message').textContent=`${result.imported}개 게시물 정보를 가져왔어요. 기존 판단은 유지했어요.`;
-}catch(error){$('#import-error').textContent=error.message;}finally{button.disabled=false;}});
+}catch(error){$('#import-error').textContent=error.message;if($('#json').getAttribute('aria-invalid')==='true')$('#json').focus();}finally{button.disabled=false;}});
 for(const el of document.querySelectorAll('.review-filters input,.review-filters select'))el.addEventListener('change',()=>{offset=0;reload();});
 $('#review-reset').onclick=()=>{for(const key of ['date','media','author','kind']){const el=$('#review-'+key);if(el)el.value=['media','kind'].includes(key)?'all':'';}offset=0;reload();};
 reload();

@@ -75,3 +75,4 @@ header .actions .icon-button svg{pointer-events:none}
 .feed-actions .icon-button:hover{background:var(--soft);color:var(--ink)}
 .feed-actions .icon-tooltip{top:auto;bottom:calc(100% + 6px)}
 @media(max-width:600px){.video-hint-prefix{display:none}.feed-action-controls{margin-right:-6px}}
+.card:focus-visible{outline:3px solid var(--ink);outline-offset:3px}#load-more[aria-disabled=true]{opacity:.55;cursor:wait}
