@@ -797,3 +797,5 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - node scripts/check-public-admin.mjs 통과: 방문자/소유자 분리, 지연 세션·실패·만료 및 반응형 회귀.
 - 변경분 읽기 전용 검토: Critical/Major 없음. git diff --check 통과.
 - 실제 스크린리더 음성 청취는 미검증이며 사용자 요청으로 후속 작업에 남긴다. 이번 수정의 운영 확인은 배포 후 별도로 진행한다.
+- 운영 확인 완료: e9deb6f Cloudflare Workers Builds completed/success. 실제 브라우저에서 더 보기 48→96개, 포커스 index 48(첫 새 게시물), 다음 Tab도 같은 카드 내부 확인. 도구 키 입력 응답은 타임아웃됐지만 재입력 없이 DOM 결과로 정상 완료를 확인했다.
+- 운영 인스타 빈 JSON 제출: focus=json, aria-invalid=true, aria-describedby=import-error와 오류 문구 확인. 내용을 편집하면 오류·invalid가 해제됐다. 유효 데이터 제출은 하지 않았다.
