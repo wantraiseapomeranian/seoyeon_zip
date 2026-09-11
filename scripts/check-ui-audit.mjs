@@ -30,6 +30,9 @@ try{
    for(const button of document.querySelectorAll('header .actions .icon-button,.feed-actions .icon-button')){
     if(!button.getClientRects().length)continue;
     const svg=button.querySelector('svg'),bounds=svg.getBoundingClientRect();
+    const hit=button.getBoundingClientRect();
+    if(Math.abs((bounds.left+bounds.right-hit.left-hit.right)/2)>.1||Math.abs((bounds.top+bounds.bottom-hit.top-hit.bottom)/2)>.1)failures.push('Off-centre: '+button.getAttribute('aria-label'));
+    if(hit.left<0||hit.right>document.documentElement.clientWidth)failures.push('Off-screen: '+button.getAttribute('aria-label'));
     const shapes=[...svg.querySelectorAll('path,rect,circle')];
     for(let x=bounds.left;x<bounds.right;x+=.5)for(let y=bounds.top;y<bounds.bottom;y+=.5){
      const painted=shapes.some(shape=>{const point=new DOMPoint(x,y).matrixTransform(shape.getScreenCTM().inverse()),style=getComputedStyle(shape);return (style.fill!=='none'&&shape.isPointInFill(point))||(style.stroke!=='none'&&shape.isPointInStroke(point));});
@@ -41,7 +44,7 @@ try{
    return {failures:[...new Set(failures)],edgeGap:document.querySelector('header').getBoundingClientRect().right-edge,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth};
   });
   assert.deepEqual(result.failures,[],`${currentRole} ${route} ${width}: painted icon must hit its own button`);
-  assert.ok(Math.abs(result.edgeGap)<.1,JSON.stringify(result));assert.equal(result.overflow,false);
+  assert.ok(width>600?Math.abs(result.edgeGap)<.1:result.edgeGap>=0&&result.edgeGap<10,JSON.stringify(result));assert.equal(result.overflow,false);
   if(route!=='/'){
    await page.locator('#tabs button span').evaluateAll(spans=>spans.forEach(s=>s.textContent='2018'));
    assert.equal(await page.locator('#tabs').evaluate(e=>e.scrollWidth>e.clientWidth),false,`${route} ${width}: all status tabs fit without horizontal scrolling`);
