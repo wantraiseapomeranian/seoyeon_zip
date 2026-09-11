@@ -699,3 +699,13 @@ X·인스타·유사 사진 비교에 피드와 같은30px 원형 및 CSS 선 �
 - 비공개 배포 완료: 코드 `8984db5`, GitHub Workers Builds success, 활성 버전 `d7158ed3-735b-4aa5-aae1-9a79e153b499` 100% (2026-09-11 01:23 UTC). 운영 설정에서 `PUBLIC_FEED_ENABLED=false`, `COLLECTION_ENABLED=true` 확인.
 - 배포 후 `/`, `/api/session`, `/api/collection-status`, `/admin/x`, `/api/export`의 비로그인 요청 모두 기존 Access 로그인으로302 이동함을 확인했다. 실제 소유자 로그인 세션이 없어 배포 후 소유자 화면 직접 조작은 미확인이다. 로컬 소유자 JWT/쿠키·브라우저 검증 결과와 구별한다.
 - 운영 소유자 화면 확인(사용자 직접 검증, 2026-09-11): 기존 Chrome 로그인 세션에서 `/admin` 접속 후 검토함과 수집 중지 버튼이 정상 표시됨을 사용자가 확인했다. 운영 관리자 역할 인식·화면 연결은 확인됐으며, 에이전트의 직접 브라우저 검증이나 실제 중지 조작 결과로 기록하지 않는다. 공개 정책 적용 후 인증 쿠키 전달 검증은 여전히 별도 항목이다.
+
+## 공개 전 보안 보완 — 2026-09-11
+- 기존 92개 테스트 통과 후 신규 회귀 테스트 4개가 수정 전 실패함을 확인했다. 수정 후 전체 96개 통과. 한도 초과 시 DB 접근 차단, limiter 장애 시 503, 공통 IP 버킷과 X-Forwarded-For 무시, invalid cursor의 DB 사전 차단을 확인했다.
+- Wrangler dry-run 성공: PUBLIC_RATE_LIMITER 60 requests/60s 바인딩, PUBLIC_FEED_ENABLED=false. 운영 수집 설정·크론 변경 없음.
+- 실제 로컬 Wrangler + 별도 D1에서 check-public-runtime.mjs 통과: 공개 조회, 정규 URL 리디렉션, 비로그인 관리자 경로·모든 관리 변경 차단, 위조 JWT 거부.
+- check-public-limit-runtime.mjs 통과: 선행 공개 API 3회 후 57회 허용, 다음 요청 429. 공개 API 3종이 공통 제한을 사용하고 Retry-After:60 반환. 제한 중에도 정적 피드 200, 관리자 API 401 유지. 운영 트래픽에 부하 테스트를 실행하지 않았다.
+- 독립 읽기 전용 코드 리뷰 APPROVED: 검토 범위 Critical/Major 없음. 리뷰어는 검증을 재실행하지 않았다.
+- 운영 읽기 전용 확인: PUBLIC_FEED_ENABLED=false, COLLECTION_ENABLED=true. /, /api/session, /api/feed, /api/collection-status, /admin, /admin/x, /api/export 모두 비로그인 302 Access 로그인으로 이동.
+- Access apps 조회는 성공 응답이지만 빈 목록이므로 관리형 보호의 세부 경로 정책을 확정할 수 없다. 보호가 없다는 뜻으로 해석하지 않는다. 기존 전체 Access 보호를 변경하지 않았고, 공개 전환 후 관리자 로그인 쿠키 전달은 미확인이다.
+- Cloudflare 공식 rate-limit 문서 기준 이 제한은 위치별·비동기이며, 공유 IP 이용자는 합산된다. 전역 DDoS 차단 또는 비용 상한으로 보장하지 않는다. https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/

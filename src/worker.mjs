@@ -52,6 +52,16 @@ export default {
     const publicApis=new Set(['/api/feed','/api/collection-status','/api/session']);
     const publicRequest=env.PUBLIC_FEED_ENABLED==='true'&&((['GET','HEAD'].includes(request.method)&&publicAssets.has(url.pathname))||(request.method==='GET'&&publicApis.has(url.pathname)));
     let auth;
+    if(publicRequest&&publicApis.has(url.pathname)) {
+      try {
+        // Cloudflare supplies this header. Do not use client-controlled forwarding headers.
+        const {success}=await env.PUBLIC_RATE_LIMITER.limit({key:'seoyeon-zip:public:'+(request.headers.get('CF-Connecting-IP')||'unknown')});
+        if(!success) {
+          const response=privateReply({error:'rate_limited'},429);
+          response.headers.set('Retry-After','60');return response;
+        }
+      } catch { return privateReply({error:'rate_limit_unavailable'},503); }
+    }
     if(publicRequest&&url.pathname==='/api/session') {
       auth=await authorize(request,env);
       if(auth===503)return privateReply({error:'private_access_not_configured'},503);

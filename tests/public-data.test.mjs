@@ -29,7 +29,7 @@ test('anonymous worker reads only public projected data and rejects every manage
   const post={id:'x:991',publishedAt:'2026-09-01',canonicalUrl:'https://x.com/a/status/991',authorHandle:'a',observedViaSource:'a',moderationReason:'private',media:[{kind:'image',previewUrl:'https://pbs.twimg.com/media/a.jpg',privateRaw:'private'}]};
   sqlite.prepare('INSERT INTO posts VALUES(?,?)').run(post.id,JSON.stringify(post));
   sqlite.exec("INSERT INTO x_quality(post_id,decision) VALUES('x:991','visible')");
-  const env={DB,COLLECTION_ENABLED:'true',PUBLIC_FEED_ENABLED:'true',TEAM_DOMAIN:'https://test.cloudflareaccess.com',POLICY_AUD:'aud',OWNER_EMAIL:'owner@example.test'};
+  const env={DB,COLLECTION_ENABLED:'true',PUBLIC_FEED_ENABLED:'true',PUBLIC_RATE_LIMITER:{limit:async()=>({success:true})},TEAM_DOMAIN:'https://test.cloudflareaccess.com',POLICY_AUD:'aud',OWNER_EMAIL:'owner@example.test'};
   const feed=await worker.fetch(new Request('https://test.local/api/feed'),env);assert.equal(feed.status,200);
   const result=await feed.json();assert.equal(result.posts.length,1);assert.ok(!JSON.stringify(result).includes('private'));
   const status=await worker.fetch(new Request('https://test.local/api/collection-status'),env);assert.equal(status.status,200);

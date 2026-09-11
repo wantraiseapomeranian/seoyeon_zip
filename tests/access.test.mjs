@@ -17,7 +17,7 @@ async function signedToken(overrides={}) {
 
 function spies() {
   let assets=0,db=0;
-  return {env:{...accessEnv,PUBLIC_FEED_ENABLED:'true',ASSETS:{fetch:async()=>{assets++;return new Response('asset');}},DB:{prepare:()=>{db++;throw new Error('unexpected database access');}}},counts:()=>({assets,db})};
+  return {env:{...accessEnv,PUBLIC_FEED_ENABLED:'true',PUBLIC_RATE_LIMITER:{limit:async()=>({success:true})},ASSETS:{fetch:async()=>{assets++;return new Response('asset');}},DB:{prepare:()=>{db++;throw new Error('unexpected database access');}}},counts:()=>({assets,db})};
 }
 
 test('all paths remain private when PUBLIC_FEED_ENABLED is absent or not exactly true',async()=>{
@@ -97,11 +97,11 @@ test('private mode owner can read session through the worker',async()=>{
 });
 
 test('public session does not downgrade missing configuration or JWKS failure to visitor',async()=>{
-  const response=await worker.fetch(new Request('https://example.test/api/session'),{PUBLIC_FEED_ENABLED:'true'});
+  const response=await worker.fetch(new Request('https://example.test/api/session'),{PUBLIC_FEED_ENABLED:'true',PUBLIC_RATE_LIMITER:{limit:async()=>({success:true})}});
   assert.equal(response.status,503);
   const originalFetch=globalThis.fetch;globalThis.fetch=async()=>{throw new TypeError('network unavailable');};
   try {
-    const failed=await worker.fetch(new Request('https://example.test/api/session',{headers:{'cf-access-jwt-assertion':await signedToken()}}),{...accessEnv,PUBLIC_FEED_ENABLED:'true'});
+    const failed=await worker.fetch(new Request('https://example.test/api/session',{headers:{'cf-access-jwt-assertion':await signedToken()}}),{...accessEnv,PUBLIC_FEED_ENABLED:'true',PUBLIC_RATE_LIMITER:{limit:async()=>({success:true})}});
     assert.equal(failed.status,503);
   } finally {globalThis.fetch=originalFetch;}
 });
@@ -118,7 +118,7 @@ test('verified owner cookie reaches management while Origin and revision still g
  const {testDatabase}=await import('./helpers/d1.mjs');const {sqlite,DB,enable}=testDatabase();enable();
  t.mock.method(globalThis,'fetch',async input=>{assert.equal(String(input),`${accessEnv.TEAM_DOMAIN}/cdn-cgi/access/certs`);return Response.json({keys:[jwk]});});
  try{
-  const token=await signedToken();const env={...accessEnv,PUBLIC_FEED_ENABLED:'true',COLLECTION_ENABLED:'true',DB};
+  const token=await signedToken();const env={...accessEnv,PUBLIC_FEED_ENABLED:'true',PUBLIC_RATE_LIMITER:{limit:async()=>({success:true})},COLLECTION_ENABLED:'true',DB};
   const source='Seowoo_0501';const before=sqlite.prepare('SELECT enabled,revision FROM collection_state WHERE source=?').get(source);
   const send=origin=>worker.fetch(new Request('https://example.test/api/sources/'+source,{method:'PATCH',headers:{origin,cookie:`CF_Authorization=${token}`,'content-type':'application/json','x-management-action':'manage'},body:JSON.stringify({enabled:false,revision:before.revision})}),env);
   assert.equal((await send('https://other.test')).status,403);

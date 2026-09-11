@@ -193,3 +193,7 @@ WEV86_ 응답의 동일 게시물 반복으로 media 복합키 충돌이 나고,
 상세 설계: [방문자·관리자 기능 분리](superpowers/specs/2026-09-11-public-admin-separation-design.md). 실행 계획: [구현·검증·공개 전환 순서](superpowers/plans/2026-09-11-public-admin-separation.md).
 
 사용자 실행 승인에 따라 구현과 로컬 검증, 비공개 자동 배포를 완료했다(코드8984db5). 전체92개 테스트와 방문자/관리자 브라우저 검증 통과. PUBLIC_FEED_ENABLED=false 및 기존 Access 보호, 수집 주기는 유지한다. 운영 관리자 화면은 사용자가 Chrome에서 검토함·수집 중지 버튼 표시를 직접 확인했다. 향후 공개 경로의 인증 쿠키 전달 확인은 남아 있으며, 실제 공개 전환은 별도 사용자 요청 이후 수행한다. 상세 결과는 VALIDATION.md를 따른다.
+
+## 공개 전 요청 제한 보완 — 2026-09-11
+사용자 승인에 따라 비공개 상태에서 공개 API 보호를 준비한다. 공개 모드의 GET /api/feed, /api/collection-status, /api/session을 Cloudflare 제공 IP 기준 공통 60회/60초로 제한한다. 초과는 DB·JWT 처리 전 429와 Retry-After:60, 바인딩 누락·장애는 503으로 닫는다. 정적 자산과 관리자 인증 경계, 수집 주기는 유지한다. 잘못된 페이지 cursor 검증은 COUNT 조회 앞으로 옮긴다. PUBLIC_FEED_ENABLED=false와 기존 Access를 유지해 자동 배포한다.
+공유 IP 사용자는 같은 한도를 사용하며 Cloudflare 위치별 비동기 제한이므로 정확한 전역 비용 상한은 아니다. 공개 정책 적용 후 관리자 로그인·쿠키 전달은 실제 전환 단계에서 별도 확인한다.

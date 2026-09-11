@@ -21,14 +21,15 @@ export async function readFeed(db, params) {
     where.push(`${dateSql}>=? AND ${dateSql}<?`);args.push(start.toISOString(),next.toISOString());
   }
   const condition=()=>where.length?' WHERE '+where.join(' AND '):'';
-  const total=await db.prepare('SELECT COUNT(*) AS count FROM managed_feed_posts p'+condition()).bind(...args).first();
   const scope=JSON.stringify([sort,media,kind,source,month,...(day?[day]:[])]);
+  let cursor;
   if(params.has('cursor')){
     if(params.get('cursor').length>2048)invalid();
-    let cursor;try{cursor=JSON.parse(atob(params.get('cursor')));}catch{invalid();}
+    try{cursor=JSON.parse(atob(params.get('cursor')));}catch{invalid();}
     if(!cursor||cursor.scope!==scope||typeof cursor.id!=='string'||!/^(?:(?:x:)?\d{1,30}|ig:[A-Za-z0-9_-]{5,64}|manual:(?:x:\d{1,30}|ig:[A-Za-z0-9_-]{5,64}))$/.test(cursor.id)||typeof cursor.date!=='string'||!Number.isFinite(Date.parse(cursor.date)))invalid();
-    where.push(`(${dateSql}${sort==='oldest'?'>':'<'}? OR (${dateSql}=? AND p.id>?))`);args.push(cursor.date,cursor.date,cursor.id);
   }
+  const total=await db.prepare('SELECT COUNT(*) AS count FROM managed_feed_posts p'+condition()).bind(...args).first();
+  if(cursor){where.push(`(${dateSql}${sort==='oldest'?'>':'<'}? OR (${dateSql}=? AND p.id>?))`);args.push(cursor.date,cursor.date,cursor.id);}
   const {results}=await db.prepare(`SELECT p.id,p.data FROM managed_feed_posts p${condition()} ORDER BY ${dateSql} ${sort==='oldest'?'ASC':'DESC'},p.id ASC LIMIT 49`).bind(...args).all();
   const page=results.slice(0,48), posts=page.map(r=>JSON.parse(r.data));
   if(posts.length){
