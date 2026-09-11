@@ -709,3 +709,4 @@ X·인스타·유사 사진 비교에 피드와 같은30px 원형 및 CSS 선 �
 - 운영 읽기 전용 확인: PUBLIC_FEED_ENABLED=false, COLLECTION_ENABLED=true. /, /api/session, /api/feed, /api/collection-status, /admin, /admin/x, /api/export 모두 비로그인 302 Access 로그인으로 이동.
 - Access apps 조회는 성공 응답이지만 빈 목록이므로 관리형 보호의 세부 경로 정책을 확정할 수 없다. 보호가 없다는 뜻으로 해석하지 않는다. 기존 전체 Access 보호를 변경하지 않았고, 공개 전환 후 관리자 로그인 쿠키 전달은 미확인이다.
 - Cloudflare 공식 rate-limit 문서 기준 이 제한은 위치별·비동기이며, 공유 IP 이용자는 합산된다. 전역 DDoS 차단 또는 비용 상한으로 보장하지 않는다. https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/
+- 비공개 자동 배포 완료: 코드 5d9b664, GitHub Workers Builds success. 활성 버전 73f3b2ca-6e72-4377-a41d-56152dff18b7 100% (2026-09-11 01:51:28 UTC). 운영 PUBLIC_RATE_LIMITER(namespace 2026091101, 60회/60초) 등록과 PUBLIC_FEED_ENABLED=false를 확인했다. 배포 후 위 7개 경로 모두 Access 로그인 302 유지. 운영에서 익명 rate-limit 분기는 비공개 플래그 때문에 아직 활성화되지 않았으며, 실제 429 동작 증거는 로컬 런타임 검증이다.
