@@ -818,3 +818,8 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 구현 커밋7835156: GitHub 푸시 및 Cloudflare Workers Builds completed/success 확인. 실제 Chrome 관리자에서 검토 내역 빈 목록과 시작 시각 안내 정상. X 검토함의 내역 링크·이유/메모 입력창·취소 후 포커스 복귀 확인. 판단 저장은 누르지 않았다.
 - 익명 GET /api/admin/review-audit, /review-history, /review-history.html, /review-history.js는401, 공개 /api/feed?limit=1은200.
 - 실제 콘텐츠 판정의 운영 쓰기 검증은 첫 실제 관리자 판단 전까지 미확인. 테스트용 과거 이벤트나 콘텐츠 변경은 생성하지 않았다.
+
+## 검토 내역 UI 정리 — 2026-09-11
+- node scripts/check-review-audit.mjs 통과: 기존 판단·이유·재시도·내역 필터/상세 동작 유지.
+- 로컬 모의 API에서 X/Instagram/검토 내역 320·390·768·1280px 검사 통과. 헤더 아이콘 SVG·접근성 이름·44px 너비·화면 경계, 필터 잘림 및 가로 넘침 없음. PC/모바일 캡처 확인.
+- PC 필터36px 높이, 모바일44px 높이/두 열. 안내문은 고정70ch 제한을 제거하고 한글 단어 단위 자동 줄바꿈 적용. 서버·DB 변경 없음. 운영 배포 확인은 최종 응답에 기록한다.

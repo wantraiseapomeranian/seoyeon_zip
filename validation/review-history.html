@@ -2,8 +2,8 @@
 <html lang="ko">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>검토 내역 · 서연모음.zip</title><link rel="stylesheet" href="/feed.css"><link rel="stylesheet" href="/instagram.css"><link rel="stylesheet" href="/review-history.css"><script src="/review-decision.js" defer></script><script src="/review-history.js" defer></script><link rel="icon" href="/favicon.ico"></head>
 <body data-background="mist"><a class="skip" href="#main">검토 내역으로 건너뛰기</a><div class="shell">
-<header><a class="wordmark" href="/">서연모음<span>.zip</span></a><nav class="actions history-nav" aria-label="검토함 이동"><a href="/admin/x">X 검토함</a><a href="/admin/instagram">인스타 검토함</a></nav></header>
-<main id="main"><section class="review-heading"><h1>검토 내역</h1><button id="history-refresh">새로고침</button></section>
+<header><a class="wordmark" href="/">서연모음<span>.zip</span></a><nav class="actions review-nav" aria-label="검토함 이동"><a class="icon-button" href="/admin/x" aria-label="X 검토함"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m4 3 12 18h4L8 3H4ZM4 21l6.5-7.5M14 10l6-7"/></svg><span class="icon-tooltip" aria-hidden="true">X 검토함</span></a><a class="icon-button" href="/admin/instagram" aria-label="인스타 검토함"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg><span class="icon-tooltip" aria-hidden="true">인스타 검토함</span></a></nav></header>
+<main id="main"><section class="review-heading"><h1>검토 내역</h1><button id="history-refresh" class="review-icon" aria-label="새로고침"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 7v5h-5M4 17v-5h5M6.1 7a7 7 0 0 1 11.6-1L20 9M4 15l2.3 3A7 7 0 0 0 17.9 17"/></svg><span class="icon-tooltip" aria-hidden="true">새로고침</span></button></section>
 <p id="history-start" class="history-intro">기록 시작 시각을 확인하고 있어요.</p>
 <form id="history-filters" class="review-filters history-filters" aria-label="검토 내역 필터">
 <label>플랫폼<select id="history-platform" name="platform"><option value="">전체</option><option value="X">X</option><option value="INSTAGRAM">Instagram</option></select></label>
@@ -13,6 +13,6 @@
 </form>
 <p id="history-error" class="history-error" role="alert"></p><p id="history-status" class="history-status" role="status" aria-live="polite"></p>
 <ol id="history-list" class="history-list" aria-label="저장된 검토 결정"></ol><button id="history-more" class="history-more" hidden>더 보기</button>
-</main><footer><a href="/">피드로 돌아가기</a><span>소유자 전용</span></footer></div>
+</main><footer><a href="/" class="review-icon feed-return" aria-label="피드로 돌아가기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m10 5-7 7 7 7M3 12h18"/></svg><span class="icon-tooltip" aria-hidden="true">피드로 돌아가기</span></a><span>소유자 전용</span></footer></div>
 <dialog id="history-detail" class="history-detail" aria-labelledby="history-detail-title"><div class="dialog-heading"><h2 id="history-detail-title">검토 결정 상세</h2><button id="history-close" type="button">닫기</button></div><div id="history-detail-content"></div></dialog>
 </body></html>
