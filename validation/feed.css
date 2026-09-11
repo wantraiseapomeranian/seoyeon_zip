@@ -49,7 +49,7 @@ body[data-background=paper]{--bg:#F5F2EB;background:var(--bg)}body[data-backgrou
 /* Site identity and public information */
 .brand-group{display:flex;align-items:center;gap:4px;min-width:0}
 #open-about{position:relative;display:grid;place-items:center;width:44px;height:44px;min-width:44px;padding:11px;border:0;color:var(--muted)}
-#open-about svg{width:20px;height:20px}
+#open-about svg{width:20px;height:20px;transform:translateY(6px)}
 #about-dialog section{margin-top:24px}
 #about-dialog h3{font-size:15px;margin:0 0 8px}
 #about-dialog p{font-size:14px;line-height:1.75;margin:8px 0;overflow-wrap:anywhere}
