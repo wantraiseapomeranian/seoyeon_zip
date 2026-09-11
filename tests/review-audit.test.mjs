@@ -219,3 +219,10 @@ test('oversized complete group snapshots fail before any mutation instead of tru
  const insert=sqlite.prepare('INSERT INTO x_fingerprints(url,hash,confirmed_hash) VALUES(?,?,?)');for(let i=0;i<300;i++)insert.run('https://pbs.twimg.com/media/'+i+'x'.repeat(800),'h'+i,'group-a');
  const before=groupState(sqlite);const response=await sendX(DB,input({action:'merge',left:'a',right:'b',groupRevision:0}));assert.equal(response.status,413);assert.deepEqual(groupState(sqlite),before);assert.equal(events(sqlite).length,0);
 });
+
+test('new post decisions save server thumbnail URLs with the immutable event',async t=>{
+ const {sqlite,DB}=setup(t);post(sqlite,'x:1',['https://pbs.twimg.com/media/then.jpg']);instagram(sqlite);sqlite.prepare('UPDATE instagram_review SET data=? WHERE code=?').run(JSON.stringify({images:['https://a.cdninstagram.com/then.jpg']}),'Audit_123');
+ assert.equal((await sendX(DB,input({id:'x:1',revision:0,decision:'visible',thumbnailUrl:'https://evil.test/forged.jpg'}))).status,200);
+ assert.equal((await sendIG(DB,input({status:'kept',revision:0}))).status,200);
+ assert.deepEqual(events(sqlite).map(e=>JSON.parse(e.metadata_json).thumbnailUrl),['https://pbs.twimg.com/media/then.jpg','https://a.cdninstagram.com/then.jpg']);
+});

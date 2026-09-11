@@ -2,8 +2,11 @@ const actions=new Set(['SHOW','HIDE','RESET_AUTO','KEEP','EXCLUDE','HOLD','RESET
 const reply=(value,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
 const invalid=()=>{throw new Error('invalid_query');};
 const baseColumns='id,platform,target_type,target_id,action,reason_code,note,reviewed_by,reviewed_at';
-// Select just the author and original link. Group membership and evidence belong to detail responses.
-const summaryColumns="json_extract(metadata_json,'$.author') AS author,json_extract(metadata_json,'$.url') AS url";
+// Only compact list fields. Old records may preview current media without rewriting the ledger.
+const summaryColumns=`json_extract(metadata_json,'$.author') AS author,json_extract(metadata_json,'$.url') AS url,
+COALESCE(json_extract(metadata_json,'$.thumbnailUrl'),json_extract(metadata_json,'$.leftImageUrl'),json_extract(metadata_json,'$.images[0].url')) AS snapshot_thumbnail_url,
+CASE WHEN target_type='POST' AND platform='X' THEN (SELECT json_extract(data,'$.media[0].previewUrl') FROM posts WHERE id=review_audit_log.target_id)
+WHEN target_type='POST' AND platform='INSTAGRAM' THEN (SELECT COALESCE(json_extract(data,'$.images[0]'),json_extract(data,'$.image'),json_extract(data,'$.media[0].previewUrl')) FROM instagram_review WHERE code=substr(review_audit_log.target_id,4)) END AS current_thumbnail_url`;
 
 function dateBoundary(value,end=false) {
   if(!value)return null;
@@ -34,7 +37,7 @@ function queryFilters(params) {
 }
 
 function item(row) {
-  return {id:row.id,platform:row.platform,targetType:row.target_type,targetId:row.target_id,action:row.action,reasonCode:row.reason_code,note:row.note,reviewedBy:row.reviewed_by,reviewedAt:row.reviewed_at,summary:{author:row.author??null,url:row.url??null}};
+  return {id:row.id,platform:row.platform,targetType:row.target_type,targetId:row.target_id,action:row.action,reasonCode:row.reason_code,note:row.note,reviewedBy:row.reviewed_by,reviewedAt:row.reviewed_at,summary:{author:row.author??null,url:row.url??null,thumbnailUrl:row.snapshot_thumbnail_url??row.current_thumbnail_url??null,thumbnailSource:row.snapshot_thumbnail_url?'snapshot':row.current_thumbnail_url?'current':null}};
 }
 
 export async function handleReviewAudit(request,env,context) {

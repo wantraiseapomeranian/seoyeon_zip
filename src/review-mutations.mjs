@@ -23,7 +23,7 @@ export async function decideXPost(DB,input,actor){
  const guard=auditGuard(DB,"EXISTS(SELECT 1 FROM posts p LEFT JOIN x_quality q ON q.post_id=p.id WHERE p.id=? AND p.data=? AND COALESCE(q.revision,0)=? AND q.decision IS ? AND q.availability IS ?)",[input.id,row.data,input.revision,row.decision,row.availability]);
  return commitAudit(DB,request,[guard,displayGuard],[DB.prepare('INSERT OR IGNORE INTO x_quality(post_id) VALUES(?)').bind(input.id),DB.prepare('UPDATE x_quality SET decision=?,revision=revision+1 WHERE post_id=?').bind(input.decision,input.id)],{
   platform:'X',type:'POST',target:input.id,previous:old,next:{decision:input.decision,revision:old.revision+1},
-  metadata:{schemaVersion:1,author:post.authorHandle??'',url:post.canonicalUrl??null,displayState,reviewReasons,availability:row.availability??'unknown'}
+  metadata:{schemaVersion:1,author:post.authorHandle??'',url:post.canonicalUrl??null,thumbnailUrl:post.media?.[0]?.previewUrl??null,displayState,reviewReasons,availability:row.availability??'unknown'}
  });
 }
 
@@ -39,7 +39,7 @@ export async function decideInstagram(DB,code,input,actor){
  const previous={status:row.status,revision:row.revision,reviewedAt:row.reviewed_at},next={status:input.status,revision:row.revision+1,reviewedAt:time};
  const guard=auditGuard(DB,'EXISTS(SELECT 1 FROM instagram_review WHERE code=? AND revision=? AND status=? AND data=? AND reviewed_at IS ?)',[code,row.revision,row.status,row.data,row.reviewed_at]);
  return commitAudit(DB,request,[guard],[DB.prepare('UPDATE instagram_review SET status=?,revision=revision+1,reviewed_at=? WHERE code=?').bind(input.status,time,code)],{
-  platform:'INSTAGRAM',type:'POST',target:'ig:'+code,previous,next,metadata:{schemaVersion:1,author:post.author??'',url:post.url??null,reviewReasons:post.reasons??[]}
+  platform:'INSTAGRAM',type:'POST',target:'ig:'+code,previous,next,metadata:{schemaVersion:1,author:post.author??'',url:post.url??null,thumbnailUrl:post.images?.[0]??post.image??post.media?.[0]?.previewUrl??null,reviewReasons:post.reasons??[]}
  });
 }
 
