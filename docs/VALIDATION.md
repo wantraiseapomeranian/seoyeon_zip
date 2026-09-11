@@ -769,3 +769,6 @@ node --check validation/feed.js 및 기존 check-public-admin 통과. 로컬 브
 
 ## 피드 아이콘 밀도·정렬 보정 — 2026-09-11
 CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내/아이콘 겹침과 페이지 넘침 없음, 툴팁·문의 URL·Esc 포커스 복귀 확인. 실제 공개 피드에 로컬 CSS를 적용한 390/1280px 브라우저에서 조작 행28px·SVG16px·작성자 상단 간격6px 및 넘침 없음 확인하고 캡처 시각 검토. Impeccable detector 빈 배열 및 diff --check 통과. 운영 배포 결과는 작업 최종 응답에 기록한다.
+
+## 피드 아이콘 오른쪽 정렬 — 2026-09-11
+실제 공개 피드에 로컬 CSS 적용 후 320/390/1280px에서 SVG path.getBBox/getScreenCTM으로 측정한 말풍선 오른쪽과 사진/분류 오른쪽 차이 모두 0.001px 미만. 가로 넘침 없음, 문의 창 열기·Esc 닫기 통과. PC 캡처 시각 확인, detector 빈 배열·diff --check 통과. 운영 배포 결과는 최종 응답에 기록한다.
