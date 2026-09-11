@@ -735,3 +735,5 @@ X·인스타·유사 사진 비교에 피드와 같은30px 원형 및 CSS 선 �
 ## 로그인 아이콘 — 2026-09-11
 - 기존 44px icon-button과 22px SVG를 재사용하고 관리자 로그인 aria-label 및 hover/focus 툴팁을 추가했다. 장식 SVG는 aria-hidden/focusable=false 처리했다.
 - 기존 check-public-admin.mjs 통과: 방문자/관리자 분리, 세션 실패·만료, 390/1280 반응형. 생성된 방문자 화면에서 상단 아이콘 정렬을 육안 확인했다. 인증 코드·Access 정책은 변경하지 않았다.
+
+- 코드 4c0811e Workers Builds success. 운영 HTML 200 및 로그인 링크의 icon-button·SVG·관리자 로그인 접근성 이름/툴팁·/admin 경로 확인.
