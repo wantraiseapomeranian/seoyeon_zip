@@ -202,3 +202,6 @@ WEV86_ 응답의 동일 게시물 반복으로 media 복합키 충돌이 나고,
 사용자가 공개 전환을 명시적으로 승인했다. 기존 Access 앱의 소유자 정책·AUD·24시간 세션·HTTP Only·호스트 범위 쿠키는 유지하고 보호 대상을 /admin 경로로 좁힌다. 나머지 경로는 Worker가 정확한 공개 GET/HEAD 목록과 관리자 JWT 검증으로 통제한다. /api/* 전체 허용 규칙은 만들지 않는다. 전체 Access 보호를 유지한 상태에서 PUBLIC_FEED_ENABLED=true를 먼저 배포하고, 이후 Worker 전체 Access 대상을 제거한다. 익명 피드/현황과 관리 API 차단, 운영자 로그인 및 쿠키 전달을 운영에서 확인한다. 실패 시 같은 Access 앱에 seoyeon-zip Worker 전체 대상을 복원한 뒤 플래그를 false로 배포한다. 데이터·수집 주기는 변경하지 않는다.
 
 공개 전환 결과(2026-09-11): 코드 ae5f3d9 배포 및 기존 Access 앱의 /admin 보호로 전환 완료. 익명 운영 HTTP 조회/관리 요청 차단, 실제 운영자 브라우저의 공개 경로 쿠키 인식·검토함/관리 현황 조회, 수집 성공 시각 전진을 확인했다. 상세 증거와 검증 범위는 VALIDATION.md의 공개 전환 완료 항목에 기록한다.
+
+## 공개 피드 시안 흔적 정리 — 2026-09-11
+탭 제목을 서연모음.zip으로 바꾸고 기본 표시 주소를 /로 정리한다. 시안용 layout/mood/icons/background/compare 옵션과 비교 선택 UI를 제거하고 확정된 zine/phosphor/mist 디자인을 고정한다. 실제 date/sort/media/kind/source 조건과 해시 링크는 유지하며 기존 /feed 링크도 읽은 뒤 주소를 정리한다.

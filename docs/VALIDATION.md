@@ -726,3 +726,7 @@ X·인스타·유사 사진 비교에 피드와 같은30px 원형 및 CSS 선 �
 - 공개 후 마지막 수집 성공 시각이 02:03:13 → 02:06:13 UTC로 전진했고 공개 현황은 15개 모두 ok였다. 장기간 오류 추세나 대규모 부하를 검증했다는 의미는 아니다.
 - 독립 읽기 전용 리뷰 APPROVED: 공개 경로/메서드, JWT·쿠키 검증, 공개 데이터 투영 및 전환 설계에서 Critical/Major 없음. 96개 테스트와 dry-run 성공은 에이전트가 실행했고 리뷰어는 재실행하지 않았다.
 - 복구 필요 시 기존 Access 앱의 Destinations에 seoyeon-zip Worker(전체 production and preview URLs)를 다시 추가해 전체 접근을 먼저 봉인한다. 이어 wrangler.jsonc의 PUBLIC_FEED_ENABLED=false를 커밋·배포한다. 기존 /admin 대상과 운영자 정책은 유지하며 데이터와 cursor는 되돌리지 않는다.
+
+## 공개 피드 제목·주소 정리 — 2026-09-11
+- validation/feed.html 제목에서 피드 시안을 제거하고 홈 링크를 /로 변경했다. feed.js는 확정 디자인을 고정하고 시안 선택 UI와 URL 매개변수 생성을 제거한다. 필터 없는 기본 주소에는 /feed와 불필요한 물음표가 남지 않도록 /로 정리하며 실제 필터·해시는 유지한다.
+- node --check validation/feed.js 및 기존 scripts/check-public-admin.mjs 통과: 방문자/관리자 분리, 세션 실패와 만료, 모바일/데스크톱 넘침 없음. 운영 배포 후 제목·기존 시안 링크·필터 주소 확인은 후속 기록한다.

@@ -3,7 +3,7 @@ const iconSets={"phosphor":["<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\
 const $=s=>document.querySelector(s);
 const kinds={cosmo:'COSMO',fansite:'직찍',official:'공식',other:'기타'};
 const params=new URLSearchParams(location.search);
-let iconFamily=Object.hasOwn(iconSets,params.get('icons'))?params.get('icons'):'phosphor';
+const iconFamily='phosphor';
 function applyIcons(){
  ['refresh','open-status'].forEach((id,index)=>{
   const button=document.getElementById(id);const label=index?'수집 상태':'목록 새로고침';
@@ -13,30 +13,10 @@ function applyIcons(){
   button.replaceChildren(document.importNode(svg,true),node('span','icon-tooltip',label));
  });
 }
-if(iconFamily){
- const nav=node('nav','mood-picker icon-picker');nav.hidden=params.get('compare')!=='icons';nav.setAttribute('aria-label','아이콘 비교');
- for(const [key,label] of Object.entries({phosphor:'Phosphor',lucide:'Lucide',tabler:'Tabler'})){
-  const button=node('button',null,label);button.dataset.icons=key;button.setAttribute('aria-pressed',String(key===iconFamily));
-  button.addEventListener('click',()=>{iconFamily=key;applyIcons();nav.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.icons===key)));syncUrl();});nav.append(button);
- }
- document.body.prepend(nav);applyIcons();
-}
-const moods={album:'개인 사진집',archive:'디지털 수집함',zine:'작은 팬진'};
-let mood=Object.hasOwn(moods,params.get('mood'))?params.get('mood'):'zine';
-document.body.dataset.mood=mood||'';
-const backgrounds={paper:'종이빛',mist:'회청색',white:'흰색'};
-let background=Object.hasOwn(backgrounds,params.get('background'))?params.get('background'):'mist';
-if(background)document.body.dataset.background=background;
-if(background&&!iconFamily){
- const nav=node('nav','mood-picker background-picker');nav.setAttribute('aria-label','팬진 배경 비교');
- for(const [key,label] of Object.entries(backgrounds)){const button=node('button',null,label);button.dataset.background=key;button.setAttribute('aria-pressed',String(key===background));button.addEventListener('click',()=>{background=key;document.body.dataset.background=key;nav.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.background===key)));syncUrl();});nav.append(button);}
- document.body.prepend(nav);
-}
-if(mood&&!background&&!iconFamily){
- const nav=node('nav','mood-picker');nav.setAttribute('aria-label','디자인 방향 비교');
- for(const [key,label] of Object.entries(moods)){const button=node('button',null,label);button.dataset.mood=key;button.setAttribute('aria-pressed',String(key===mood));button.addEventListener('click',()=>{mood=key;document.body.dataset.mood=key;nav.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mood===key)));render();syncUrl();});nav.append(button);}
- document.body.prepend(nav);
-}
+applyIcons();
+const mood='zine';
+document.body.dataset.mood=mood;
+document.body.dataset.background='mist';
 let media=['all','image','video'].includes(params.get('media'))?params.get('media'):'all';
 let posts=[],states=[],collectedAt=null,loaded=false,role='visitor',roleGeneration=0;
 const live=!['127.0.0.1','localhost'].includes(location.hostname)||params.get('data')==='live';
@@ -66,7 +46,7 @@ async function fetchSourceState(){
  if(!response.ok)throw Error('status');const data=await response.json();if(!Array.isArray(data.sources))throw Error('shape');
  if(generation!==roleGeneration||endpoint!==sourceEndpoint())throw Error('stale');return data.sources;
 }
-function syncUrl(){const q=new URLSearchParams();if(params.get('data')==='live')q.set('data','live');if($("#month").value)q.set("date",$("#month").value);if($("#sort").value==="oldest")q.set("sort","oldest");q.set('layout',document.body.dataset.layout);if(mood)q.set('mood',mood);if(iconFamily)q.set('icons',iconFamily);if(background)q.set('background',background);if(media!=='all')q.set('media',media);if($('#kind').value!=='all')q.set('kind',$('#kind').value);if($('#source').value!=='all')q.set('source',$('#source').value);history.replaceState(null,'',`${location.pathname}?${q}`);}
+function syncUrl(){const q=new URLSearchParams();if(['127.0.0.1','localhost'].includes(location.hostname)&&params.get('data')==='live')q.set('data','live');if($("#month").value)q.set("date",$("#month").value);if($("#sort").value==="oldest")q.set("sort","oldest");if(media!=='all')q.set('media',media);if($('#kind').value!=='all')q.set('kind',$('#kind').value);if($('#source').value!=='all')q.set('source',$('#source').value);const query=q.toString();history.replaceState(null,'',`/${query?'?'+query:''}${location.hash}`);}
 function displayCaption(text){
  const repeated=new Set();const contextTags=new Set(['triples','트리플에스','윤서연','seoyeon','서연','ソヨン']);
  return text.replace(/(^|\s)#([\p{L}\p{N}_]+)/gu,(match,space,tag)=>{
