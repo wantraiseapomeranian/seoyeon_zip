@@ -91,3 +91,14 @@ test('candidate hide uses its revision and leaves the current post available for
  const updated=(await get()).items[0];assert.equal(updated.visible,true);assert.equal(updated.comparisons[0].decision,'hidden');assert.equal(updated.comparisons[0].visible,false);assert.equal(updated.comparisons[0].revision,4);
  }finally{sqlite.close();}
 });
+
+test('large review list classifies off-page near candidates before filters and pagination',async()=>{
+ const {sqlite,DB}=testDatabase();try{
+ sqlite.exec('BEGIN');const insert=sqlite.prepare('INSERT INTO posts VALUES(?,?)');const fingerprint=sqlite.prepare('INSERT INTO x_fingerprints(url,hash,near_url) VALUES(?,?,?)');
+ for(let i=0;i<3100;i++){insert.run('x:'+i,JSON.stringify({id:'x:'+i,authorHandle:i===3099?'other':'fixture',publishedAt:'2026-09-01',media:[{kind:'image',previewUrl:'u'+i}]}));fingerprint.run('u'+i,'h'+i,i===3098?'u3099':null);}sqlite.exec('COMMIT');
+ const get=async query=>(await handleXReview(new Request('https://test.local/api/admin/x'+query),{DB})).json();
+ const visible=await get('?status=visible');assert.equal(visible.items.length,25);assert.deepEqual(visible.counts,{pending:2,visible:3098,hidden:0,all:3100});assert.ok(visible.items.every(p=>p.comparisons.length===0));
+ const filtered=await get('?status=pending&author=fixture');assert.equal(filtered.total,1);assert.equal(filtered.items[0].id,'x:3098');assert.equal(filtered.items[0].comparisons[0].postId,'x:3099');assert.equal(filtered.items[0].comparisons[0].author,'other');
+ const end=await get('?status=visible&offset=3075');assert.equal(end.items.length,23);
+ }finally{sqlite.close();}
+});

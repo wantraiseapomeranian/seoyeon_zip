@@ -1,3 +1,4 @@
+import {indexReviewPhotos} from './x-review-photos.mjs';
 import {requireActor,auditFailure} from './review-audit.mjs';
 import {decideXPost,decidePhotos} from './review-mutations.mjs';
 import {reviewFilters} from './review-filters.mjs';
@@ -12,16 +13,14 @@ export async function handleXReview(request,env,context){
   const group=await DB.prepare('SELECT revision FROM x_group_control WHERE id=1').first();
   const photos=await DB.prepare("SELECT p.id,json_extract(p.data,'$.canonicalUrl') AS url,json_extract(m.value,'$.previewUrl') AS image,COALESCE(f.confirmed_hash,f.hash) AS hash,f.near_url FROM posts p,json_each(p.data,'$.media') m JOIN x_fingerprints f ON f.url=json_extract(m.value,'$.previewUrl') WHERE f.hash IS NOT NULL").all();
   const rejected=await DB.prepare('SELECT left_url,right_url FROM x_photo_differences').all();
-  const pairKey=(a,b)=>JSON.stringify([a,b].sort());
-  const excluded=new Set(rejected.results.map(r=>pairKey(r.left_url,r.right_url)));
-  const metadata=new Map(results.map(r=>{const p=JSON.parse(r.data);return[r.id,{author:p.authorHandle,publishedAt:p.publishedAt,visible:!!r.visible,decision:r.decision??'auto',revision:r.revision??0}];}));
-  const comparisons=new Map();
-  for(const a of photos.results){for(const b of photos.results){if(b.id===a.id||(a.hash!==b.hash&&excluded.has(pairKey(a.image,b.image)))||!((a.hash&&a.hash===b.hash)||a.near_url===b.image||b.near_url===a.image))continue;const list=comparisons.get(a.id)??[];list.push({postId:b.id,url:b.url,image:b.image,ownImage:a.image,exact:a.hash===b.hash,...metadata.get(b.id)});comparisons.set(a.id,list);}}
-  const items=results.map(r=>({...JSON.parse(r.data),decision:r.decision??'auto',revision:r.revision??0,availability:r.availability??'unknown',visible:!!r.visible,checkedAt:r.checked_at,missingCount:r.missing_count??0,comparisons:comparisons.get(r.id)??[]}));
+  const photoIndex=indexReviewPhotos(photos.results,rejected.results);
+  const items=results.map(r=>({...JSON.parse(r.data),decision:r.decision??'auto',revision:r.revision??0,availability:r.availability??'unknown',visible:!!r.visible,checkedAt:r.checked_at,missingCount:r.missing_count??0}));
   const scoped=items.filter(filters.matches),counts={pending:0,visible:0,hidden:0,all:scoped.length};
-  for(const p of scoped){p.reviewState=p.decision==='auto'&&(p.moderationReason||p.availability==='missing'||p.comparisons.some(c=>!c.exact))?'pending':p.visible?'visible':'hidden';counts[p.reviewState]++;}
+  for(const p of scoped){p.reviewState=p.decision==='auto'&&(p.moderationReason||p.availability==='missing'||photoIndex.pending.has(p.id))?'pending':p.visible?'visible':'hidden';counts[p.reviewState]++;}
   const filtered=status==='all'?scoped:scoped.filter(p=>p.reviewState===status);
-  return reply({groupRevision:group.revision,authors:[...new Set(items.map(p=>p.authorHandle).filter(Boolean))].sort(),counts,total:filtered.length,items:filtered.slice(offset,offset+25)});
+  const metadata=new Map(items.map(p=>[p.id,{author:p.authorHandle,publishedAt:p.publishedAt,visible:p.visible,decision:p.decision,revision:p.revision}]));
+  const page=filtered.slice(offset,offset+25).map(p=>({...p,comparisons:photoIndex.pairsFor(p.id).map(([a,b])=>({postId:b.id,url:b.url,image:b.image,ownImage:a.image,exact:a.hash===b.hash,...metadata.get(b.id)}))}));
+  return reply({groupRevision:group.revision,authors:[...new Set(items.map(p=>p.authorHandle).filter(Boolean))].sort(),counts,total:filtered.length,items:page});
  }
  if(request.method!=='POST')return reply({error:'method_not_allowed'},405);
  if(request.headers.get('origin')!==url.origin||request.headers.get('x-review-action')!=='review')return reply({error:'invalid_origin'},403);
