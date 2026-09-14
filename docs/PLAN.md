@@ -287,3 +287,7 @@ X·Instagram·검토 내역의 새로고침 버튼 전체를 오른쪽으로 이
 - 기존 아이스바 모티프를 단순 SVG로 다시 제작(`docs/assets/home-screen-icon.svg`), 회청색 불투명 배경의 PNG 180/192/512px 제공. 소스 SVG는 배포 자산에 포함하지 않음.
 - 설치용 네 파일의 정확한 GET/HEAD 경로만 공개 허용. 오프라인 캐시와 서비스 워커는 이번 범위에 포함하지 않음.
 - 참고: https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/ 및 https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/ConfiguringWebApplications.html
+
+## 2026-09-14 Android maskable 아이콘
+- manifest에 별도 `purpose: maskable` 항목 추가. 안전 영역을 충족하는 기존 `/app-icon-512.png`를 재사용하며 일반 `any` 항목 유지.
+- 로고 픽셀의 최대 중심 거리 177.40px, 512px 아이콘의 최소 안전 원 반지름 204.8px 이내. 배경 불투명 확인.
