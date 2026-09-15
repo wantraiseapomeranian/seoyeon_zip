@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>운영 현황 · 서연모음.zip</title><link rel="stylesheet" href="/feed.css"><link rel="stylesheet" href="/operations.css"><script src="/operations.js" defer></script><link rel="icon" href="/favicon.ico"></head>
+<body data-background="mist"><a class="skip" href="#main">운영 현황으로 건너뛰기</a><div class="shell operations-shell">
+<header><a class="wordmark" href="/">서연모음<span>.zip</span></a><a class="ops-link" href="/">피드로 돌아가기</a></header>
+<main id="main">
+<div class="ops-heading"><h1>운영 현황</h1><button id="operations-refresh" class="modal-icon" type="button" aria-label="운영 현황 새로고침" title="운영 현황 새로고침"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5.5 7a7 7 0 0 1 11.6-1L20 9M4 15l2.9 3A7 7 0 0 0 18.5 17"/></svg></button></div>
+<p id="operations-updated" class="muted">아직 확인하지 않았어요.</p><p id="operations-status" class="muted" role="status">운영 현황을 불러오고 있어요.</p><p id="operations-error" role="alert"></p><a id="operations-login" class="ops-link" href="/admin/operations" hidden>관리자 로그인</a>
+<div id="operations-content" hidden>
+<section class="ops-section" aria-labelledby="attention-title"><h2 id="attention-title">확인이 필요한 항목</h2><p id="attention-summary"></p><ul id="operations-issues" class="ops-issues"></ul><p id="delay-note" class="muted"></p></section>
+<section class="ops-section" aria-labelledby="x-title"><div class="ops-section-heading"><h2 id="x-title">X 수집</h2><a class="ops-link" href="/?manage=collection">수집 관리 열기</a></div><p id="x-summary" class="muted"></p><dl id="x-values" class="ops-values"></dl><details id="x-details"><summary id="x-details-title">계정별 상태 보기</summary><ul id="x-sources" class="ops-sources"></ul></details></section>
+<section class="ops-section" aria-labelledby="instagram-title"><div class="ops-section-heading"><h2 id="instagram-title">Instagram 동기화</h2><a class="ops-link" href="/admin/instagram">인스타 검토함</a></div><p id="instagram-status"></p><dl id="instagram-values" class="ops-values"></dl><p id="instagram-error" class="ops-warning"></p><p class="muted">외부 실행 확인은 수집 결과를 확인한 시각, 자료 저장 성공은 결과를 저장한 시각이에요. 새 자료가 없으면 저장 시각은 바뀌지 않을 수 있어요.</p></section>
+<section class="ops-section" aria-labelledby="manual-title"><div class="ops-section-heading"><h2 id="manual-title">직접 등록 사진 조회</h2><a class="ops-link" href="/?manage=tools">자료 관리 열기</a></div><p id="manual-status" class="muted"></p><dl id="manual-values" class="ops-values"></dl></section>
+<section class="ops-section" aria-labelledby="totals-title"><h2 id="totals-title">자료 규모</h2><dl id="total-values" class="ops-values"></dl><p class="muted">각 저장 목록의 건수예요. 숨김·검토 대기 자료를 포함하며 목록 간 중복이 있을 수 있어요.</p></section>
+</div>
+<noscript><p>운영 현황을 보려면 JavaScript를 켜 주세요.</p></noscript>
+</main><footer><span>소유자 전용 · 조회 시점의 현황</span><a href="/admin/review-history">검토 내역</a></footer></div></body></html>

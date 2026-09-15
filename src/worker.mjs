@@ -1,3 +1,4 @@
+import {handleOperations} from './operations.mjs';
 import {processManual} from './manual-posts.mjs';
 import {publicSource,publicPost} from './public-data.mjs';
 import {handleManagement} from './management.mjs';
@@ -22,6 +23,7 @@ export async function handleApi(request,env,context,ctx) {
   const url=new URL(request.url);
   if(url.pathname==='/api/export'||url.pathname==='/api/manual-posts'||(request.method==='PATCH'&&/^\/api\/sources\/[A-Za-z0-9_]{1,15}$/.test(url.pathname)))return handleManagement(request,env,ctx);
   if(url.pathname==='/api/admin/review-audit'||url.pathname.startsWith('/api/admin/review-audit/'))return handleReviewAudit(request,env,context);
+  if(url.pathname==='/api/admin/operations')return handleOperations(request,env);
   if(url.pathname==='/api/admin/x')return handleXReview(request,env,context);
   if(url.pathname==='/api/admin/instagram/sync'&&request.method==='GET')return reply(await instagramSyncStatus(env));
   if(url.pathname==='/api/admin/instagram'||url.pathname.startsWith('/api/admin/instagram/')) return handleInstagramReview(request,env,context);
@@ -80,6 +82,7 @@ export default {
       if(request.method!=='GET' && request.method!=='HEAD') return reply({error:'method_not_allowed'},405);
       if(!publicRequest&&(url.pathname==='/admin'||url.pathname==='/admin/'))return new Response(null,{status:302,headers:{Location:new URL('/',url),'Cache-Control':'private, no-store'}});
       const assetUrl=new URL(request.url);if(assetUrl.pathname==='/')assetUrl.pathname='/feed.html';
+      if(assetUrl.pathname==='/admin/operations'||assetUrl.pathname==='/admin/operations/')assetUrl.pathname='/operations.html';
       if(assetUrl.pathname==='/admin/instagram'||assetUrl.pathname==='/admin/instagram/')assetUrl.pathname='/instagram.html';
       if(assetUrl.pathname==='/admin/x'||assetUrl.pathname==='/admin/x/')assetUrl.pathname='/x-review';
       if(assetUrl.pathname==='/admin/review-history'||assetUrl.pathname==='/admin/review-history/')assetUrl.pathname='/review-history.html';
