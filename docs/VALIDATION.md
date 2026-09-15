@@ -940,3 +940,5 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - Wrangler dry-run226.20 KiB/gzip55.89 KiB 통과. 최초 런타임/번들 검증은 샌드박스 상위 경로·로그쓰기 제한에 실패했고, 같은 로컬 검증을 권한 조정 후 통과. 배포한 결과와 구분한다.
 - D1 측정 필드 의미는 https://developers.cloudflare.com/d1/worker-api/return-object/ 확인. 대표 조회 SQL시간은 네트워크 제외, 응답 크기는 최종 JSON 본문이며 DB 전송량과 다름. Cron은 UTC15:05=한국시간00:05. 실제 자동 예약 실행과 운영 DB 수동 초기 기록은 구분해 보고한다.
 - 운영 0022 선적용 성공 및 d1_migrations 기록 확인. 최초7403은 기존 Wrangler 인증 확인 후 복구. 동일 기록 함수를 D1 API를 통해 수동 실행하여 2026-09-15 기준값 저장: X3009/인스타60/직접등록1, DB10416128byte, 대표 SQL43.8162ms/읽기52518행/JSON31039byte. 중복 호출 skipped 및 추가쓰기0, 이력 재조회 동일. 운영 원본 수정 없이 이력 INSERT만 허용한 초기화 스크립트를 사용했으며 비밀값/원본은 출력·커밋하지 않음. 실제 Cron의 첫 자동 실행은 다음 한국시간00:05 이후 별도 확인 대상.
+
+- 운영 배포: 기능 커밋1379675 GitHub Workers Builds completed/success. Cloudflare schedules API에서 기존3개 일정 유지와 신규 UTC15:05 등록 확인. 배포 후 루트200, /api/admin/operations·operations.html/js/css 비로그인401. 실제 소유자 로그인 화면과 다음날 첫 자동 Cron 실행은 미검증이며, 로컬 브라우저·실제 런타임·운영 DB 초기 저장 검증과 구분한다.
