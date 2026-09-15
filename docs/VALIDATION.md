@@ -965,3 +965,12 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - Impeccable detector [] 및 git diff --check 통과. Wrangler dry-run234.61 KiB/gzip57.86 KiB 통과. 백엔드·DB 마이그레이션 변경 없음.
 - 위 결과는 로컬 검증이며 실제 운영자 세션 브라우저 확인과 구분한다. 자동 배포 결과는 아래에 별도 기록한다.
 - 운영 배포: 기능 커밋 f239230 GitHub Workers Builds completed/success. /feed 200, 운영 API 및 operations.html/js/css 비로그인401로 보호 유지. 실제 운영자 세션의 화면 확인은 미검증이며 로컬 브라우저 검증과 구분한다.
+
+## 2026-09-15 운영 현황 이동 아이콘
+
+- 정적6종 및 동적 문제/알림 이동을 공통 SVG 아이콘 헬퍼로 렌더링. 설명·건수는 별도 텍스트로 유지. 기존 href/탭·포커스 이동 유지, 아이콘은 aria-hidden, 링크에 접근성 이름 및 포커스/hover 툴팁.
+- check-operations-tabs 및 check-operations 통과. 320/390/768/1280px 모든 탭의 링크 이름/SVG/44px 영역/키보드 툴팁 가로 경계, 탭·관리 화면 이동, 부분 실패·복구·인증 만료 회귀 확인. 쓰기0/브라우저 오류0. 마지막 모바일 요약 높이863px, 캡처 시각 확인.
+- 첫 검증에서 검토 내역 툴팁 오른쪽328px(320px 화면) 넘침 재현, 오른쪽 정렬로 수정 후 통과. 프로그램 focus만으로 focus-visible이 생기지 않는 검증기 문제는 실제 Tab 입력으로 수정.
+- Wrangler dry-run234.61 KiB/gzip57.86 KiB 및 diff --check 통과. UI만 변경하므로 백엔드 단위 테스트는 재실행하지 않았음. 실제 운영자 세션은 별도 미검증.
+- 독립 평가 A(icons_design_review): 소스·최신390/1280px 캡처와 별도 브라우저 탭 확인, 28/40. 명백한 AI 템플릿 인상은 약함. P2: 문제 우선순위, 반복 문구, 상세 지표 묶음; P3: 데스크톱 아이콘과 문맥 거리. 이번에는 조사만 수행.
+- 독립 평가 B(icons_evidence_review): Critical/Major 없음. HTML detector []/exit0, CSS/JS 수동 검토, 실제 로컬 브라우저 접근성 이름·문제 링크 탭 전환/제목 포커스 확인. A 완료 후 B 결과를 통합. 읽기 전용 브라우저 API여서 detector overlay 주입은 생략. 각 임시 탭 닫음, 로컬 검토 서버 종료.

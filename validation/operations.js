@@ -27,6 +27,15 @@ const needsAttention=status=>['retry','attention','delayed','unconfigured'].incl
 const count=value=>new Intl.NumberFormat('ko-KR').format(value)+'건';
 const timestamp=value=>value?new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(value)):'기록 없음';
 function node(tag,text,className){const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(className)el.className=className;return el;}
+function iconLink(link,label,kind='forward'){
+ link.classList.add('ops-icon');link.setAttribute('aria-label',label);
+ const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+ svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('fill','none');svg.setAttribute('stroke','currentColor');svg.setAttribute('stroke-width','1.8');svg.setAttribute('stroke-linecap','round');svg.setAttribute('stroke-linejoin','round');svg.setAttribute('aria-hidden','true');svg.setAttribute('focusable','false');
+ const path=document.createElementNS(svg.namespaceURI,'path');
+ path.setAttribute('d',kind==='back'?'M19 12H5m6-6-6 6 6 6':kind==='history'?'M3 11a9 9 0 1 1 2.6 7.4M3 5v6h6m3-4v5l3 2':kind==='login'?'M14 4h5v16h-5M3 12h11m-4-4 4 4-4 4':'M5 12h14m-6-6 6 6-6 6');svg.append(path);
+ const tooltip=node('span',label,'icon-tooltip');tooltip.setAttribute('aria-hidden','true');link.replaceChildren(svg,tooltip);return link;
+}
+document.querySelectorAll('[data-ops-icon]').forEach(link=>iconLink(link,link.textContent,link.dataset.opsIcon));
 function values(target,entries){target.replaceChildren(...entries.map(([label,value])=>{const row=node('div');row.append(node('dt',label),node('dd',value));return row;}));}
 function state(status){const el=node('span',statusNames[status]||'상태 확인 필요','ops-state');el.dataset.attention=String(needsAttention(status));return el;}
 function renderAlerts(alerts){
@@ -39,7 +48,8 @@ function renderAlerts(alerts){
  const href=key=>key.startsWith('x:')?'#x-title':key==='instagram'?'#instagram-title':key==='manual'?'#manual-title':'#growth-title';
  $('#alerts-active').replaceChildren(...active.map(item=>{
   const li=node('li'),link=node('a',item.label+' · 문제 지속');link.href=href(item.key);link.dataset.panelTarget=item.key==='history'?'growth':'collection';
-  li.append(link,node('span','발생 확인 · '+timestamp(item.openedAt),'muted'));return li;
+  const heading=node('div',undefined,'ops-action-row');heading.append(node('span',item.label+' · 문제 지속'),iconLink(link,item.label+' 상태 보기'));
+  li.append(heading,node('span','발생 확인 · '+timestamp(item.openedAt),'muted'));return li;
  }));
  const names={problem:'문제 발생',recovered:'복구 확인',stopped:'중지로 종료'};
  $('#alerts-rows').replaceChildren(...events.map(item=>{
@@ -71,7 +81,7 @@ function render(data){
  renderAlerts(data.alerts);
  const alertSummary=data.alerts?.status!=='ok'?'확인 불가':!data.alerts.checkedAt?'첫 확인 대기':(data.alerts.stale?'점검 지연 · ':'')+data.alerts.active.length+'개';
  values($('#overview-values'),[['X 수집',data.x.enabled?'활성 계정 '+data.x.sources.filter(source=>source.enabled).length+'개':'중지됨'],['Instagram',statusNames[data.instagram.status]??'확인 필요'],['사진 조회 실패',data.manual.enabled?count(data.manual.counts.failed):'자동 조회 중지'],['지속 문제',alertSummary]]);
- const alertLink=node('a',alertSummary+' · 기록 보기','ops-link');alertLink.href='#alerts';alertLink.dataset.panelTarget='alerts';$('#overview-values').lastElementChild.querySelector('dd').replaceChildren(alertLink);
+ const alertLink=node('a');alertLink.href='#alerts';alertLink.dataset.panelTarget='alerts';const alertValue=$('#overview-values').lastElementChild.querySelector('dd');alertValue.classList.add('ops-action-row');alertValue.replaceChildren(node('span',alertSummary),iconLink(alertLink,'운영 알림 기록 보기'));
  const issues=[];
  for(const source of data.x.sources)if(needsAttention(source.status))issues.push({text:'X @'+source.source+' · '+statusNames[source.status],href:'/?manage=collection'});
  const ig=data.instagram;
@@ -81,7 +91,7 @@ function render(data){
  if(data.manual.enabled&&data.manual.counts.failed)issues.push({text:'직접 등록 사진 조회 실패 '+count(data.manual.counts.failed),href:'/?manage=tools'});
  if(data.manual.enabled&&data.manual.overdue)issues.push({text:'직접 등록 사진 조회 지연 '+count(data.manual.overdue),href:'/?manage=tools'});
  $('#attention-summary').textContent=issues.length?'아래 항목의 상태를 확인해 주세요.':'현재 기록에서 확인이 필요한 항목은 없어요.';
- $('#operations-issues').replaceChildren(...issues.map(issue=>{const li=node('li'),link=node('a',issue.text);link.href=issue.href.includes('instagram')?'#instagram-title':issue.href.includes('tools')?'#manual-title':'#x-title';link.dataset.panelTarget='collection';li.append(link);return li;}));
+ $('#operations-issues').replaceChildren(...issues.map(issue=>{const li=node('li',undefined,'ops-action-row'),link=node('a');link.href=issue.href.includes('instagram')?'#instagram-title':issue.href.includes('tools')?'#manual-title':'#x-title';link.dataset.panelTarget='collection';li.append(node('span',issue.text),iconLink(link,issue.text+' · 상태 보기'));return li;}));
  $('#delay-note').textContent='조회 가능 시각 이후 X는 '+Math.round(data.x.delayGraceSeconds/60)+'분, 인스타·직접 등록은 '+Math.round(data.delayGraceSeconds/60)+'분을 넘기면 지연으로 표시해요. X의 3분 간격 순차 처리와 중지·처리 중 상태를 반영합니다.';
  $('#x-summary').textContent=data.x.enabled?'계정별 수집 상태예요. 시각은 한국시간으로 표시합니다.':'전체 X 수집이 중지되어 있어요. 마지막 기록을 표시합니다.';
  const active=data.x.sources.filter(source=>source.enabled).length;

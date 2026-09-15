@@ -34,6 +34,11 @@ const server=createServer(async(req,res)=>{
  }catch(error){res.writeHead(500).end(error.message);}
 });
 await new Promise(resolve=>server.listen(4198,'127.0.0.1',resolve));
+if(process.argv.includes('--serve')){
+ console.log('Operations review fixture: http://127.0.0.1:4198/admin/operations (Ctrl+C to stop)');
+ await new Promise(resolve=>process.once('SIGINT',resolve));
+ await new Promise(resolve=>server.close(resolve));sqlite.close();process.exit(0);
+}
 let browser;
 try{
  browser=await chromium.launch({headless:true,channel:'chrome'});
@@ -114,6 +119,14 @@ try{
   await page.setViewportSize({width,height:844});
   for(const key of keys){
    await page.locator('#ops-tab-'+key).click();await selected(key);
+   for(const link of await page.locator('a:not(.wordmark):not(.skip):visible').all()){
+    assert.ok(await link.getAttribute('aria-label'),'navigation icon has an accessible name');
+    assert.equal(await link.locator('svg[aria-hidden="true"]').count(),1);
+    const box=await link.boundingBox();assert.ok(box.width>=44&&box.height>=44,'44px navigation target');
+    await link.focus();await page.keyboard.press('Shift+Tab');await page.keyboard.press('Tab');
+    const tip=link.locator('.icon-tooltip');assert.equal(await tip.evaluate(el=>getComputedStyle(el).opacity),'1');
+    const bounds=await tip.boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=width,`tooltip fits ${width}px`);
+   }
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${key} overflows at ${width}px`);
   }
  }
@@ -125,6 +138,7 @@ try{
  await page.setViewportSize({width:1280,height:960});await page.screenshot({path:'.local/operations-tabs-desktop.png',fullPage:true});
  mode='auth';await refresh();await page.locator('#operations-login').waitFor({state:'visible'});
  assert.equal(await page.locator('#operations-content').innerHTML(),'','authentication loss clears every cached panel');
+ assert.equal(await page.getByRole('link',{name:'관리자 로그인',exact:true}).locator('svg').count(),1);
  assert.equal(writes,0);assert.deepEqual(errors,[]);
  console.log(`PASS: operations tabs, keyboard, hash, issue focus, single snapshot, partial/recovery/stale/auth, four widths, summary ${summaryHeight}px, zero writes/errors`);
 }finally{await browser?.close();await new Promise(resolve=>server.close(resolve));sqlite.close();}
