@@ -914,3 +914,4 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 측정 범위: 외부 수집 실행/실제 비용/장기간 추이는 검증 대상 아님. COUNT의 내부 DB 읽기 비용은 존재하며 전체 DB 비용으로 표시하지 않음.
 - 운영 배포 및 실제 운영 인증 확인은 배포 후 결과와 구분해 보고한다.
 - 최종 Wrangler dry-run 통과: 218.10 KiB / gzip 53.60 KiB. X 순차 처리 유예 및 접힌 요약 화면에 대한 재검토도 Critical/Major 없음.
+- 운영: 기능 커밋 082fa95 GitHub Workers Builds completed/success. 비로그인 GET /api/admin/operations 및 /operations.html, /operations.js, /operations.css 모두 401. 루트는 /feed로 307 이동 후 200이며 신규 운영 현황 링크 포함 확인. 최초 검사는 루트 200 직접 응답을 기대해 실패했으며 리디렉션을 따라 재검증했다. 실제 운영자 세션의 새 페이지 확인은 미검증이며 로컬 서명 JWT·브라우저 검증과 구분한다.
