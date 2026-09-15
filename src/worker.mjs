@@ -1,4 +1,5 @@
-import {handleOperations} from './operations.mjs';
+import {handleOperations,readOperationsState} from './operations.mjs';
+import {evaluateOperationsAlerts} from './operations-alerts.mjs';
 import {recordOperationsSnapshot} from './operations-history.mjs';
 import {processManual} from './manual-posts.mjs';
 import {publicSource,publicPost} from './public-data.mjs';
@@ -52,6 +53,11 @@ export async function handleApi(request,env,context,ctx) {
 
 export default {
   async scheduled(controller,env,ctx) {
+    if(controller.cron==='4-59/5 * * * *'){
+      try{const result=await evaluateOperationsAlerts(env,()=>readOperationsState(env,{details:false}));console.log(JSON.stringify({event:'operations_alerts',...result}));}
+      catch(error){console.log(JSON.stringify({event:'operations_alerts',status:'failed'}));throw error;}
+      return;
+    }
     if(controller.cron==='5 15 * * *'){
       try{const result=await recordOperationsSnapshot(env);console.log(JSON.stringify({event:'operations_snapshot',...result}));}
       catch(error){console.log(JSON.stringify({event:'operations_snapshot',status:'failed'}));throw error;}

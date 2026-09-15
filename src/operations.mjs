@@ -1,5 +1,6 @@
 import {sources} from './sources.mjs';
 import {readOperationsHistory} from './operations-history.mjs';
+import {readOperationsAlerts} from './operations-alerts.mjs';
 
 const grace=900;
 const knownErrors=new Set(['unknown_source','unexpected_204','provider_schema','provider_timeout','provider_network','cursor_expired','storage_error','repeated_cursor','unverified_exhaustion','history_window_unverified','invalid_json','response_too_large','invalid_import','review_conflict','sync_conflict','sync_failure','apify_network','apify_empty_response','apify_response_too_large','apify_invalid_json','apify_invalid_runs','apify_invalid_dataset','apify_invalid_checkpoint','apify_incomplete_page']);
@@ -29,9 +30,7 @@ function xSource(row,enabled,now,allowance){
  return {source:row.source,status,enabled:active,lastAttemptAt:iso(row.last_attempt_at),lastSuccessAt:iso(row.last_success_at),lastCompleteSyncAt:iso(row.last_complete_sync_at),nextDueAt:iso(row.next_due_at),failures:row.failures,error:safeError(row.last_error_code)};
 }
 
-export async function handleOperations(request,env){
- if(request.method!=='GET')return json({error:'method_not_allowed'},405,{Allow:'GET'});
- try{
+export async function readOperationsState(env,{details=true}={}){
   const {DB}=env;
   const {now}=await DB.prepare('SELECT unixepoch() AS now').first();
   const configured=!!env.APIFY_TOKEN&&typeof env.APIFY_TASK_ID==='string'&&/^[A-Za-z0-9]{3,64}$/.test(env.APIFY_TASK_ID);
@@ -43,8 +42,8 @@ export async function handleOperations(request,env){
    DB.prepare("SELECT COUNT(*) AS pending,COUNT(CASE WHEN last_error IS NOT NULL THEN 1 END) AS errors,COUNT(CASE WHEN (CASE WHEN next_due_at>0 THEN next_due_at ELSE COALESCE(unixepoch((SELECT last_checked_at FROM instagram_sync WHERE id=1 AND task_id=?)),unixepoch(finished_at)) END)<? THEN 1 END) AS overdue FROM instagram_sync_runs WHERE task_id=? AND state='pending'").bind(task,now-grace,task).first(),
    DB.prepare('SELECT state,COUNT(*) AS count FROM manual_media_jobs GROUP BY state').all(),
    DB.prepare("SELECT COUNT(*) AS count FROM manual_media_jobs WHERE state IN ('pending','starting','waiting') AND lease_until<=? AND (CASE WHEN next_due_at>0 THEN next_due_at ELSE updated_at END)>0 AND (CASE WHEN next_due_at>0 THEN next_due_at ELSE updated_at END)<?").bind(now,now-grace).first(),
-   DB.prepare('SELECT (SELECT COUNT(*) FROM posts) AS x,(SELECT COUNT(*) FROM instagram_review) AS instagram,(SELECT COUNT(*) FROM manual_posts) AS manual').first(),
-   readOperationsHistory(DB,now*1000).then(data=>({status:'ok',...data})).catch(()=>({status:'unavailable',items:[]}))
+   details?DB.prepare('SELECT (SELECT COUNT(*) FROM posts) AS x,(SELECT COUNT(*) FROM instagram_review) AS instagram,(SELECT COUNT(*) FROM manual_posts) AS manual').first():null,
+   details?readOperationsHistory(DB,now*1000).then(data=>({status:'ok',...data})).catch(()=>({status:'unavailable',items:[]})):null
   ]);
   const enabled=env.COLLECTION_ENABLED==='true'&&control?.enabled===1;
   // X runs one eligible source every three minutes, so allow one full rotation.
@@ -64,9 +63,19 @@ export async function handleOperations(request,env){
   const counts={pending:0,starting:0,waiting:0,ready:0,no_media:0,failed:0,existing:0};
   for(const row of manualRows.results)if(Object.hasOwn(counts,row.state))counts[row.state]=row.count;
   const manualEnabled=env.MANUAL_MEDIA_ENABLED==='true';
-  return json({generatedAt:iso(now),delayGraceSeconds:grace,
+  return {generatedAt:iso(now),delayGraceSeconds:grace,
    x:{enabled,delayGraceSeconds:xGrace,sources:xRows.results.map(row=>xSource(row,enabled,now,xGrace))},
-   instagram:{status,checkedAt:iso(ig?.last_checked_at),syncedAt:iso(ig?.last_success_at),nextDueAt:iso(ig?.next_due_at),failures:ig?.failures??0,error:mismatch?'task_mismatch':safeError(ig?.last_error),pending:runs.pending,pendingErrors:runs.errors,overdue},
-   manual:{enabled:manualEnabled,counts,overdue:manualEnabled?manualDue.count:0},totals,history});
+   instagram:{status,checkedAt:iso(ig?.last_checked_at),syncedAt:iso(ig?.last_success_at),nextDueAt:iso(ig?.next_due_at),failures:ig?.failures??0,error:mismatch?'task_mismatch':safeError(ig?.last_error),pending:runs.pending,pendingErrors:runs.errors,overdue,pendingOverdue:igEnabled&&!mismatch?runs.overdue:0},
+   manual:{enabled:manualEnabled,counts,overdue:manualEnabled?manualDue.count:0},...(details?{totals,history}:{})};
+}
+
+export async function handleOperations(request,env){
+ if(request.method!=='GET')return json({error:'method_not_allowed'},405,{Allow:'GET'});
+ try{
+  const [data,alerts]=await Promise.all([
+   readOperationsState(env),
+   readOperationsAlerts(env.DB).catch(()=>({status:'unavailable',checkedAt:null,active:[],events:[]}))
+  ]);
+  return json({...data,alerts});
  }catch{return json({error:'operations_unavailable'},503);}
 }

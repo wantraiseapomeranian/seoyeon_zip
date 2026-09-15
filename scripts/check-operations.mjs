@@ -27,6 +27,17 @@ await new Promise(r=>server.listen(4197,'127.0.0.1',r));let browser;
 try{
  browser=await chromium.launch({headless:true,channel:'chrome'});const page=await browser.newPage({viewport:{width:390,height:844}});page.setDefaultTimeout(10000);const errors=[];page.on('pageerror',error=>errors.push(error.message));
  await page.goto('http://127.0.0.1:4197/admin/operations');await page.locator('#operations-content').waitFor({state:'visible'});
+ assert.match(await page.locator('#alerts-status').innerText(),/첫 확인/);assert.equal(await page.locator('#alerts-details').isVisible(),false);
+ sqlite.exec("UPDATE operations_alert_monitor SET checked_at=unixepoch(),last_attempt_at=unixepoch(); INSERT INTO operations_alert_state(key,label,opened_at,last_seen_at,observed_at) VALUES('x:Seowoo_0501','ignored',unixepoch()-1200,unixepoch(),unixepoch())");
+ for(let i=0;i<24;i++)sqlite.prepare('INSERT INTO operations_alert_events(key,label,type,created_at) VALUES(?,?,?,?)').run('x:Seowoo_0501','ignored',['problem','recovered','stopped'][i%3],Math.floor(Date.now()/1000)-24+i);
+ await page.locator('#operations-refresh').click();await page.waitForFunction(()=>document.querySelector('#alerts-status').textContent.includes('진행 중인 문제 1개'));
+ assert.match(await page.locator('#alerts-active').innerText(),/Seowoo_0501.*문제 지속/);assert.equal(await page.locator('#alerts-rows').isVisible(),false);
+ await page.locator('#alerts-details summary').click();assert.equal(await page.locator('#alerts-rows tr').count(),20);assert.match(await page.locator('#alerts-rows tr').first().innerText(),/중지로 종료/);assert.match(await page.locator('#alerts-rows').innerText(),/복구 확인/);
+ for(const width of [320,390,768,1280]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}
+ mkdirSync('.local',{recursive:true});await page.setViewportSize({width:390,height:844});assert.equal(await page.locator('#alerts-details .ops-history-scroll').evaluate(el=>el.scrollWidth>el.clientWidth),false);await page.locator('[aria-labelledby="alerts-title"]').screenshot({path:'.local/operations-alerts-mobile.png'});
+ await page.setViewportSize({width:1280,height:960});await page.locator('[aria-labelledby="alerts-title"]').screenshot({path:'.local/operations-alerts-desktop.png'});
+ sqlite.exec('UPDATE operations_alert_monitor SET checked_at=unixepoch()-1200');await page.locator('#operations-refresh').click();await page.waitForFunction(()=>document.querySelector('#alerts-status').textContent.includes('15분 넘게'));
+ assert.equal(await page.locator('#alerts-active li').count(),1);
  assert.match(await page.locator('#growth-status').innerText(),/첫 기록/);assert.equal(await page.locator('#growth-details').isVisible(),false);
  const today=new Date(Date.now()+9*3600000).toISOString().slice(0,10);
  for(const [offset,x,size,sql,status] of [[0,3200,12000000,28.45,'ok'],[1,3000,11000000,32,'ok'],[3,2500,null,null,'failed']]){
@@ -44,6 +55,7 @@ try{
  await page.locator('#operations-refresh').click();await page.waitForFunction(()=>document.querySelector('#growth-values').textContent.includes('전일 비교 없음'));
  sqlite.exec('DROP TABLE operations_history');await page.locator('#operations-refresh').click();await page.waitForFunction(()=>document.querySelector('#growth-status').textContent.includes('불러오지 못했어요'));
  assert.equal(await page.locator('#total-values').isVisible(),true);
+ sqlite.exec('DROP TABLE operations_alert_events');await page.locator('#operations-refresh').click();await page.waitForFunction(()=>document.querySelector('#alerts-status').textContent.includes('불러오지 못했어요'));assert.equal(await page.locator('#total-values').isVisible(),true);assert.equal(await page.locator('#alerts-details').isVisible(),false);
  assert.match(await page.locator('#operations-issues').innerText(),/사진 조회 실패 1건/);assert.match(await page.locator('#instagram-values').innerText(),/외부 실행 확인/);assert.match(await page.locator('#total-values').innerText(),/직접 등록 자료\n1건/);
  assert.equal(await page.locator('#x-sources').isVisible(),false);await page.locator('#x-details-title').click();assert.equal(await page.locator('#x-sources').isVisible(),true);await page.locator('#x-details-title').click();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);mkdirSync('.local',{recursive:true});await page.screenshot({path:'.local/operations-mobile.png',fullPage:true});await page.screenshot({path:'.local/operations-mobile-top.png'});
  await page.setViewportSize({width:1280,height:960});await page.screenshot({path:'.local/operations-desktop.png',fullPage:true});

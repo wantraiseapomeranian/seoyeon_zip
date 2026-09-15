@@ -6,6 +6,23 @@ const timestamp=value=>value?new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seo
 function node(tag,text,className){const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(className)el.className=className;return el;}
 function values(target,entries){target.replaceChildren(...entries.map(([label,value])=>{const row=node('div');row.append(node('dt',label),node('dd',value));return row;}));}
 function state(status){const el=node('span',statusNames[status]||'상태 확인 필요','ops-state');el.dataset.attention=String(needsAttention(status));return el;}
+function renderAlerts(alerts){
+ const active=alerts?.active??[],events=alerts?.events??[];
+ $('#alerts-active').replaceChildren();$('#alerts-rows').replaceChildren();$('#alerts-details').hidden=!events.length;
+ $('#alerts-status').classList.toggle('ops-warning',alerts?.status!=='ok'||!!alerts?.stale);
+ if(alerts?.status!=='ok'){$('#alerts-status').textContent='알림 기록을 불러오지 못했어요. 새로고침으로 다시 확인해 주세요.';return;}
+ if(!alerts.checkedAt)$('#alerts-status').textContent='알림 점검의 첫 확인을 기다리고 있어요.';
+ else $('#alerts-status').textContent='마지막 점검 · '+timestamp(alerts.checkedAt)+' (한국시간) · '+(alerts.stale?'점검 기록이 15분 넘게 갱신되지 않았어요.':active.length?'진행 중인 문제 '+active.length+'개':'지속 중인 문제 알림이 없어요.');
+ const href=key=>key.startsWith('x:')?'/?manage=collection':key==='instagram'?'/admin/instagram':key==='manual'?'/?manage=tools':'#growth-title';
+ $('#alerts-active').replaceChildren(...active.map(item=>{
+  const li=node('li'),link=node('a',item.label+' · 문제 지속');link.href=href(item.key);
+  li.append(link,node('span','발생 확인 · '+timestamp(item.openedAt),'muted'));return li;
+ }));
+ const names={problem:'문제 발생',recovered:'복구 확인',stopped:'중지로 종료'};
+ $('#alerts-rows').replaceChildren(...events.map(item=>{
+  const tr=node('tr'),time=node('th',timestamp(item.createdAt));time.scope='row';tr.append(time,node('td',item.label),node('td',names[item.type]??'상태 변경'));return tr;
+ }));
+}
 const number=value=>new Intl.NumberFormat('ko-KR',{maximumFractionDigits:2}).format(value);
 const bytes=value=>value==null?'측정 없음':value>=1e6?number(value/1e6)+' MB':value>=1000?number(value/1000)+' KB':number(value)+' B';
 const metric=(value,unit)=>value==null?'측정 없음':number(value)+unit;
@@ -28,6 +45,7 @@ function renderGrowth(history,generatedAt){
  }));
 }
 function render(data){
+ renderAlerts(data.alerts);
  const issues=[];
  for(const source of data.x.sources)if(needsAttention(source.status))issues.push({text:'X @'+source.source+' · '+statusNames[source.status],href:'/?manage=collection'});
  const ig=data.instagram;
