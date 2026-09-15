@@ -974,3 +974,4 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - Wrangler dry-run234.61 KiB/gzip57.86 KiB 및 diff --check 통과. UI만 변경하므로 백엔드 단위 테스트는 재실행하지 않았음. 실제 운영자 세션은 별도 미검증.
 - 독립 평가 A(icons_design_review): 소스·최신390/1280px 캡처와 별도 브라우저 탭 확인, 28/40. 명백한 AI 템플릿 인상은 약함. P2: 문제 우선순위, 반복 문구, 상세 지표 묶음; P3: 데스크톱 아이콘과 문맥 거리. 이번에는 조사만 수행.
 - 독립 평가 B(icons_evidence_review): Critical/Major 없음. HTML detector []/exit0, CSS/JS 수동 검토, 실제 로컬 브라우저 접근성 이름·문제 링크 탭 전환/제목 포커스 확인. A 완료 후 B 결과를 통합. 읽기 전용 브라우저 API여서 detector overlay 주입은 생략. 각 임시 탭 닫음, 로컬 검토 서버 종료.
+- 운영: 기능 커밋875b00d GitHub Workers Builds completed/success. 검토 서버는 Ctrl+C와 Stop-Process가 종료하지 못해 확인한 전용 PID를 taskkill로 종료했다. 검토용 원본/토큰은 커밋하지 않음.
