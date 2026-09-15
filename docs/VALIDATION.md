@@ -926,3 +926,5 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - DB 읽기 증가는 약15%. 초기 반복 분류안보다 줄였지만 기존보다 낮아졌다고 보고하지 않는다. 저장 색인 및 추가 수집 쓰기 비용도 존재한다.
 - 참고: D1 batch/statement 일관성과 결과 형식은 https://developers.cloudflare.com/d1/worker-api/d1-database/ , 트리거 의미는 https://www.sqlite.org/lang_createtrigger.html 확인. 최종 구현은 하나의 SELECT statement를 사용한다.
 - 최종 전체 Node 테스트171/171 통과. Wrangler dry-run222.21 KiB/gzip54.64 KiB 통과. 기존 사진 비교 브라우저 검증은 페이지/후보 넘기기·다른 사진 판단 유지·묶기·1440/390/320px 통과.
+- 운영 0021 적용 완료(기준 코드 ba67557): 원본3009건 유지, 파생 게시물3009/미디어5371행. 원본→색인 메타/사진 참조 불일치0. d1_migrations에0021만 기록. DB크기 약7.87→10.33MB. 최초7403은 whoami 인증 확인 후 재조회에서 복구됐고 이후 적용 성공.
+- 운영 D1 직접 조회 대조: all/visible(offset25)/pending/hidden의 응답이 이전 코드와 deep equality 일치. all3009/visible2932/hidden77/pending0, 페이지25건. 전체 탭 SQL시간110.03→27.46ms, 읽기59,230→52,441, DB반환3,349,528→46,557byte. visible2페이지 읽기48,970, pending45,726, hidden49,509; 모든 검증 조회 쓰기0. 단일 측정으로 전체 HTTP/브라우저 지연과 구분하며 실제 소유자 UI 확인은 배포 후 별도다.

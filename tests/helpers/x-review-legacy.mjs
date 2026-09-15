@@ -18,6 +18,5 @@ export async function legacyXReview(DB,params){
   const metadata=new Map(items.map(p=>[p.id,{author:p.authorHandle,publishedAt:p.publishedAt,visible:p.visible,decision:p.decision,revision:p.revision}]));
   const page=filtered.slice(offset,offset+25).map(p=>({...p,comparisons:photoIndex.pairsFor(p.id).map(([a,b])=>({postId:b.id,url:b.url,image:b.image,ownImage:a.image,exact:a.hash===b.hash,...metadata.get(b.id)}))}));
   return reply({groupRevision:group.revision,authors:[...new Set(items.map(p=>p.authorHandle).filter(Boolean))].sort(),counts,total:filtered.length,items:page});
- 
-}
 
+}
