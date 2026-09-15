@@ -983,3 +983,4 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 읽기 전용 리뷰 APPROVED: Instagram6개/직접등록7개 지표 보존, details 컨테이너 유지, 상태 live region·실패/인증/이전 기록·탭 이동 유지. HTML detector [] 및 diff --check 통과.
 - 로컬 결과와 실제 운영자 세션 검증은 구분하며 운영자 세션 화면은 미검증. 이전 디자인 조사 원본(.impeccable)은 이번 커밋 대상에서 제외.
 - 최종 Wrangler dry-run234.61 KiB/gzip57.86 KiB 통과.
+- 운영 배포: 기능 커밋4b19424 Workers Builds completed/success. /feed 200, 운영 API 및 operations.html/js/css 비로그인401 유지. 실제 운영자 세션은 미검증.
