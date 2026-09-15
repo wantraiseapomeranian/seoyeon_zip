@@ -54,7 +54,7 @@ function queryScope(params){
  return {where:where.length?where.join(' AND '):'1',args};
 }
 
-export async function readXReview(DB,params){
+export async function readXReview(DB,params,onMeasurement){
  const status=params.get('status')??'pending',offset=Number(params.get('offset')??0);
  if(!['pending','visible','hidden','all'].includes(status)||!Number.isSafeInteger(offset)||offset<0||offset>100000)throw Error('invalid_query');
  const scope=queryScope(params);
@@ -100,7 +100,9 @@ export async function readXReview(DB,params){
    ...(row.author_present?{author:row.author}:{}),...(row.published_present?{publishedAt:row.published_at}:{}),visible:!!row.visible,decision:row.decision,revision:row.revision};
   if(!byPost.has(row.own_id))byPost.set(row.own_id,[]);byPost.get(row.own_id).push(pair);
  }
- return {groupRevision:meta.groupRevision,authors:authors.sort(),counts,total:counts[status],items:pageRows.map(row=>{
+ const response={groupRevision:meta.groupRevision,authors:authors.sort(),counts,total:counts[status],items:pageRows.map(row=>{
   const post=JSON.parse(row.data);return {...post,decision:row.decision,revision:row.revision,availability:row.availability,visible:!!row.visible,checkedAt:row.checked_at,missingCount:row.missing_count??0,reviewState:row.review_state,comparisons:byPost.get(post.id)??[]};
  })};
+ if(onMeasurement)onMeasurement({meta:result.meta,resultBytes:new TextEncoder().encode(JSON.stringify(response)).byteLength});
+ return response;
 }

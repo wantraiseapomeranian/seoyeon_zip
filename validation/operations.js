@@ -6,6 +6,27 @@ const timestamp=value=>value?new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seo
 function node(tag,text,className){const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(className)el.className=className;return el;}
 function values(target,entries){target.replaceChildren(...entries.map(([label,value])=>{const row=node('div');row.append(node('dt',label),node('dd',value));return row;}));}
 function state(status){const el=node('span',statusNames[status]||'상태 확인 필요','ops-state');el.dataset.attention=String(needsAttention(status));return el;}
+const number=value=>new Intl.NumberFormat('ko-KR',{maximumFractionDigits:2}).format(value);
+const bytes=value=>value==null?'측정 없음':value>=1e6?number(value/1e6)+' MB':value>=1000?number(value/1000)+' KB':number(value)+' B';
+const metric=(value,unit)=>value==null?'측정 없음':number(value)+unit;
+function growthValue(value,change,format){return format(value)+(change==null?' · 전일 비교 없음':' · 전일 대비 '+(change>0?'+':change<0?'−':'')+format(Math.abs(change)));}
+function renderGrowth(history,generatedAt){
+ const items=history?.items??[],latest=items[0];
+ $('#growth-details').hidden=!items.length;
+ $('#growth-values').replaceChildren();$('#growth-query').replaceChildren();$('#growth-rows').replaceChildren();
+ if(history?.status!=='ok'){$('#growth-status').textContent='추이 기록을 불러오지 못했어요. 새로고침으로 다시 확인해 주세요.';return;}
+ if(!latest){$('#growth-status').textContent='첫 기록을 기다리고 있어요. 기록이 쌓이면 날짜별 변화가 표시됩니다.';return;}
+ const today=new Date(Date.parse(generatedAt)+9*3600000).toISOString().slice(0,10);
+ $('#growth-status').textContent='최근 기록 · '+timestamp(latest.capturedAt)+' (한국시간)'+(latest.day<today?' · 오늘 기록은 아직 없어요.':'')+(latest.query.status==='failed'?' · X 검토함 조회 측정에 실패했어요.':'');
+ values($('#growth-values'),[['X 저장 게시물',growthValue(latest.totals.x,latest.delta?.x,count)],['인스타 검토 자료',growthValue(latest.totals.instagram,latest.delta?.instagram,count)],['직접 등록 자료',growthValue(latest.totals.manual,latest.delta?.manual,count)],['DB 크기',growthValue(latest.databaseBytes,latest.delta?.databaseBytes,bytes)]]);
+ values($('#growth-query'),[['대표 조회 SQL 시간',metric(latest.query.sqlMs,' ms')],['대표 조회 읽은 행',metric(latest.query.rowsRead,'행')],['대표 조회 응답 크기',bytes(latest.query.resultBytes)]]);
+ $('#growth-rows').replaceChildren(...items.map(item=>{
+  const row=node('tr'),day=node('th',item.day);day.scope='row';day.title=timestamp(item.capturedAt);row.append(day);
+  const query=item.query;
+  for(const value of [count(item.totals.x),count(item.totals.instagram),count(item.totals.manual),bytes(item.databaseBytes),query.status==='failed'?'측정 실패':metric(query.sqlMs,' ms'),metric(query.rowsRead,'행'),bytes(query.resultBytes)])row.append(node('td',value));
+  return row;
+ }));
+}
 function render(data){
  const issues=[];
  for(const source of data.x.sources)if(needsAttention(source.status))issues.push({text:'X @'+source.source+' · '+statusNames[source.status],href:'/?manage=collection'});
@@ -36,6 +57,7 @@ function render(data){
  const labels={pending:'조회 대기',starting:'조회 시작 중',waiting:'외부 처리 중',ready:'사진 조회 완료',no_media:'사진 없음',failed:'조회 실패',existing:'기존 자료 연결'};
  values($('#manual-values'),Object.entries(labels).map(([key,label])=>[label,count(data.manual.counts[key])]));
  values($('#total-values'),[['X 저장 게시물',count(data.totals.x)],['인스타 검토 자료',count(data.totals.instagram)],['직접 등록 자료',count(data.totals.manual)]]);
+ renderGrowth(data.history,data.generatedAt);
  $('#operations-updated').textContent='마지막 확인 · '+timestamp(data.generatedAt)+' (한국시간)';
 }
 let loading=false,lastSuccess=false;

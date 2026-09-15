@@ -1,4 +1,5 @@
 import {handleOperations} from './operations.mjs';
+import {recordOperationsSnapshot} from './operations-history.mjs';
 import {processManual} from './manual-posts.mjs';
 import {publicSource,publicPost} from './public-data.mjs';
 import {handleManagement} from './management.mjs';
@@ -50,7 +51,14 @@ export async function handleApi(request,env,context,ctx) {
 }
 
 export default {
-  async scheduled(controller,env,ctx) { if(env.MANUAL_MEDIA_ENABLED==='true')ctx.waitUntil(processManual(env).then(result=>console.log(JSON.stringify({event:'manual_media',...result}))).catch(()=>console.log(JSON.stringify({event:'manual_media',status:'failed'}))));if(controller.cron==='2-59/5 * * * *')console.log(JSON.stringify({event:'instagram_sync',...await syncInstagram(env)}));else if(controller.cron==='1-59/3 * * * *')await maintainX(env);else await runDueSource(env); },
+  async scheduled(controller,env,ctx) {
+    if(controller.cron==='5 15 * * *'){
+      try{const result=await recordOperationsSnapshot(env);console.log(JSON.stringify({event:'operations_snapshot',...result}));}
+      catch(error){console.log(JSON.stringify({event:'operations_snapshot',status:'failed'}));throw error;}
+      return;
+    }
+    if(env.MANUAL_MEDIA_ENABLED==='true')ctx.waitUntil(processManual(env).then(result=>console.log(JSON.stringify({event:'manual_media',...result}))).catch(()=>console.log(JSON.stringify({event:'manual_media',status:'failed'}))));if(controller.cron==='2-59/5 * * * *')console.log(JSON.stringify({event:'instagram_sync',...await syncInstagram(env)}));else if(controller.cron==='1-59/3 * * * *')await maintainX(env);else await runDueSource(env);
+  },
   async fetch(request,env,ctx) {
     const url=new URL(request.url);
     const publicAssets=new Set(['/','/feed','/feed.html','/feed.css','/feed.js','/review-gallery.js','/favicon.ico','/favicon-16.png','/favicon-32.png','/manifest.webmanifest','/apple-touch-icon.png','/app-icon-192.png','/app-icon-512.png']);

@@ -27,6 +27,23 @@ await new Promise(r=>server.listen(4197,'127.0.0.1',r));let browser;
 try{
  browser=await chromium.launch({headless:true,channel:'chrome'});const page=await browser.newPage({viewport:{width:390,height:844}});page.setDefaultTimeout(10000);const errors=[];page.on('pageerror',error=>errors.push(error.message));
  await page.goto('http://127.0.0.1:4197/admin/operations');await page.locator('#operations-content').waitFor({state:'visible'});
+ assert.match(await page.locator('#growth-status').innerText(),/첫 기록/);assert.equal(await page.locator('#growth-details').isVisible(),false);
+ const today=new Date(Date.now()+9*3600000).toISOString().slice(0,10);
+ for(const [offset,x,size,sql,status] of [[0,3200,12000000,28.45,'ok'],[1,3000,11000000,32,'ok'],[3,2500,null,null,'failed']]){
+  const day=new Date(Date.parse(today+'T00:00:00Z')-offset*86400000).toISOString().slice(0,10);
+  sqlite.prepare("INSERT INTO operations_history VALUES(?,?,?,?,?,?,?,?,?,?,?)").run(day,day+'T01:00:00Z',x,170,1,size,'x-review-v1',status,sql,status==='ok'?52000:null,status==='ok'?46000:null);
+ }
+ await page.locator('#operations-refresh').click();await page.waitForFunction(()=>document.querySelector('#growth-values').textContent.includes('+200건'));
+ assert.match(await page.locator('#growth-values').innerText(),/전일 대비 \+1 MB/);assert.match(await page.locator('#growth-query').innerText(),/28.45 ms/);
+ assert.equal(await page.locator('#growth-rows').isVisible(),false);await page.locator('#growth-details summary').click();assert.equal(await page.locator('#growth-rows tr').count(),3);assert.match(await page.locator('#growth-rows').innerText(),/측정 실패/);assert.doesNotMatch(await page.locator('#growth-rows tr').last().innerText(),/0 ms/);
+ for(const width of [320,390,768,1280]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}
+ await page.setViewportSize({width:390,height:844});mkdirSync('.local',{recursive:true});await page.locator('[aria-labelledby="growth-title"]').screenshot({path:'.local/operations-growth-mobile.png'});
+ await page.setViewportSize({width:1280,height:960});await page.locator('[aria-labelledby="growth-title"]').screenshot({path:'.local/operations-growth-desktop.png'});
+ // Missing yesterday must not become a multi-day change labelled as a daily change.
+ sqlite.prepare('DELETE FROM operations_history WHERE day!=?').run(today);
+ await page.locator('#operations-refresh').click();await page.waitForFunction(()=>document.querySelector('#growth-values').textContent.includes('전일 비교 없음'));
+ sqlite.exec('DROP TABLE operations_history');await page.locator('#operations-refresh').click();await page.waitForFunction(()=>document.querySelector('#growth-status').textContent.includes('불러오지 못했어요'));
+ assert.equal(await page.locator('#total-values').isVisible(),true);
  assert.match(await page.locator('#operations-issues').innerText(),/사진 조회 실패 1건/);assert.match(await page.locator('#instagram-values').innerText(),/외부 실행 확인/);assert.match(await page.locator('#total-values').innerText(),/직접 등록 자료\n1건/);
  assert.equal(await page.locator('#x-sources').isVisible(),false);await page.locator('#x-details-title').click();assert.equal(await page.locator('#x-sources').isVisible(),true);await page.locator('#x-details-title').click();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);mkdirSync('.local',{recursive:true});await page.screenshot({path:'.local/operations-mobile.png',fullPage:true});await page.screenshot({path:'.local/operations-mobile-top.png'});
  await page.setViewportSize({width:1280,height:960});await page.screenshot({path:'.local/operations-desktop.png',fullPage:true});
