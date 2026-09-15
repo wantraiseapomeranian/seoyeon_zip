@@ -90,10 +90,10 @@ function render(data){
  if(!['disabled','unconfigured'].includes(ig.status)&&ig.overdue)issues.push({text:'Instagram 대기 작업 지연 '+count(ig.overdue),href:'/admin/instagram'});
  if(data.manual.enabled&&data.manual.counts.failed)issues.push({text:'직접 등록 사진 조회 실패 '+count(data.manual.counts.failed),href:'/?manage=tools'});
  if(data.manual.enabled&&data.manual.overdue)issues.push({text:'직접 등록 사진 조회 지연 '+count(data.manual.overdue),href:'/?manage=tools'});
- $('#attention-summary').textContent=issues.length?'아래 항목의 상태를 확인해 주세요.':'현재 기록에서 확인이 필요한 항목은 없어요.';
+ $('#attention-summary').textContent=issues.length?'':'현재 기록에서 확인이 필요한 항목은 없어요.';
  $('#operations-issues').replaceChildren(...issues.map(issue=>{const li=node('li',undefined,'ops-action-row'),link=node('a');link.href=issue.href.includes('instagram')?'#instagram-title':issue.href.includes('tools')?'#manual-title':'#x-title';link.dataset.panelTarget='collection';li.append(node('span',issue.text),iconLink(link,issue.text+' · 상태 보기'));return li;}));
  $('#delay-note').textContent='조회 가능 시각 이후 X는 '+Math.round(data.x.delayGraceSeconds/60)+'분, 인스타·직접 등록은 '+Math.round(data.delayGraceSeconds/60)+'분을 넘기면 지연으로 표시해요. X의 3분 간격 순차 처리와 중지·처리 중 상태를 반영합니다.';
- $('#x-summary').textContent=data.x.enabled?'계정별 수집 상태예요. 시각은 한국시간으로 표시합니다.':'전체 X 수집이 중지되어 있어요. 마지막 기록을 표시합니다.';
+ $('#x-summary').textContent=data.x.enabled?'':'전체 X 수집이 중지되어 있어요. 마지막 기록을 표시합니다.';
  const active=data.x.sources.filter(source=>source.enabled).length;
  values($('#x-values'),[['수집 켜짐',active+'개 계정'],['중지·완료',(data.x.sources.length-active)+'개 계정'],['확인 필요',data.x.sources.filter(source=>needsAttention(source.status)).length+'개 계정']]);
  $('#x-details-title').textContent='계정별 상태 보기 · '+data.x.sources.length+'개';
@@ -105,18 +105,20 @@ function render(data){
  }));
  if(!data.x.sources.length)$('#x-sources').append(node('li','등록된 수집 계정이 없어요.','muted'));
  $('#instagram-status').replaceChildren(state(ig.status));
- values($('#instagram-values'),[['외부 실행 확인',timestamp(ig.checkedAt)],['자료 저장 성공',timestamp(ig.syncedAt)],['다음 확인 예정',['disabled','unconfigured'].includes(ig.status)?'진행 안 함':timestamp(ig.nextDueAt)],['자료 처리 대기',count(ig.pending)],['대기 중 오류',count(ig.pendingErrors)],['연속 확인 실패',count(ig.failures)]]);
+ values($('#instagram-values'),[['대기 중 오류',count(ig.pendingErrors)],['연속 확인 실패',count(ig.failures)],['자료 처리 대기',count(ig.pending)]]);
+ values($('#instagram-detail-values'),[['외부 실행 확인',timestamp(ig.checkedAt)],['자료 저장 성공',timestamp(ig.syncedAt)],['다음 확인 예정',['disabled','unconfigured'].includes(ig.status)?'진행 안 함':timestamp(ig.nextDueAt)]]);
  $('#instagram-error').textContent=ig.error?'최근 오류 · '+ig.error:'';
- $('#manual-status').textContent=data.manual.enabled?'사진 조회가 켜져 있어요. 등록된 작업의 현재 상태입니다.':'사진 자동 조회가 중지되어 있어요. 저장된 작업 상태를 표시합니다.';
+ $('#manual-status').textContent=data.manual.enabled?'자동 조회 켜짐':'자동 조회 중지 · 저장된 작업 상태';
  const labels={pending:'조회 대기',starting:'조회 시작 중',waiting:'외부 처리 중',ready:'사진 조회 완료',no_media:'사진 없음',failed:'조회 실패',existing:'기존 자료 연결'};
- values($('#manual-values'),Object.entries(labels).map(([key,label])=>[label,count(data.manual.counts[key])]));
+ values($('#manual-values'),['failed','pending','starting','waiting'].map(key=>[labels[key],count(data.manual.counts[key])]));
+ values($('#manual-detail-values'),['ready','no_media','existing'].map(key=>[labels[key],count(data.manual.counts[key])]));
  values($('#total-values'),[['X 저장 게시물',count(data.totals.x)],['인스타 검토 자료',count(data.totals.instagram)],['직접 등록 자료',count(data.totals.manual)]]);
  renderGrowth(data.history,data.generatedAt);
  $('#operations-updated').textContent='마지막 확인 · '+timestamp(data.generatedAt)+' (한국시간)';
 }
 let loading=false,lastSuccess=false;
 async function refresh(){
- if(loading)return;loading=true;const button=$('#operations-refresh');button.setAttribute('aria-disabled','true');$('#operations-status').textContent='운영 현황을 불러오고 있어요.';$('#operations-error').textContent='';
+ if(loading)return;loading=true;const button=$('#operations-refresh');button.setAttribute('aria-disabled','true');$('#operations-status').classList.remove('sr-only');$('#operations-status').textContent='운영 현황을 불러오고 있어요.';$('#operations-error').textContent='';
  try{
   const response=await fetch('/api/admin/operations',{cache:'no-store',signal:AbortSignal.timeout(15000)});
   if(response.status===401||response.status===403){$('#operations-content').hidden=true;$('#operations-content').replaceChildren();$('#operations-login').hidden=false;$('#operations-updated').textContent='관리자 인증이 만료되었거나 접근 권한이 없어요.';button.hidden=true;lastSuccess=false;throw Error('auth');}
@@ -125,6 +127,7 @@ async function refresh(){
   const unavailable=[];if(data.alerts?.status!=='ok')unavailable.push('운영 알림');if(data.history?.status!=='ok')unavailable.push('자료 증가');
   $('#operations-content').dataset.partial=String(unavailable.length>0);
   $('#operations-status').textContent=unavailable.length?'':'현황을 확인했어요.';
+  $('#operations-status').classList.add('sr-only');
   $('#operations-error').textContent=unavailable.length?'일부 정보를 불러오지 못했어요: '+unavailable.join(', ')+'. 새로고침으로 다시 확인해 주세요.':'';
  }catch(error){$('#operations-error').textContent=error.message==='auth'?'관리자 로그인 후 다시 확인해 주세요.':lastSuccess?'새 현황을 불러오지 못했어요. 아래는 이전에 확인한 기록입니다. 새로고침으로 다시 시도해 주세요.':'운영 현황을 불러오지 못했어요. 새로고침으로 다시 시도해 주세요.';$('#operations-content').dataset.stale='true';$('#operations-status').textContent='';}
  finally{loading=false;button.setAttribute('aria-disabled','false');}

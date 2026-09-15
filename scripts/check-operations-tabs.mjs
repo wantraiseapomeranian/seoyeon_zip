@@ -72,6 +72,28 @@ try{
   assert.equal(await page.locator('#ops-panel-'+keys[index]).getAttribute('aria-labelledby'),'ops-tab-'+keys[index]);
  }
  await selected('overview');assert.equal(reads,1,'initial data uses one API read');
+ assert.equal(await page.locator('#ops-panel-overview section').first().getAttribute('aria-labelledby'),'attention-title','actionable problems come first in DOM and reading order');
+ assert.equal(await page.locator('#attention-summary').innerText(),'','no redundant prompt when issues are listed');
+ assert.equal(await page.locator('#operations-status').getAttribute('role'),'status');
+ assert.equal(await page.locator('#operations-status').evaluate(el=>getComputedStyle(el).position),'absolute','success announcement stays available without taking visual space');
+ await page.locator('#ops-tab-collection').click();
+ assert.match(await page.locator('#manual-values').innerText(),/조회 실패\s*1건/);
+ for(const id of ['instagram-details','manual-details']){
+  assert.equal(await page.locator('#'+id).getAttribute('open'),null,'secondary counts start collapsed');
+  await page.locator('#'+id+' summary').click();
+  assert.equal(await page.locator('#'+id+' dl').isVisible(),true);
+ }
+ assert.match(await page.locator('#manual-detail-values').innerText(),/사진 조회 완료/);
+ assert.match(await page.locator('#instagram-detail-values').innerText(),/외부 실행 확인/);
+ await refresh();
+ for(const id of ['instagram-details','manual-details'])assert.notEqual(await page.locator('#'+id).getAttribute('open'),null,'refresh preserves disclosure state');
+ await page.locator('#ops-tab-overview').click();
+ sqlite.exec("UPDATE manual_media_jobs SET state='ready' WHERE post_id='manual:x:123'");
+ await refresh();assert.equal(await page.locator('#operations-issues li').count(),0);
+ assert.match(await page.locator('#attention-summary').innerText(),/확인이 필요한 항목은 없어요/);
+ sqlite.exec("UPDATE manual_media_jobs SET state='failed' WHERE post_id='manual:x:123'");
+ await refresh();assert.equal(await page.locator('#operations-issues li').count(),1);
+ const initialReads=reads;
  assert.match(await page.locator('#total-values').innerText(),/직접 등록 자료\s*1건/);
  await page.locator('#ops-tab-overview').focus();
  for(const [key,expected] of [['ArrowRight','collection'],['End','alerts'],['ArrowRight','overview'],['ArrowLeft','alerts'],['Home','overview']]){
@@ -79,14 +101,14 @@ try{
   assert.equal(await page.evaluate(()=>document.activeElement.id),'ops-tab-'+expected,'keyboard focus follows selection');
  }
  for(const key of keys){await page.locator('#ops-tab-'+key).click();await selected(key);}
- assert.equal(reads,1,'tab changes share the loaded snapshot');
- await page.clock.fastForward(120000);assert.equal(reads,1,'no timer-driven API polling');
+ assert.equal(reads,initialReads,'tab changes share the loaded snapshot');
+ await page.clock.fastForward(120000);assert.equal(reads,initialReads,'no timer-driven API polling');
  await page.locator('#ops-tab-overview').click();
  const manual=page.locator('#operations-issues a[href="#manual-title"][data-panel-target="collection"]');
  assert.equal(await manual.count(),1,'summary issue links point at the relevant panel');
  await manual.click();await selected('collection');
  assert.equal(await page.evaluate(()=>document.activeElement.id),'manual-title','issue navigation focuses its heading');
- assert.equal(reads,1);
+ assert.equal(reads,initialReads);
  await refresh();await selected('collection');
  for(const hash of ['growth','growth-title']){
   await page.goto('http://127.0.0.1:4198/admin/operations#'+hash);await page.reload();await settled();await selected('growth');
@@ -135,6 +157,8 @@ try{
  const summaryHeight=await page.evaluate(()=>document.documentElement.scrollHeight);
  assert.ok(summaryHeight<1100,`mobile summary height ${summaryHeight}px must stay below 1100px`);
  await page.screenshot({path:'.local/operations-tabs-mobile.png',fullPage:true});
+ await page.locator('#ops-tab-collection').click();await page.screenshot({path:'.local/operations-collection-mobile.png',fullPage:true});
+ await page.locator('#ops-tab-overview').click();
  await page.setViewportSize({width:1280,height:960});await page.screenshot({path:'.local/operations-tabs-desktop.png',fullPage:true});
  mode='auth';await refresh();await page.locator('#operations-login').waitFor({state:'visible'});
  assert.equal(await page.locator('#operations-content').innerHTML(),'','authentication loss clears every cached panel');

@@ -975,3 +975,11 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 독립 평가 A(icons_design_review): 소스·최신390/1280px 캡처와 별도 브라우저 탭 확인, 28/40. 명백한 AI 템플릿 인상은 약함. P2: 문제 우선순위, 반복 문구, 상세 지표 묶음; P3: 데스크톱 아이콘과 문맥 거리. 이번에는 조사만 수행.
 - 독립 평가 B(icons_evidence_review): Critical/Major 없음. HTML detector []/exit0, CSS/JS 수동 검토, 실제 로컬 브라우저 접근성 이름·문제 링크 탭 전환/제목 포커스 확인. A 완료 후 B 결과를 통합. 읽기 전용 브라우저 API여서 detector overlay 주입은 생략. 각 임시 탭 닫음, 로컬 검토 서버 종료.
 - 운영: 기능 커밋875b00d GitHub Workers Builds completed/success. 검토 서버는 Ctrl+C와 Stop-Process가 종료하지 못해 확인한 전용 PID를 taskkill로 종료했다. 검토용 원본/토큰은 커밋하지 않음.
+
+## 2026-09-15 운영 현황 정보 우선순위 정리
+
+- TDD RED: 요약 첫 구역이 overview-title이라 문제 우선 DOM 순서 assertion 실패 확인. 구현 후 check-operations-tabs 통과: 문제→정상→문제 전환, 중복 안내 없음, 성공 role=status의 sr-only/로딩 표시, 세부 접기 기본값·열기·새로고침 유지, 기존 아이콘·툴팁·탭·부분 실패·인증 회귀. 320/390/768/1280px 가로 넘침 없음, 쓰기/브라우저 오류0.
+- 기존 check-operations 통과. Instagram 시각 지표 검증 위치만 접힌 상세로 조정. 모바일 요약과 수집 탭 캡처 확인, 접기 제목에 native 펼침 표시 추가 후 최종 브라우저 재확인. 단위 테스트는 UI만 변경하여 재실행하지 않음.
+- 읽기 전용 리뷰 APPROVED: Instagram6개/직접등록7개 지표 보존, details 컨테이너 유지, 상태 live region·실패/인증/이전 기록·탭 이동 유지. HTML detector [] 및 diff --check 통과.
+- 로컬 결과와 실제 운영자 세션 검증은 구분하며 운영자 세션 화면은 미검증. 이전 디자인 조사 원본(.impeccable)은 이번 커밋 대상에서 제외.
+- 최종 Wrangler dry-run234.61 KiB/gzip57.86 KiB 통과.
