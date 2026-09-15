@@ -1,0 +1,23 @@
+import {indexReviewPhotos} from '../../src/x-review-photos.mjs';
+import {reviewFilters} from '../../src/review-filters.mjs';
+const reply=(data,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'private, no-store'}});
+// Frozen pre-pagination GET implementation: independent compatibility oracle.
+export async function legacyXReview(DB,params){
+  const status=params.get('status')??'pending';if(!['pending','visible','hidden','all'].includes(status))return reply({error:'invalid_query'},400);
+  const offset=Number(params.get('offset')??0);if(!Number.isSafeInteger(offset)||offset<0||offset>100000)return reply({error:'invalid_query'},400);
+  let filters;try{filters=reviewFilters(params);}catch{return reply({error:'invalid_query'},400);}
+  const {results}=await DB.prepare("SELECT p.id,p.data,q.decision,q.revision,q.availability,q.checked_at,q.missing_count,EXISTS(SELECT 1 FROM x_feed_posts f WHERE f.id=p.id) AS visible FROM posts p LEFT JOIN x_quality q ON q.post_id=p.id ORDER BY (COALESCE(q.availability,'')='missing' OR COALESCE(q.decision,'auto')='hidden' OR json_extract(p.data,'$.moderationReason') IS NOT NULL) DESC,json_extract(p.data,'$.publishedAt') DESC,p.id").all();
+  const group=await DB.prepare('SELECT revision FROM x_group_control WHERE id=1').first();
+  const photos=await DB.prepare("SELECT p.id,json_extract(p.data,'$.canonicalUrl') AS url,json_extract(m.value,'$.previewUrl') AS image,COALESCE(f.confirmed_hash,f.hash) AS hash,f.near_url FROM posts p,json_each(p.data,'$.media') m JOIN x_fingerprints f ON f.url=json_extract(m.value,'$.previewUrl') WHERE f.hash IS NOT NULL").all();
+  const rejected=await DB.prepare('SELECT left_url,right_url FROM x_photo_differences').all();
+  const photoIndex=indexReviewPhotos(photos.results,rejected.results);
+  const items=results.map(r=>({...JSON.parse(r.data),decision:r.decision??'auto',revision:r.revision??0,availability:r.availability??'unknown',visible:!!r.visible,checkedAt:r.checked_at,missingCount:r.missing_count??0}));
+  const scoped=items.filter(filters.matches),counts={pending:0,visible:0,hidden:0,all:scoped.length};
+  for(const p of scoped){p.reviewState=p.decision==='auto'&&(p.moderationReason||p.availability==='missing'||photoIndex.pending.has(p.id))?'pending':p.visible?'visible':'hidden';counts[p.reviewState]++;}
+  const filtered=status==='all'?scoped:scoped.filter(p=>p.reviewState===status);
+  const metadata=new Map(items.map(p=>[p.id,{author:p.authorHandle,publishedAt:p.publishedAt,visible:p.visible,decision:p.decision,revision:p.revision}]));
+  const page=filtered.slice(offset,offset+25).map(p=>({...p,comparisons:photoIndex.pairsFor(p.id).map(([a,b])=>({postId:b.id,url:b.url,image:b.image,ownImage:a.image,exact:a.hash===b.hash,...metadata.get(b.id)}))}));
+  return reply({groupRevision:group.revision,authors:[...new Set(items.map(p=>p.authorHandle).filter(Boolean))].sort(),counts,total:filtered.length,items:page});
+ 
+}
+

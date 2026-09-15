@@ -915,3 +915,14 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 운영 배포 및 실제 운영 인증 확인은 배포 후 결과와 구분해 보고한다.
 - 최종 Wrangler dry-run 통과: 218.10 KiB / gzip 53.60 KiB. X 순차 처리 유예 및 접힌 요약 화면에 대한 재검토도 Critical/Major 없음.
 - 운영: 기능 커밋 082fa95 GitHub Workers Builds completed/success. 비로그인 GET /api/admin/operations 및 /operations.html, /operations.js, /operations.css 모두 401. 루트는 /feed로 307 이동 후 200이며 신규 운영 현황 링크 포함 확인. 최초 검사는 루트 200 직접 응답을 기대해 실패했으며 리디렉션을 따라 재검증했다. 실제 운영자 세션의 새 페이지 확인은 미검증이며 로컬 서명 JWT·브라우저 검증과 구분한다.
+
+## 2026-09-15 X 검토함 DB 페이지 조회
+
+- 전후 비교는 수정 전 GET를 tests/helpers/x-review-legacy.mjs에 고정하여 수행. 상태/필터/오프셋 288조합, 후보의 작성자/표시/revision/사진 순서, 빈/누락/null media, confirmed_hash 빈 문자열, 날짜/월 우선순위, 직접 갱신·삭제·동일/다른 사진 판단을 확인.
+- 마이그레이션 트리거는 원본 저장/수정/삭제와 rollback에서 파생 색인 동기화. 인덱스용 자료만 추가하며 기존 본문/판정/커서 변경 없음.
+- 읽기 전용 코드 검토에서 단일 JSON 셀의 D1 2MB 한계 지적. 800개 동일 해시 표본으로 실패 재현 후 비교 개별 행 반환으로 수정, 재검토 APPROVED.
+- workerd/Miniflare 실제 D1: 전체 마이그레이션, 3000건 기존 자료 보완, 이후 추가3000건 트리거 반영, 첫/마지막 페이지, near/exact 관계 대조 통과. 800개 동일 그룹에서 페이지별 799개 후보 유지, 최대 문자열 1441byte, 조회 쓰기0. 공급자/원격 호출 없는 표본 검증.
+- 최종 로컬 측정(네트워크/운영 성능과 구분): 3000건 기존198ms/4,726,580byte/42,003행읽기 → 신규26ms/40,830byte/48,511행읽기. 6000건 기존352ms/9,457,580byte/84,003행읽기 → 신규50ms/40,830byte/96,511행읽기. 단일 표본 측정이며 지연 SLA 아님. 반환 행은6000건 기준12,001→27; 본문25건+메타/작성자. 실제 관련 후보 수에 따라 비교 반환 행은 증가함.
+- DB 읽기 증가는 약15%. 초기 반복 분류안보다 줄였지만 기존보다 낮아졌다고 보고하지 않는다. 저장 색인 및 추가 수집 쓰기 비용도 존재한다.
+- 참고: D1 batch/statement 일관성과 결과 형식은 https://developers.cloudflare.com/d1/worker-api/d1-database/ , 트리거 의미는 https://www.sqlite.org/lang_createtrigger.html 확인. 최종 구현은 하나의 SELECT statement를 사용한다.
+- 최종 전체 Node 테스트171/171 통과. Wrangler dry-run222.21 KiB/gzip54.64 KiB 통과. 기존 사진 비교 브라우저 검증은 페이지/후보 넘기기·다른 사진 판단 유지·묶기·1440/390/320px 통과.
