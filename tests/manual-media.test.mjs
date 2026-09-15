@@ -89,3 +89,11 @@ test('manual job status stays owner-only and disabled processing makes no extern
  const data=await (await handleApi(new Request('https://test.local/api/manual-posts'),env)).json();assert.equal(data.posts[0].state,'pending');assert.equal('lease_token' in data.posts[0],false);assert.equal('run_id' in data.posts[0],false);
  }finally{sqlite.close();}
 });
+test('manual listing returns five records and replaces pages without overlap',async()=>{
+ const {DB,sqlite}=testDatabase();try{const env={DB};for(let i=0;i<12;i++)await handleApi(request({url:'https://x.com/sample/status/'+(1000+i)}),env);
+ const get=async offset=>(await (await handleApi(new Request('https://test.local/api/manual-posts?offset='+offset),env)).json());
+ const first=await get(0),second=await get(first.nextOffset),last=await get(second.nextOffset);
+ assert.equal(first.posts.length,5);assert.equal(second.posts.length,5);assert.equal(last.posts.length,2);assert.equal(last.nextOffset,null);
+ assert.equal(new Set([...first.posts,...second.posts,...last.posts].map(p=>p.id)).size,12);
+ }finally{sqlite.close();}
+});

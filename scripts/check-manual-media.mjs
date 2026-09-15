@@ -6,7 +6,7 @@ import {testDatabase} from '../tests/helpers/d1.mjs';
 import {handleApi} from '../src/worker.mjs';
 import {processManual} from '../src/manual-posts.mjs';
 const {DB,sqlite}=testDatabase(),env={DB,MANUAL_MEDIA_ENABLED:'true'};
-let fail=false;
+let fail=false,manualReads=0;
 const fetcher=async()=>fail?new Response('',{status:503}):Response.json({code:200,tweet:{id:'123',author:{screen_name:'artist'},text:'manual media',created_at:'2026-09-01T00:00:00Z',media:{all:[{type:'photo',url:'https://pbs.twimg.com/media/a.jpg'},{type:'photo',url:'https://pbs.twimg.com/media/b.jpg'}]}}});
 const pending=new Set();
 const ctx={waitUntil(p){pending.add(p);p.finally(()=>pending.delete(p));}};
@@ -14,6 +14,7 @@ const server=createServer(async(req,res)=>{try{
  const origin='http://127.0.0.1:4196',url=new URL(req.url,origin);
  if(req.headers.host!=='127.0.0.1:4196'){res.writeHead(403).end();return;}
  if(url.pathname==='/api/session'){res.setHeader('Content-Type','application/json');res.end('{"role":"owner"}');return;}
+ if(url.pathname==='/api/manual-posts'&&req.method==='GET')manualReads++;
  if(url.pathname.startsWith('/api/')){const chunks=[];for await(const c of req)chunks.push(c);
  const response=await handleApi(new Request(url,{method:req.method,headers:req.headers,...(req.method==='POST'?{body:Buffer.concat(chunks)}:{})}),env);
  if(req.method==='POST'&&url.pathname==='/api/manual-posts')ctx.waitUntil(processManual(env,{fetcher}));
@@ -27,6 +28,7 @@ try{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('https://pbs.twimg.com/**',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a2ioAAAAASUVORK5CYII=','base64')}));
  await page.goto('http://127.0.0.1:4196/feed.html?data=live');await page.locator('#open-status').click();await page.getByRole('tab',{name:'자료 관리',exact:true}).click();
+ assert.equal(await page.locator('#manual-list').isVisible(),false);assert.equal(manualReads,0);
  await page.locator('#manual-url').fill('https://x.com/artist/status/123');await page.locator('#manual-submit').click();
  await page.locator('#manual-list').getByText('사진을 불러왔어요.',{exact:true}).waitFor();
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:'.local/manual-media-mobile.png'});
@@ -37,5 +39,12 @@ try{
  await page.locator('#manual-list').getByText('사진을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.',{exact:true}).waitFor();
  assert.equal(JSON.parse(sqlite.prepare('SELECT data FROM manual_posts').get().data).media.length,2);
  await page.setViewportSize({width:1280,height:850});await page.screenshot({path:'.local/manual-media-desktop.png'});assert.deepEqual(errors,[]);
+ for(let i=0;i<11;i++)await handleApi(new Request('http://127.0.0.1:4196/api/manual-posts',{method:'POST',headers:{origin:'http://127.0.0.1:4196','content-type':'application/json','x-management-action':'manage'},body:JSON.stringify({url:'https://x.com/sample/status/'+(2000+i)})}),env);
+ await page.locator('#manual-refresh').click();await page.waitForFunction(()=>document.querySelectorAll('.manual-row').length===5);
+ const firstPage=await page.locator('.manual-link').allTextContents();await page.locator('#manual-next').click();await page.waitForFunction(first=>document.querySelector('.manual-link')?.textContent!==first,firstPage[0]);assert.equal(await page.locator('.manual-row').count(),5);assert.ok((await page.locator('.manual-link').allTextContents()).every(url=>!firstPage.includes(url)));
+ await page.locator('#manual-next').click();await page.waitForFunction(()=>document.querySelectorAll('.manual-row').length===2);assert.equal(await page.locator('#manual-next').isVisible(),false);
+ await page.locator('#manual-title').click();assert.equal(await page.locator('#manual-list').isVisible(),false);const readsWhenFolded=manualReads;await new Promise(r=>setTimeout(r,5500));assert.equal(manualReads,readsWhenFolded);
+ await page.locator('#manual-title').click();await page.locator('#manual-list').waitFor({state:'visible'});await page.locator('#manual-prev').click();await page.waitForFunction(()=>document.querySelectorAll('.manual-row').length===5);
+ await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:'.local/manual-paging-mobile.png'});
  console.log('PASS: single URL entry, asynchronous status, manual carousel, retry failure preserves media, mobile overflow and browser errors');
 }finally{await browser?.close();await Promise.allSettled([...pending]);await new Promise(r=>server.close(r));sqlite.close();}

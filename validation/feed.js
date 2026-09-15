@@ -1,7 +1,7 @@
 // Official icon SVGs; licenses and sources: docs/icon-licenses/README.md
 const iconSets={"phosphor":["<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M224,48V96a8,8,0,0,1-8,8H168a8,8,0,0,1,0-16h28.69L182.06,73.37a79.56,79.56,0,0,0-56.13-23.43h-.45A79.52,79.52,0,0,0,69.59,72.71,8,8,0,0,1,58.41,61.27a96,96,0,0,1,135,.79L208,76.69V48a8,8,0,0,1,16,0ZM186.41,183.29a80,80,0,0,1-112.47-.66L59.31,168H88a8,8,0,0,0,0-16H40a8,8,0,0,0-8,8v48a8,8,0,0,0,16,0V179.31l14.63,14.63A95.43,95.43,0,0,0,130,222.06h.53a95.36,95.36,0,0,0,67.07-27.33,8,8,0,0,0-11.18-11.44Z\"/></svg>","<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M224,128a8,8,0,0,1-8,8H128a8,8,0,0,1,0-16h88A8,8,0,0,1,224,128ZM128,72h88a8,8,0,0,0,0-16H128a8,8,0,0,0,0,16Zm88,112H128a8,8,0,0,0,0,16h88a8,8,0,0,0,0-16ZM82.34,42.34,56,68.69,45.66,58.34A8,8,0,0,0,34.34,69.66l16,16a8,8,0,0,0,11.32,0l32-32A8,8,0,0,0,82.34,42.34Zm0,64L56,132.69,45.66,122.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32,0l32-32a8,8,0,0,0-11.32-11.32Zm0,64L56,196.69,45.66,186.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32,0l32-32a8,8,0,0,0-11.32-11.32Z\"/></svg>"],"tabler":["<!--\ntags: [synchronization, reload, restart, spinner, loader, ajax, update, arrows, refresh, navigation]\ncategory: Arrows\nversion: \"1.0\"\nunicode: \"eb13\"\n-->\n<svg\n  xmlns=\"http://www.w3.org/2000/svg\"\n  width=\"24\"\n  height=\"24\"\n  viewBox=\"0 0 24 24\"\n  fill=\"none\"\n  stroke=\"currentColor\"\n  stroke-width=\"2\"\n  stroke-linecap=\"round\"\n  stroke-linejoin=\"round\"\n>\n  <path d=\"M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4\" />\n  <path d=\"M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4\" />\n</svg>\n","<!--\ntags: [to-do, checklist, form, template, task, reminder, schedule, agenda, list, check]\ncategory: Text\nversion: \"1.2\"\nunicode: \"eb6a\"\n-->\n<svg\n  xmlns=\"http://www.w3.org/2000/svg\"\n  width=\"24\"\n  height=\"24\"\n  viewBox=\"0 0 24 24\"\n  fill=\"none\"\n  stroke=\"currentColor\"\n  stroke-width=\"2\"\n  stroke-linecap=\"round\"\n  stroke-linejoin=\"round\"\n>\n  <path d=\"M3.5 5.5l1.5 1.5l2.5 -2.5\" />\n  <path d=\"M3.5 11.5l1.5 1.5l2.5 -2.5\" />\n  <path d=\"M3.5 17.5l1.5 1.5l2.5 -2.5\" />\n  <path d=\"M11 6l9 0\" />\n  <path d=\"M11 12l9 0\" />\n  <path d=\"M11 18l9 0\" />\n</svg>\n"],"lucide":["<svg\n  xmlns=\"http://www.w3.org/2000/svg\"\n  width=\"24\"\n  height=\"24\"\n  viewBox=\"0 0 24 24\"\n  fill=\"none\"\n  stroke=\"currentColor\"\n  stroke-width=\"2\"\n  stroke-linecap=\"round\"\n  stroke-linejoin=\"round\"\n>\n  <path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\" />\n  <path d=\"M21 3v5h-5\" />\n  <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\" />\n  <path d=\"M8 16H3v5\" />\n</svg>\n","<svg\n  xmlns=\"http://www.w3.org/2000/svg\"\n  width=\"24\"\n  height=\"24\"\n  viewBox=\"0 0 24 24\"\n  fill=\"none\"\n  stroke=\"currentColor\"\n  stroke-width=\"2\"\n  stroke-linecap=\"round\"\n  stroke-linejoin=\"round\"\n>\n  <path d=\"M13 5h8\" />\n  <path d=\"M13 12h8\" />\n  <path d=\"M13 19h8\" />\n  <path d=\"m3 17 2 2 4-4\" />\n  <path d=\"m3 7 2 2 4-4\" />\n</svg>\n"]};
 const $=s=>document.querySelector(s);
-let manualTimer,manualVersion=0,manualOffset=0,manualNext=null;
+let manualTimer,manualController,manualVersion=0,manualOffset=0,manualNext=null;
 const manualStates=new Map();
 // Public support address. Set only to an address approved for publication.
 const contactEmail='wantraiseapomeranian9@gmail.com';
@@ -53,7 +53,7 @@ function applyRole(){
  const owner=role==='owner';$('.review-entry').hidden=!owner;$('#login-link').hidden=owner;$('.management-tabs').hidden=!owner;$('#tools-tab').hidden=!owner;$('#manual-form').hidden=!owner;
  $('#status-title').textContent=owner?'수집 및 관리':'수집 현황';$('.collection-note').hidden=!owner;
  if(owner){$('#collection-panel').setAttribute('role','tabpanel');$('#collection-panel').setAttribute('aria-labelledby','collection-tab');}
- else{$('#collection-panel').setAttribute('role','region');$('#collection-panel').setAttribute('aria-labelledby','status-title');$('#tools-panel').hidden=true;$('#manual-url').value='';$('#management-message').textContent='';$('#manual-list').replaceChildren();clearTimeout(manualTimer);manualVersion++;selectManagementTab($('#collection-tab'));}
+ else{$('#collection-panel').setAttribute('role','region');$('#collection-panel').setAttribute('aria-labelledby','status-title');$('#tools-panel').hidden=true;$('#manual-url').value='';$('#management-message').textContent='';$('#manual-list').replaceChildren();stopManualRefresh();selectManagementTab($('#collection-tab'));}
 }
 function setRole(next){if(next===role)return false;role=next;roleGeneration++;states=[];applyRole();renderSources();return true;}
 function demote(){setRole('visitor');$('#status-message').textContent='관리자 로그인이 필요해요.';refreshSources({preserveMessage:true});}
@@ -240,19 +240,21 @@ for(const id of ['#kind','#source'])$(id).addEventListener('change',()=>{changeF
 load();
 
 async function management(path,body,method='POST'){const response=await fetch(path,{method,headers:{'Content-Type':'application/json','X-Management-Action':'manage'},body:JSON.stringify(body)});if(!response.ok){if(response.status===401||response.status===403){demote();throw Error('관리자 로그인이 필요해요.');}const messages={400:'X 또는 인스타 게시물 URL과 입력값을 확인해 주세요.',409:'수집 상태가 바뀌었거나 전체 수집이 중지돼 있어요. 상태를 확인하고 다시 시도해 주세요.'};throw Error(messages[response.status]||'저장하지 못했어요. 잠시 후 다시 시도해 주세요.');}return response.json();}
-$('#manual-form').addEventListener('submit',async e=>{e.preventDefault();const button=$('#manual-submit'),generation=roleGeneration;button.disabled=true;$('#management-message').textContent='등록하고 있어요…';try{const result=await management('/api/manual-posts',{url:$('#manual-url').value});if(generation!==roleGeneration)return;$('#management-message').textContent=result.state?(result.enabled?'링크를 저장했어요. 아래에서 사진 조회 상태를 확인할 수 있어요.':'원문 링크를 등록했어요.'):'이미 저장된 게시물이에요. 검토 상태와 필터에 따라 피드에 표시돼요.';$('#manual-url').value='';manualOffset=0;await refreshManual();await load();}catch(error){if(generation===roleGeneration)$('#management-message').textContent=error.message;}finally{button.disabled=false;}});
+$('#manual-form').addEventListener('submit',async e=>{e.preventDefault();const button=$('#manual-submit'),generation=roleGeneration;button.disabled=true;$('#management-message').textContent='등록하고 있어요…';try{const result=await management('/api/manual-posts',{url:$('#manual-url').value});if(generation!==roleGeneration)return;$('#management-message').textContent=result.state?(result.enabled?'링크를 저장했어요. 아래에서 사진 조회 상태를 확인할 수 있어요.':'원문 링크를 등록했어요.'):'이미 저장된 게시물이에요. 검토 상태와 필터에 따라 피드에 표시돼요.';$('#manual-url').value='';manualOffset=0;if($('#manual-records').open)await refreshManual();else $('#manual-records').open=true;await load();}catch(error){if(generation===roleGeneration)$('#management-message').textContent=error.message;}finally{button.disabled=false;}});
 
 const managementTabs=[...document.querySelectorAll('.management-tabs [role=tab]')];
-function selectManagementTab(tab){if(tab.id==='tools-tab'&&role==='owner')refreshManual();else clearTimeout(manualTimer);managementTabs.forEach(t=>{const active=t===tab;t.setAttribute('aria-selected',String(active));t.tabIndex=active?0:-1;document.getElementById(t.getAttribute('aria-controls')).hidden=!active;});$('.management-body').scrollTop=0;}
+function selectManagementTab(tab){stopManualRefresh();managementTabs.forEach(t=>{const active=t===tab;t.setAttribute('aria-selected',String(active));t.tabIndex=active?0:-1;document.getElementById(t.getAttribute('aria-controls')).hidden=!active;});$('.management-body').scrollTop=0;if(manualVisible())refreshManual();}
 managementTabs.forEach((tab,index)=>{tab.addEventListener('click',()=>selectManagementTab(tab));tab.addEventListener('keydown',event=>{let next;if(event.key==='ArrowRight'||event.key==='ArrowLeft')next=managementTabs[1-index];if(event.key==='Home')next=managementTabs[0];if(event.key==='End')next=managementTabs[1];if(next){event.preventDefault();selectManagementTab(next);next.focus();}});});
 applyRole();detectRole();
 const manualMessages={pending:'사진 조회를 기다리고 있어요.',starting:'사진을 불러오고 있어요.',waiting:'사진을 불러오고 있어요.',ready:'사진을 불러왔어요.',no_media:'가져올 수 있는 사진·썸네일이 없어요.',existing:'이미 수집된 자료예요. 기존 검토 상태를 따릅니다.'};
 const manualErrors={not_configured:'사진 조회 연결을 확인해야 해요.',provider_access:'사진 조회 서비스의 접근 권한을 확인해야 해요.',not_found:'게시물을 찾을 수 없어요.',unavailable:'비공개이거나 접근할 수 없는 게시물이에요.',rate_limited:'조회 요청이 많아요. 잠시 후 다시 시도해 주세요.',start_uncertain:'조회 요청 결과를 확인하지 못했어요. 다시 시도하면 새 조회가 실행됩니다.',run_timeout:'사진 조회가 지연되고 있어요. 다시 시도해 주세요.',invalid_response:'게시물의 사진 정보를 확인하지 못했어요.'};
+function manualVisible(){return role==='owner'&&$('#source-dialog').open&&!$('#tools-panel').hidden&&$('#manual-records').open;}
+function stopManualRefresh(){clearTimeout(manualTimer);manualVersion++;manualController?.abort();manualController=null;}
 async function refreshManual(){
- clearTimeout(manualTimer);if(role!=='owner')return;const version=++manualVersion,generation=roleGeneration;
+ stopManualRefresh();if(!manualVisible())return;const version=manualVersion,generation=roleGeneration;manualController=new AbortController();
  try{
-  const response=await fetch('/api/manual-posts?offset='+manualOffset);if(response.status===401||response.status===403){demote();return;}if(!response.ok)throw Error();const data=await response.json();
-  if(version!==manualVersion||generation!==roleGeneration||role!=='owner')return;
+  const response=await fetch('/api/manual-posts?offset='+manualOffset,{signal:manualController.signal});if(response.status===401||response.status===403){demote();return;}if(!response.ok)throw Error();const data=await response.json();
+  if(version!==manualVersion||generation!==roleGeneration||!manualVisible())return;
   const focused=document.activeElement?.closest('[data-manual-id]')?.dataset.manualId;let changed=false;
   const rows=data.posts.map(p=>{
    if(manualStates.has(p.id)&&manualStates.get(p.id)!==p.state+':'+p.updatedAt&&['ready','no_media','existing'].includes(p.state))changed=true;manualStates.set(p.id,p.state+':'+p.updatedAt);
@@ -266,10 +268,13 @@ async function refreshManual(){
   manualNext=data.nextOffset;$('#manual-prev').hidden=manualOffset===0;$('#manual-next').hidden=manualNext===null;
   if(focused){const next=[...$('#manual-list').querySelectorAll('[data-manual-id]')].find(b=>b.dataset.manualId===focused&&!b.disabled);(next??$('#manual-refresh')).focus();}
   if(changed)await load();
-  if(data.enabled&&data.posts.some(p=>['pending','starting','waiting'].includes(p.state)||p.retryAfter>0)&&$('#source-dialog').open&&!$('#tools-panel').hidden)manualTimer=setTimeout(refreshManual,5000);
+  if(data.enabled&&data.posts.some(p=>['pending','starting','waiting'].includes(p.state)||p.retryAfter>0)&&version===manualVersion&&manualVisible())manualTimer=setTimeout(refreshManual,5000);
  }catch{if(version===manualVersion&&generation===roleGeneration)$('#manual-notice').textContent='등록 상태를 불러오지 못했어요. 상태 새로고침을 눌러 주세요.';}
 }
 $('#manual-refresh').addEventListener('click',refreshManual);
-$('#manual-prev').addEventListener('click',()=>{manualOffset=Math.max(0,manualOffset-20);refreshManual();});
+$('#manual-prev').addEventListener('click',()=>{manualOffset=Math.max(0,manualOffset-5);refreshManual();});
 $('#manual-next').addEventListener('click',()=>{if(manualNext!==null){manualOffset=manualNext;refreshManual();}});
-$('#source-dialog').addEventListener('close',()=>{clearTimeout(manualTimer);manualVersion++;});
+$('#source-dialog').addEventListener('close',stopManualRefresh);
+
+$('#manual-records').addEventListener('toggle',()=>{if(manualVisible())refreshManual();else stopManualRefresh();});
+$('#open-status').addEventListener('click',()=>{if(manualVisible())refreshManual();});

@@ -18,8 +18,8 @@ export async function registerManual(env,body){
 }
 export async function listManual(env,params){
  const offset=Number(params.get('offset')??0);if(!Number.isSafeInteger(offset)||offset<0||offset>100000)return {status:400,error:'invalid_input'};
- const {results}=await env.DB.prepare('SELECT m.id,m.canonical_url,m.data,j.state,j.error,j.updated_at FROM manual_posts m JOIN manual_media_jobs j ON j.post_id=m.id ORDER BY m.created_at DESC,m.id DESC LIMIT 21 OFFSET ?').bind(offset).all();
- return {status:200,enabled:env.MANUAL_MEDIA_ENABLED==='true',posts:results.slice(0,20).map(r=>({id:r.id,url:r.canonical_url,platform:JSON.parse(r.data).platform,state:r.state,error:r.error,updatedAt:r.updated_at,retryAfter:Math.max(0,30-(Math.floor(Date.now()/1000)-r.updated_at))})),nextOffset:results.length>20?offset+20:null};
+ const {results}=await env.DB.prepare('SELECT m.id,m.canonical_url,m.data,j.state,j.error,j.updated_at FROM manual_posts m JOIN manual_media_jobs j ON j.post_id=m.id ORDER BY m.created_at DESC,m.id DESC LIMIT 6 OFFSET ?').bind(offset).all();
+ return {status:200,enabled:env.MANUAL_MEDIA_ENABLED==='true',posts:results.slice(0,5).map(r=>({id:r.id,url:r.canonical_url,platform:JSON.parse(r.data).platform,state:r.state,error:r.error,updatedAt:r.updated_at,retryAfter:Math.max(0,30-(Math.floor(Date.now()/1000)-r.updated_at))})),nextOffset:results.length>5?offset+5:null};
 }
 // One durable job step. Requests give new registrations an immediate start; Cron recovers interrupted work.
 export async function processManual(env,{fetcher=fetch,id=null}={}){
