@@ -953,3 +953,5 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 최종 Worker dry-run234.61 KiB/gzip57.86 KiB 통과. 단위·런타임과 배포/자동 Cron의 운영 결과를 구분한다.
 
 - 운영 0023 선적용 성공: CREATE3개+제어행 INSERT, SQL8.03ms. 기존 원본·수집·판정 테이블 변경 없음. 자동 점검의 첫 실행은 배포 후 별도 확인한다.
+
+- 운영 배포: 기능 커밋2880d17 GitHub Workers Builds completed/success. schedules API에서 기존4개 일정과 신규 5분 점검 일정 확인. 루트200, 운영 API 및 operations.html/js/css 비로그인401. 배포 직후 checked_at/last_attempt_at/last_failure_at=null, 상태0행·이벤트0건으로 첫 예약 실행 대기 확인. 실제 소유자 세션 화면·실제 운영 문제 발생/복구 이벤트·첫 자동 Cron 성공은 미검증이며 로컬 실측과 구분한다.
