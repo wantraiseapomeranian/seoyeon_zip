@@ -260,7 +260,7 @@ async function refreshManual(){
    if(manualStates.has(p.id)&&manualStates.get(p.id)!==p.state+':'+p.updatedAt&&['ready','no_media','existing'].includes(p.state))changed=true;manualStates.set(p.id,p.state+':'+p.updatedAt);
    const row=node('div','manual-row'),info=node('div','manual-info'),link=node('a','manual-link',p.url);link.href=p.url;link.target='_blank';link.rel='noopener noreferrer';info.append(link,node('p','muted',p.state==='failed'?(manualErrors[p.error]||'사진을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.'):manualMessages[p.state]));row.append(info);
    if(['ready','no_media','failed'].includes(p.state)){
-    const button=node('button','manual-retry',p.state==='ready'?'사진 새로고침':'다시 시도');button.type='button';button.dataset.manualId=p.id;button.disabled=!data.enabled||p.retryAfter>0;if(p.retryAfter>0)button.title='잠시 후 다시 시도할 수 있어요.';
+    const button=node('button','manual-retry',p.state==='ready'?'사진 새로고침':'다시 시도');button.type='button';button.dataset.manualId=p.id;if(p.state==='ready'){button.classList.add('modal-icon');button.setAttribute('aria-label','사진 새로고침');button.title='사진 새로고침';button.replaceChildren($('#manual-refresh svg').cloneNode(true));}button.disabled=!data.enabled||p.retryAfter>0;if(p.retryAfter>0)button.title='잠시 후 다시 시도할 수 있어요.';
     button.addEventListener('click',async()=>{button.disabled=true;const generation=roleGeneration;try{await management('/api/manual-posts',{url:p.url,retry:true});if(generation===roleGeneration)await refreshManual();}catch(error){if(generation===roleGeneration)$('#manual-notice').textContent=error.message;}finally{if(button.isConnected)button.disabled=false;}});row.append(button);
    }return row;
   });
