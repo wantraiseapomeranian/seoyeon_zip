@@ -964,3 +964,4 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 기존 check-operations 통과: 실제 SQLite/API 연결, 관리 페이지 이동, 반복 클릭 차단, 실패·인증·방문자 숨김 회귀. 전체 Node 테스트199/199 통과. 읽기 전용 코드 리뷰 APPROVED(Critical/Major 없음).
 - Impeccable detector [] 및 git diff --check 통과. Wrangler dry-run234.61 KiB/gzip57.86 KiB 통과. 백엔드·DB 마이그레이션 변경 없음.
 - 위 결과는 로컬 검증이며 실제 운영자 세션 브라우저 확인과 구분한다. 자동 배포 결과는 아래에 별도 기록한다.
+- 운영 배포: 기능 커밋 f239230 GitHub Workers Builds completed/success. /feed 200, 운영 API 및 operations.html/js/css 비로그인401로 보호 유지. 실제 운영자 세션의 화면 확인은 미검증이며 로컬 브라우저 검증과 구분한다.
