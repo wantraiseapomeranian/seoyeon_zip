@@ -1,3 +1,4 @@
+import {processManual} from './manual-posts.mjs';
 import {publicSource,publicPost} from './public-data.mjs';
 import {handleManagement} from './management.mjs';
 import {syncInstagram,instagramSyncStatus} from './instagram-sync.mjs';
@@ -17,9 +18,9 @@ export { authorize } from './access.mjs';
 
 
 // Internal router. fetch enforces owner authentication except for explicit public reads.
-export async function handleApi(request,env,context) {
+export async function handleApi(request,env,context,ctx) {
   const url=new URL(request.url);
-  if(url.pathname==='/api/export'||url.pathname==='/api/manual-posts'||(request.method==='PATCH'&&/^\/api\/sources\/[A-Za-z0-9_]{1,15}$/.test(url.pathname)))return handleManagement(request,env);
+  if(url.pathname==='/api/export'||url.pathname==='/api/manual-posts'||(request.method==='PATCH'&&/^\/api\/sources\/[A-Za-z0-9_]{1,15}$/.test(url.pathname)))return handleManagement(request,env,ctx);
   if(url.pathname==='/api/admin/review-audit'||url.pathname.startsWith('/api/admin/review-audit/'))return handleReviewAudit(request,env,context);
   if(url.pathname==='/api/admin/x')return handleXReview(request,env,context);
   if(url.pathname==='/api/admin/instagram/sync'&&request.method==='GET')return reply(await instagramSyncStatus(env));
@@ -47,8 +48,8 @@ export async function handleApi(request,env,context) {
 }
 
 export default {
-  async scheduled(controller,env,ctx) { if(controller.cron==='2-59/5 * * * *')console.log(JSON.stringify({event:'instagram_sync',...await syncInstagram(env)}));else if(controller.cron==='1-59/3 * * * *')await maintainX(env);else await runDueSource(env); },
-  async fetch(request,env) {
+  async scheduled(controller,env,ctx) { if(env.MANUAL_MEDIA_ENABLED==='true')ctx.waitUntil(processManual(env).then(result=>console.log(JSON.stringify({event:'manual_media',...result}))).catch(()=>console.log(JSON.stringify({event:'manual_media',status:'failed'}))));if(controller.cron==='2-59/5 * * * *')console.log(JSON.stringify({event:'instagram_sync',...await syncInstagram(env)}));else if(controller.cron==='1-59/3 * * * *')await maintainX(env);else await runDueSource(env); },
+  async fetch(request,env,ctx) {
     const url=new URL(request.url);
     const publicAssets=new Set(['/','/feed','/feed.html','/feed.css','/feed.js','/review-gallery.js','/favicon.ico','/favicon-16.png','/favicon-32.png','/manifest.webmanifest','/apple-touch-icon.png','/app-icon-192.png','/app-icon-512.png']);
     const publicApis=new Set(['/api/feed','/api/collection-status','/api/session']);
@@ -75,7 +76,7 @@ export default {
       if(url.pathname==='/api/session'&&request.method==='GET')return privateReply({role:'owner'},200);
     }
     try {
-      if(url.pathname.startsWith('/api/')) return await handleApi(request,env,context);
+      if(url.pathname.startsWith('/api/')) return await handleApi(request,env,context,ctx);
       if(request.method!=='GET' && request.method!=='HEAD') return reply({error:'method_not_allowed'},405);
       if(!publicRequest&&(url.pathname==='/admin'||url.pathname==='/admin/'))return new Response(null,{status:302,headers:{Location:new URL('/',url),'Cache-Control':'private, no-store'}});
       const assetUrl=new URL(request.url);if(assetUrl.pathname==='/')assetUrl.pathname='/feed.html';

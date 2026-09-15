@@ -76,3 +76,4 @@ header .actions .icon-button svg{pointer-events:none}
 .feed-actions .icon-tooltip{top:auto;bottom:calc(100% + 6px)}
 @media(max-width:600px){.video-hint-prefix{display:none}.feed-action-controls{margin-right:-6px}}
 .card:focus-visible{outline:3px solid var(--ink);outline-offset:3px}#load-more[aria-disabled=true]{opacity:.55;cursor:wait}
+.manual-records{border-top:1px solid var(--border);margin-top:24px;padding-top:16px}.manual-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.manual-heading h3{font-size:14px;margin:0}.manual-heading button,.manual-retry,.manual-pages button{min-height:44px;font-size:12px}.manual-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}.manual-info{min-width:0;flex:1}.manual-link{font-size:12px;overflow-wrap:anywhere}.manual-info p{margin:6px 0 0}.manual-retry{flex-shrink:0}.manual-pages{display:flex;justify-content:space-between;gap:12px;margin-top:8px}
