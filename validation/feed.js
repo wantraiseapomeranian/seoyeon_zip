@@ -174,7 +174,7 @@ function renderSources(){
   }
   const paused=!s.enabled||s.collection_enabled===false||s.collection_enabled===0;
   const attention=s.catchup_status==='needs_attention';
-  const historyNote=historyNotes.has(s.last_error_code),error=sourceHasError(s);
+  const historyNote=historyNotes.has(s.last_error_code)||['gap','limited'].includes(s.catchup_status),error=sourceHasError(s);
   const text=paused?'수집 중지':attention?'확인 필요':error?'재시도 대기':!s.last_success_at?'첫 수집 대기':historyNote?'최신 수집 정상':'수집 성공';
   const row=node('section','source-row'),heading=node('div','source-heading');
   heading.append(node('strong',null,`@${s.source}`),node('span',!paused&&error?'source-state warning':'source-state',text));row.append(heading);

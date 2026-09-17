@@ -984,3 +984,13 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 로컬 결과와 실제 운영자 세션 검증은 구분하며 운영자 세션 화면은 미검증. 이전 디자인 조사 원본(.impeccable)은 이번 커밋 대상에서 제외.
 - 최종 Wrangler dry-run234.61 KiB/gzip57.86 KiB 통과.
 - 운영 배포: 기능 커밋4b19424 Workers Builds completed/success. /feed 200, 운영 API 및 operations.html/js/css 비로그인401 유지. 실제 운영자 세션은 미검증.
+
+## 2026-09-17 최신 수집 상태와 과거 범위 안내 분리
+
+- 원인: X 최신 조회 성공(failures=0)에도 gap/limited와 history_window_unverified를 운영 오류로 집계. 수집 관리의 기존 과거 안내와 불일치.
+- operations 응답에 historyStatus/historyReason을 분리하고 과거 안내 코드를 현재 error에서 제외. 실제 실패/지연/needs_attention 유지. UI는 최신 수집 정상, 과거 범위 별도 집계·설명. 분량 제한으로 중지한 과거 전용 계정도 완료를 단정하지 않도록 종료로 표기.
+- 수집 관리에서는 오류 코드 없이 limited/gap인 경우도 과거 안내 표시. Instagram 동기화는 조회 성공과 저장 성공 시각이 이미 분리되어 있고 직접 등록 사진 없음도 실패와 분리되어 있어 유지.
+- RED: 새 회귀 테스트가 attention != healthy로 실패 확인. 수정 후 관련43개 및 전체201개 테스트 통과. 기존 알림 정상 관찰 후 복구, 실제 네트워크 오류 재발 시 재개방 검증.
+- check-operations-tabs 통과: 과거 경고와 오류 건수 분리, 320/390/768/1280px, 키보드/아이콘/탭/부분 실패/인증 만료 회귀, 쓰기0/브라우저 오류0. 모바일 캡처 확인.
+- 독립 읽기 전용 리뷰 APPROVED(Critical/Major 없음). diff --check 통과. Wrangler dry-run 235.05 KiB/gzip57.93 KiB 통과. 최초 sandbox 실행은 로그/상위 디렉터리 권한 오류; 승인된 권한으로 재실행 성공.
+- 운영 배포는 아직 확인 전. 이전 알림은 삭제하지 않고 5분 간격 점검에서 정상 상태를 5분 이상 확인한 뒤 종료되므로 배포 직후 잠시 남을 수 있음.

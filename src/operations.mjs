@@ -3,6 +3,7 @@ import {readOperationsHistory} from './operations-history.mjs';
 import {readOperationsAlerts} from './operations-alerts.mjs';
 
 const grace=900;
+const historyNotes=new Set(['history_window_unverified','unverified_exhaustion','repeated_cursor']);
 const knownErrors=new Set(['unknown_source','unexpected_204','provider_schema','provider_timeout','provider_network','cursor_expired','storage_error','repeated_cursor','unverified_exhaustion','history_window_unverified','invalid_json','response_too_large','invalid_import','review_conflict','sync_conflict','sync_failure','apify_network','apify_empty_response','apify_response_too_large','apify_invalid_json','apify_invalid_runs','apify_invalid_dataset','apify_invalid_checkpoint','apify_incomplete_page']);
 const safeError=value=>!value?null:knownErrors.has(value)||/^(?:provider_http(?:_error)?|provider_json_error|invalid_json|response_too_large|unexpected_204):[1-5][0-9]{2}$/.test(value)||/^apify_http_[1-5][0-9]{2}$/.test(value)?value:'unknown_error';
 function seconds(value){
@@ -16,6 +17,8 @@ const json=(data,status=200,headers={})=>Response.json(data,{status,headers:{'Ca
 
 function xSource(row,enabled,now,allowance){
  const active=enabled&&row.enabled===1;
+ const historyNote=historyNotes.has(row.last_error_code);
+ const historyStatus=row.catchup_status==='limited'?'limited':row.history_paused||row.catchup_status==='gap'||historyNote?'unverified':row.last_complete_sync_at?'verified':'pending';
  const historyOnly=sources.some(source=>source.handle===row.source&&source.historyOnly);
  const completed=historyOnly&&!row.enabled&&!row.failures&&
   (row.last_complete_sync_at||row.history_paused&&row.last_success_at&&['limited','gap','idle'].includes(row.catchup_status));
@@ -23,11 +26,11 @@ function xSource(row,enabled,now,allowance){
  if(completed)status='completed';
  else if(!active)status='disabled';
  else if(row.lease_until>now)status='running';
- else if(row.catchup_status==='needs_attention'||['gap','limited'].includes(row.catchup_status))status='attention';
+ else if(row.catchup_status==='needs_attention')status='attention';
  else if(late(row.next_due_at,row.last_attempt_at??row.last_success_at,now,allowance))status='delayed';
- else if(row.failures||row.catchup_status==='retry'||row.last_error_code)status='retry';
+ else if(row.failures||row.catchup_status==='retry'||row.last_error_code&&!historyNote)status='retry';
  else if(row.last_success_at)status='healthy';
- return {source:row.source,status,enabled:active,lastAttemptAt:iso(row.last_attempt_at),lastSuccessAt:iso(row.last_success_at),lastCompleteSyncAt:iso(row.last_complete_sync_at),nextDueAt:iso(row.next_due_at),failures:row.failures,error:safeError(row.last_error_code)};
+ return {source:row.source,status,historyStatus,historyReason:historyNote?row.last_error_code:null,enabled:active,lastAttemptAt:iso(row.last_attempt_at),lastSuccessAt:iso(row.last_success_at),lastCompleteSyncAt:iso(row.last_complete_sync_at),nextDueAt:iso(row.next_due_at),failures:row.failures,error:historyNote?null:safeError(row.last_error_code)};
 }
 
 export async function readOperationsState(env,{details=true}={}){

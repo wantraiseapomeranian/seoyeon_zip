@@ -8,6 +8,7 @@ import {handleApi} from '../src/worker.mjs';
 // Real worker + SQLite fixture: only failure responses are injected at HTTP boundary.
 const {DB,sqlite,enable}=testDatabase();enable();
 sqlite.exec("UPDATE collection_state SET last_success_at=unixepoch()-180,last_attempt_at=unixepoch()-60,next_due_at=unixepoch()+180 WHERE enabled=1");
+sqlite.exec("UPDATE collection_state SET history_paused=1,catchup_status='limited',last_error_code=NULL WHERE source='Seowoo_0501'");
 sqlite.exec("INSERT INTO instagram_sync(id,task_id,last_checked_at,last_success_at,next_due_at) VALUES(1,'testTask',datetime('now'),datetime('now','-1 day'),unixepoch()+300)");
 sqlite.prepare('INSERT INTO manual_posts VALUES(?,?,?,?)').run('manual:x:123','https://x.com/sample/status/123','{}',new Date().toISOString());
 sqlite.exec("INSERT INTO manual_media_jobs(post_id,state,error) VALUES('manual:x:123','failed','provider_network')");
@@ -77,6 +78,12 @@ try{
  assert.equal(await page.locator('#operations-status').getAttribute('role'),'status');
  assert.equal(await page.locator('#operations-status').evaluate(el=>getComputedStyle(el).position),'absolute','success announcement stays available without taking visual space');
  await page.locator('#ops-tab-collection').click();
+ assert.match(await page.locator('#x-values').innerText(),/수집 오류·지연\s*0개 계정/);
+ assert.match(await page.locator('#x-values').innerText(),/과거 범위 미확인\s*1개 계정/);
+ await page.locator('#x-details-title').click();
+ assert.match(await page.locator('#x-sources').innerText(),/최신 수집 정상/);
+ assert.match(await page.locator('#x-sources').innerText(),/과거 수집 분량 제한 도달/);
+ await page.locator('#x-details-title').click();
  assert.match(await page.locator('#manual-values').innerText(),/조회 실패\s*1건/);
  for(const id of ['instagram-details','manual-details']){
   assert.equal(await page.locator('#'+id).getAttribute('open'),null,'secondary counts start collapsed');

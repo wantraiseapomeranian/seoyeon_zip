@@ -22,7 +22,9 @@ $('#operations-content').addEventListener('click',event=>{
  if(target){target.tabIndex=-1;target.focus();}else $('#ops-tab-'+link.dataset.panelTarget).focus();
 });
 window.addEventListener('hashchange',followHash);followHash();
-const statusNames={disabled:'중지됨',completed:'과거 수집 완료',unconfigured:'설정 필요',waiting:'첫 처리 대기',running:'처리 중',healthy:'정상',retry:'재시도 대기',attention:'확인 필요',delayed:'처리 지연'};
+const statusNames={disabled:'중지됨',completed:'과거 수집 종료',unconfigured:'설정 필요',waiting:'첫 처리 대기',running:'처리 중',healthy:'정상',retry:'재시도 대기',attention:'확인 필요',delayed:'처리 지연'};
+const historyUnverified=source=>['unverified','limited'].includes(source.historyStatus);
+const historyNames={unverified:'과거 수집 범위 미확인',limited:'과거 수집 분량 제한 도달',verified:'과거 수집 범위 확인됨',pending:'과거 수집 범위 확인 전'};
 const needsAttention=status=>['retry','attention','delayed','unconfigured'].includes(status);
 const count=value=>new Intl.NumberFormat('ko-KR').format(value)+'건';
 const timestamp=value=>value?new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(value)):'기록 없음';
@@ -95,13 +97,17 @@ function render(data){
  $('#delay-note').textContent='조회 가능 시각 이후 X는 '+Math.round(data.x.delayGraceSeconds/60)+'분, 인스타·직접 등록은 '+Math.round(data.delayGraceSeconds/60)+'분을 넘기면 지연으로 표시해요. X의 3분 간격 순차 처리와 중지·처리 중 상태를 반영합니다.';
  $('#x-summary').textContent=data.x.enabled?'':'전체 X 수집이 중지되어 있어요. 마지막 기록을 표시합니다.';
  const active=data.x.sources.filter(source=>source.enabled).length;
- values($('#x-values'),[['수집 켜짐',active+'개 계정'],['중지·완료',(data.x.sources.length-active)+'개 계정'],['확인 필요',data.x.sources.filter(source=>needsAttention(source.status)).length+'개 계정']]);
+ values($('#x-values'),[['수집 켜짐',active+'개 계정'],['중지·종료',(data.x.sources.length-active)+'개 계정'],['수집 오류·지연',data.x.sources.filter(source=>needsAttention(source.status)).length+'개 계정'],['과거 범위 미확인',data.x.sources.filter(historyUnverified).length+'개 계정']]);
  $('#x-details-title').textContent='계정별 상태 보기 · '+data.x.sources.length+'개';
  $('#x-sources').replaceChildren(...data.x.sources.map(source=>{
   const li=node('li',undefined,'ops-source'),heading=node('div',undefined,'ops-source-heading');heading.append(node('strong','@'+source.source),state(source.status));
+  if(source.status==='healthy'&&historyUnverified(source))heading.lastElementChild.textContent='최신 수집 정상';
   const dl=node('dl',undefined,'ops-values');values(dl,[['마지막 성공',timestamp(source.lastSuccessAt)],['다음 조회 가능',source.enabled?timestamp(source.nextDueAt):'중지됨'],['연속 실패',count(source.failures)]]);
   const detail=node('details'),summary=node('summary','수집 기록 자세히');detail.append(summary,node('p','마지막 시도 · '+timestamp(source.lastAttemptAt)),node('p','전체 동기화 완료 · '+timestamp(source.lastCompleteSyncAt)));
-  if(source.error)detail.append(node('p','최근 오류 · '+source.error,'ops-warning'));li.append(heading,dl,detail);return li;
+  if(source.error)detail.append(node('p','최근 오류 · '+source.error,'ops-warning'));
+  if(historyUnverified(source))detail.append(node('p','과거 자료를 모두 가져왔는지 확인되지 않아 과거 조회를 멈췄어요. 최신 수집 상태와 별도로 표시합니다.'));
+  if(source.historyReason)detail.append(node('p','과거 범위 확인 사유 · '+source.historyReason,'muted'));
+  li.append(heading);if(source.historyStatus)li.append(node('p',historyNames[source.historyStatus],'muted'));li.append(dl,detail);return li;
  }));
  if(!data.x.sources.length)$('#x-sources').append(node('li','등록된 수집 계정이 없어요.','muted'));
  $('#instagram-status').replaceChildren(state(ig.status));

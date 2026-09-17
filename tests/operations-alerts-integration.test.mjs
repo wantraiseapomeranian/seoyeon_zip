@@ -5,6 +5,24 @@ import * as operations from '../src/operations.mjs';
 import worker from '../src/worker.mjs';
 import {evaluateOperationsAlerts,readOperationsAlerts} from '../src/operations-alerts.mjs';
 
+test('history-only warnings recover existing alerts while actual collection failures reopen them',async()=>{
+ const {DB,sqlite,enable}=testDatabase();enable();
+ try{
+  const env={DB,COLLECTION_ENABLED:'true'},now=Date.now(),at=Math.floor(now/1000);
+  sqlite.exec("UPDATE collection_state SET catchup_status='gap',history_paused=1,last_error_code='history_window_unverified',last_success_at=unixepoch(),next_due_at=unixepoch()+300 WHERE source='Seowoo_0501'");
+  sqlite.prepare("INSERT INTO operations_alert_state(key,label,opened_at,last_seen_at,bad_since,observed_at) VALUES('x:Seowoo_0501','X',?,?,?,?)").run(at-1800,at-300,at-2700,at-300);
+  const load=()=>operations.readOperationsState(env,{details:false});
+  await evaluateOperationsAlerts(env,load,now);
+  assert.ok((await readOperationsAlerts(DB)).active.some(x=>x.key==='x:Seowoo_0501'));
+  await evaluateOperationsAlerts(env,load,now+300000);
+  assert.ok(!(await readOperationsAlerts(DB)).active.some(x=>x.key==='x:Seowoo_0501'));
+  assert.ok((await readOperationsAlerts(DB)).events.some(x=>x.key==='x:Seowoo_0501'&&x.type==='recovered'));
+  sqlite.exec("UPDATE collection_state SET failures=1,last_error_code='provider_network' WHERE source='Seowoo_0501'");
+  for(const offset of [600,900,1200,1500])await evaluateOperationsAlerts(env,load,now+offset*1000);
+  assert.ok((await readOperationsAlerts(DB)).active.some(x=>x.key==='x:Seowoo_0501'));
+ }finally{sqlite.close();}
+});
+
 test('scheduled signals reuse operations health without scanning post totals or history',async()=>{
  const {DB,sqlite}=testDatabase(),queries=[];
  try{

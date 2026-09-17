@@ -8,6 +8,22 @@ const setup=()=>{const db=testDatabase();return {...db,env:{DB:db.DB,COLLECTION_
 async function get(env){assert.equal(typeof module.handleOperations,'function','operations handler exists');return module.handleOperations(request(),env);}
 const source=data=>data.x.sources.find(s=>s.source==='Seowoo_0501');
 
+test('history uncertainty is separate from collection health and never masks failures or delay',async()=>{
+ const {sqlite,env,enable}=setup();enable();
+ for(const [catchup,code] of [['gap','history_window_unverified'],['gap','unverified_exhaustion'],['gap','repeated_cursor'],['limited',null]]){
+  sqlite.prepare("UPDATE collection_state SET history_paused=1,catchup_status=?,last_error_code=?,failures=0,last_success_at=unixepoch()-60,next_due_at=unixepoch()+300 WHERE source='Seowoo_0501'").run(catchup,code);
+  let row=source(await (await get(env)).json());
+  assert.equal(row.status,'healthy');assert.equal(row.error,null);
+  assert.equal(row.historyStatus,catchup==='limited'?'limited':'unverified');
+  sqlite.exec("UPDATE collection_state SET failures=1,last_error_code='provider_http:429' WHERE source='Seowoo_0501'");
+  row=source(await (await get(env)).json());assert.equal(row.status,'retry');assert.equal(row.error,'provider_http:429');
+  sqlite.exec("UPDATE collection_state SET failures=0,last_error_code='history_window_unverified',next_due_at=unixepoch()-7200 WHERE source='Seowoo_0501'");
+  assert.equal(source(await (await get(env)).json()).status,'delayed');
+ }
+ sqlite.exec("UPDATE collection_state SET catchup_status='needs_attention',last_error_code='provider_schema',next_due_at=unixepoch()+300 WHERE source='Seowoo_0501'");
+ assert.equal(source(await (await get(env)).json()).status,'attention');
+});
+
 test('empty operations are read only, private, and do not manufacture overdue alerts',async()=>{
  const {sqlite,env}=setup();const before=sqlite.prepare('SELECT total_changes() n').get().n;
  const response=await get(env),data=await response.json();
