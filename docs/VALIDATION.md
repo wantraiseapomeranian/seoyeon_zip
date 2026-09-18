@@ -1002,3 +1002,9 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - RED: 새 URL과 미디어 종류 갱신 회귀2건 실패 확인. 병합은 signed query/호스트 변화와 유형 갱신을 분리. 부분 입력은 반환되지 않은 사진 유지. 경로가 중복되어 사진 대응이 모호하면 기존 정보 보존.
 - 관련20개 테스트 통과. 독립 리뷰의 모호한 중복 경로·부분 입력 손실 지적2건을 수정하고 해당 회귀 추가. 검토 상태/revision/reviewed_at 유지 검증.
 - 운영 복구 및 배포 결과는 아래 별도 기록 예정. 오늘 완료 수집은 nIQNYVewMc6RpnYqw(40건), 추가 수집 실행 없음.
+
+- 코드 f9b5b72 GitHub Workers Builds success 확인. 최종 관련20개 회귀 통과. 전체204개 통과 후 경로 유일성 보완 및 관련20개 재검증. Wrangler dry-run236.29 KiB/gzip58.25 KiB, 최종 독립 리뷰 APPROVED.
+- 오늘 완료 결과40건에는 만료11개가 없어 재사용으로 복구 불가. 공식 Instagram Scraper 단발 실행 dt7np7VJh5bwoKECR: directUrls11개, URL당1건, timeout300초, 최대 $0.10, 성공11건/실제 $0.030. 기존 스케줄 변경 없음.
+- 운영 D1 조건부 UPDATE11건으로 이미지 관련 필드만 갱신. 전체76행 전후 비교: 변경11행, status/revision/reviewed_at/imported_at 및 비이미지 데이터 보존. 사진37장의 개수·순서·유형 보존 확인.
+- 복구 후 공개19개 게시물62장 모두 Range GET HTTP206. 최초 일시 DNS 오류2장은 해당2장만 재시도하여206 확인. Edge 운영 피드에서 기존 실패 게시물 Dc4jDKGErGo 다음 버튼을 눌러2/4 사진 실제 표시 확인.
+- 원본 JSON·서명 URL·SQL·DB 스냅샷은 ignored .local/ 또는 로컬 Downloads에만 보관. CDN URL은 다시 만료될 수 있음. 이번 범위는 재수집 시 URL 갱신 및 현재 공개 자료 복구이며 영구 이미지 보관이나 전체 과거 자동 재수집은 추가하지 않음.
