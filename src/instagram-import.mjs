@@ -1,4 +1,28 @@
 const invalid=()=>{throw Object.assign(new Error('invalid_import'),{status:400});};
+// CDN host and signed query rotate; the asset path identifies the same rendition.
+const imageKey=value=>{try{return new URL(value).pathname;}catch{return null;}};
+function renewMedia(post,old){
+ const previous=(old.images??(old.image?[old.image]:[])).map(previewUrl=>({previewUrl,kind:old.media?.find(m=>m.previewUrl===previewUrl)?.kind??'unknown'}));
+ const incoming=post.media;
+ const ambiguous=list=>new Set(list.map(m=>imageKey(m.previewUrl))).size!==list.length;
+ const ambiguousRenewal=(ambiguous(previous)||ambiguous(incoming))&&incoming.some(m=>!previous.some(p=>p.previewUrl===m.previewUrl));
+ const match=(list,url)=>{
+  const exact=list.find(m=>m.previewUrl===url);if(exact)return exact;
+  const key=imageKey(url),matches=key?list.filter(m=>imageKey(m.previewUrl)===key):[];
+  if(previous.filter(m=>imageKey(m.previewUrl)===key).length>1||incoming.filter(m=>imageKey(m.previewUrl)===key).length>1)return null;
+  return matches.length===1?matches[0]:null;
+ };
+ const enriched=incoming.map(m=>{
+  const prior=match(previous,m.previewUrl);
+  return {...m,kind:m.kind==='unknown'?(prior?.kind??'unknown'):m.kind};
+ });
+ // A summary or partial response must not discard unreturned carousel items.
+ post.media=ambiguousRenewal&&previous.length?previous:previous.length>enriched.length?previous.map(m=>{
+  const fresh=match(enriched,m.previewUrl);return fresh?{...fresh,kind:fresh.kind==='unknown'?m.kind:fresh.kind}:m;
+ }):enriched;
+ post.images=post.media.map(m=>m.previewUrl);post.image=post.images[0]??null;
+ post.mediaCount=Math.max(post.mediaCount,old.mediaCount??0,post.images.length);
+}
 export function normalize(p) {
   if(!p || typeof p!=='object')invalid();
   const code=p.shortCode??p.code;
@@ -42,8 +66,7 @@ export async function importInstagram(DB,input,{before=[],after=[]}={}){
       if(raw.ownerUsername==null&&raw.author==null)p.author=old.author;
       if(raw.caption==null)p.caption=old.caption;
       if(!raw.productType&&old.url?.includes('/reel/'))p.url=old.url;
-      if((p.media.some(m=>m.kind==='unknown')&&old.media?.some(m=>m.kind!=='unknown'))||old.images?.length>p.images.length){p.images=old.images;p.image=old.image;p.mediaCount=Math.max(p.mediaCount,old.mediaCount);}
-      p.media=p.images.map(previewUrl=>{const incoming=p.media.find(m=>m.previewUrl===previewUrl),previous=old.media?.find(m=>m.previewUrl===previewUrl);return incoming?.kind!=='unknown'&&incoming?incoming:previous??incoming??{previewUrl,kind:'unknown'};});
+      renewMedia(p,old);
     }
     // Re-import enriches metadata but never resets a manual decision or its revision.
     const guards=posts.map(p=>({p,token:crypto.randomUUID(),snapshot:snapshots.get(p.code)}));
