@@ -39,7 +39,6 @@ header .actions .icon-button svg{pointer-events:none}
 @media(max-width:600px){header .actions{--edge-room:6px;gap:2px}}
 .feed-gallery{position:relative;min-width:0}.feed-gallery .photo-frame{display:block;width:100%;height:auto;aspect-ratio:var(--photo-ratio,.75);padding:0;border:0;border-radius:6px;overflow:hidden;background:var(--soft);touch-action:pan-y;cursor:zoom-in}.feed-gallery img{display:block;width:100%;height:100%;object-fit:contain}.feed-gallery img[hidden]{display:none}.feed-gallery .photo-fallback{font-size:12px;color:var(--muted)}.feed-gallery .photo-controls{position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:space-between;padding:6px}.feed-gallery .photo-arrow{pointer-events:auto;border:1px solid var(--border);border-radius:50%;background:var(--surface);color:var(--text);padding:0;width:30px;height:30px;min-width:30px;min-height:30px;font-size:0;line-height:1;display:flex;align-items:center;justify-content:center}.feed-gallery .photo-arrow:disabled{opacity:.4}.feed-gallery .photo-arrow[hidden]{display:none}.feed-gallery .photo-count{position:absolute;bottom:8px;right:8px;background:var(--surface);padding:3px 6px;font-size:11px;border-radius:4px;font-variant-numeric:tabular-nums}.feed-original{display:block;width:fit-content;font-size:11px;color:var(--muted);margin-top:6px}.photo-dialog{width:min(960px,95vw);padding:16px}.photo-dialog>img{display:block;max-width:100%;height:75vh;object-fit:contain;margin:auto}.photo-close{display:block;margin-left:auto}
 
-.feed-gallery .photo-arrow::after{content:'';width:6px;height:6px;border-top:1.5px solid currentColor;border-right:1.5px solid currentColor;transform:translateX(-1.5px) rotate(45deg)}.feed-gallery .photo-arrow:first-child::after{transform:translateX(1.5px) rotate(-135deg)}
 
 .management-tools{margin:16px 0;padding:16px 0;border-block:1px solid var(--border)}.management-tools summary{cursor:pointer;font-weight:600}.management-tools form{margin:16px 0}.manual-fields{display:flex;gap:8px;margin-top:8px}.manual-fields input{min-width:0;flex:1}.management-tools p{font-size:12px}.metadata-export{display:inline-block;padding-block:10px}.source-toggle{margin:8px 0}.manual-preview{display:grid;place-items:center;min-height:150px;background:var(--soft);border:1px solid var(--border);border-radius:6px;font-size:14px}.manual-fields button{flex-shrink:0}
 /* Management modal: fixed header, compact account rows, separate tools. */
@@ -48,7 +47,7 @@ header .actions .icon-button svg{pointer-events:none}
 
 /* Delayed, indeterminate feedback inside the existing 30px navigation button. */
 .photo-arrow{position:relative}.photo-loading-ring{display:none;position:absolute;inset:5px;border:1.5px solid currentColor;border-right-color:transparent;border-bottom-color:transparent;border-radius:50%;opacity:.6;pointer-events:none}
-.photo-arrow.is-loading .photo-loading-ring{display:block;animation:photo-loading-spin .75s linear infinite}.photo-arrow.is-loading::after{opacity:.25}
+.photo-arrow.is-loading .photo-loading-ring{display:block;animation:photo-loading-spin .75s linear infinite}.photo-arrow.is-loading svg{opacity:.25}
 @keyframes photo-loading-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.photo-arrow.is-loading .photo-loading-ring{animation:none}}
 
@@ -79,3 +78,12 @@ header .actions .icon-button svg{pointer-events:none}
 .manual-records{border-top:1px solid var(--border);margin-top:24px;padding-top:16px}.manual-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.manual-heading h3{font-size:14px;margin:0}.manual-heading button,.manual-retry,.manual-pages button{min-height:44px;font-size:12px}.manual-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}.manual-info{min-width:0;flex:1}.manual-link{font-size:12px;overflow-wrap:anywhere}.manual-info p{margin:6px 0 0}.manual-retry{flex-shrink:0}.manual-pages{display:flex;justify-content:space-between;gap:12px;margin-top:8px}
 
 .manual-records>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;font-size:14px;font-weight:600;cursor:pointer;list-style:none}.manual-records>summary::-webkit-details-marker{display:none}.manual-records>summary::after{content:"";width:7px;height:7px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);margin:0 4px 4px}.manual-records[open]>summary::after{transform:rotate(225deg);margin-bottom:0}.manual-heading{justify-content:flex-end}
+
+/* Keep native date fields and photo controls on one explicit color scheme.
+   Samsung Internet forced dark is also checked separately on the device. */
+:root{--control-surface:#fff;--control-text:#20252b;--control-border:#dde3e8;--control-scheme:light}
+:root input[type=date],:root .photo-arrow{color-scheme:var(--control-scheme);color:var(--control-text);background-color:var(--control-surface);border-color:var(--control-border)}
+:root input[type=date]{-webkit-text-fill-color:currentColor}
+:root input[type=date]::-webkit-datetime-edit{color:inherit;-webkit-text-fill-color:currentColor}
+.photo-arrow svg{display:block;width:18px;height:18px;flex:none;pointer-events:none}
+@media(prefers-color-scheme:dark){:root{--control-surface:#20252b;--control-text:#f1f5f7;--control-border:#5c6670;--control-scheme:dark}}

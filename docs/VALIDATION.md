@@ -1008,3 +1008,11 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 운영 D1 조건부 UPDATE11건으로 이미지 관련 필드만 갱신. 전체76행 전후 비교: 변경11행, status/revision/reviewed_at/imported_at 및 비이미지 데이터 보존. 사진37장의 개수·순서·유형 보존 확인.
 - 복구 후 공개19개 게시물62장 모두 Range GET HTTP206. 최초 일시 DNS 오류2장은 해당2장만 재시도하여206 확인. Edge 운영 피드에서 기존 실패 게시물 Dc4jDKGErGo 다음 버튼을 눌러2/4 사진 실제 표시 확인.
 - 원본 JSON·서명 URL·SQL·DB 스냅샷은 ignored .local/ 또는 로컬 Downloads에만 보관. CDN URL은 다시 만료될 수 있음. 이번 범위는 재수집 시 URL 갱신 및 현재 공개 자료 복구이며 영구 이미지 보관이나 전체 과거 자동 재수집은 추가하지 않음.
+
+## 2026-09-18 모바일 다크모드 컨트롤
+
+- 사용자 확인 증상: 삼성 인터넷 다크모드에서 피드/검토함 화살표와 검토함 날짜 선택칸 내부 값이 보이지 않음. 코드에는 전체 다크 테마 없음. 강제 색상 변환 영향은 유력 가설이며 실기기 원인 확정은 하지 않음.
+- 화살표를 1.5px CSS border 의사요소에서 접근성 이름을 유지한 currentColor SVG로 변경. 로딩 시 SVG만 흐리게 하고 기존 로딩 표시/이동/키보드/확대 유지. 날짜의 native color-scheme, 배경/전경, WebKit 내부 글자색을 함께 명시. 어두운 팔레트는 해당 두 컨트롤에만 적용.
+- check-dark-controls RED: 날짜 입력 color-scheme normal != light 확인. GREEN: Chrome light/dark, feed/X/Instagram/history 390px에서 날짜 값/색상 모드, SVG, 앞뒤 이동/키보드, 가로 넘침 확인. 실제 CSS·HTML에 로컬 갤러리 fixture를 삽입한 검증이며 운영 데이터 검증과 구분. X dark 스크린샷에서 날짜 숫자/화살표 표시 확인.
+- check-photo-comparison 통과(1440/390/320px, 사진/후보 이동, 확대, 다른 사진/묶기). check-review-refresh 통과(세 검토 화면 320/390/768/1280px). 독립 읽기 전용 리뷰 APPROVED. diff --check 통과. Wrangler dry-run236.29 KiB/gzip58.25 KiB 통과.
+- 미확인: 삼성 인터넷의 강제 다크 변환은 데스크톱 Chrome prefers-color-scheme 에뮬레이션으로 대체할 수 없음. 배포 후 사용자의 갤럭시에서 최종 확인 필요.
