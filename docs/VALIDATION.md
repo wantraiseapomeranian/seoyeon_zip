@@ -1016,3 +1016,9 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - check-dark-controls RED: 날짜 입력 color-scheme normal != light 확인. GREEN: Chrome light/dark, feed/X/Instagram/history 390px에서 날짜 값/색상 모드, SVG, 앞뒤 이동/키보드, 가로 넘침 확인. 실제 CSS·HTML에 로컬 갤러리 fixture를 삽입한 검증이며 운영 데이터 검증과 구분. X dark 스크린샷에서 날짜 숫자/화살표 표시 확인.
 - check-photo-comparison 통과(1440/390/320px, 사진/후보 이동, 확대, 다른 사진/묶기). check-review-refresh 통과(세 검토 화면 320/390/768/1280px). 독립 읽기 전용 리뷰 APPROVED. diff --check 통과. Wrangler dry-run236.29 KiB/gzip58.25 KiB 통과.
 - 미확인: 삼성 인터넷의 강제 다크 변환은 데스크톱 Chrome prefers-color-scheme 에뮬레이션으로 대체할 수 없음. 배포 후 사용자의 갤럭시에서 최종 확인 필요.
+
+## 2026-09-18 삼성 인터넷 날짜 후속 수정
+
+- 사용자 실기기 증거로 이전 CSS만의 해결 불충분 확인. 삼성 UA에서만 date-controls.js가 기존 입력을 감싸 aria-hidden 일반 텍스트로 날짜 선택/선택값 표시. input은 opacity:0으로 위치·기본 선택기·라벨·값·유효성 유지. input/change 및 기존 클릭 초기화, form reset에 표시 동기화. 비삼성 브라우저 입력 유지.
+- RED: 일반 텍스트 값 undefined != 2026.09.18 확인. GREEN: 네 화면에서 light/dark, 빈 값/선택값/프로그램 초기화, native hit target, 사진 이동·키보드 및390px 가로 넘침 통과. 삼성 UA를 지정한 Chrome 테스트이며 삼성 렌더러 검증은 아님. 스크린샷으로 날짜 값 표시 확인.
+- 인증/공개 데이터/요청 제한21개 통과. 기존 검토 화면320/390/768/1280px 검증 통과. 독립 리뷰 APPROVED. Wrangler dry-run236.31 KiB/gzip58.26 KiB 통과. 잘못 지정한 tests/worker.test.mjs는 존재하지 않아 실행되지 않았고 실제 관련 세 테스트 파일로 수정해 검증.

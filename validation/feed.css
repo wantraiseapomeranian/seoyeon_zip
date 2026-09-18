@@ -87,3 +87,10 @@ header .actions .icon-button svg{pointer-events:none}
 :root input[type=date]::-webkit-datetime-edit{color:inherit;-webkit-text-fill-color:currentColor}
 .photo-arrow svg{display:block;width:18px;height:18px;flex:none;pointer-events:none}
 @media(prefers-color-scheme:dark){:root{--control-surface:#20252b;--control-text:#f1f5f7;--control-border:#5c6670;--control-scheme:dark}}
+
+/* Visible text avoids Samsung's native date shadow-text conversion. */
+.date-display{position:relative;display:inline-grid;min-width:0;max-width:100%;vertical-align:middle}
+.date-display input[type=date]{grid-area:1/1;opacity:0;z-index:1;cursor:pointer}
+.date-value{grid-area:1/1;display:flex;align-items:center;gap:8px;justify-content:space-between;min-width:0;padding:6px 8px;border:1px solid var(--control-border);border-radius:4px;background:var(--control-surface);color:var(--control-text);font-size:12px;line-height:1.5;pointer-events:none}
+.date-value::after{content:'▾';flex:none}
+.date-display:focus-within{outline:3px solid var(--ink);outline-offset:3px;border-radius:4px}
