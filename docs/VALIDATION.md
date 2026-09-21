@@ -1050,3 +1050,11 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 비인증 GET /api/youtube/review 및 POST /api/youtube/preview 모두 HTTP401 확인. 운영 tail 원본은 ignored .local에만 보관, 커밋하지 않음.
 
 - 1375f21 자동 배포 success 후 실제 videos.list 미리보기 성공: NH8w1M9huwc, MUSINSA TV, 1085초(18:05), 제목·게시일·썸네일 표시 확인. 자동 수집 활성화 단계로 진행.
+
+- 최종 npm test218개 통과. 브라우저360/768/1280px, Shorts URL 거절·키보드 이동·등록/중복/검토/감사 검증 통과. 실제 M2 QRL-By9qlEo(윤서연 Rising 개인 직캠,178초)와 MUSINSA NH8w1M9huwc(외부 출연,1085초) 두 건 등록 성공, D1 kept/regular/revision1 및 공개 유튜브 피드HTTP200·실제 썸네일 렌더링 확인.
+- 87270e7 GitHub Workers Builds success. 자동 수집 플래그true 및 운영 검토함 표시 확인. 프로젝트별 Google quota 수치·실제 최대 메모리 사용량은 측정하지 않음. 한 번50개/응답2MiB/10초/한 tick 한 페이지 제한, 원본 영상 저장 없음.
+
+- 운영 youtu.be 동일ID 재조회에서 기존 판정 유지 안내 확인. 공개 피드 image/video/youtube 각각HTTP200, 확인한 첫 페이지의 YouTube 항목0/0/2. 이는 전체 과거 자료 전수 검증은 아님.
+
+- 2026-09-21 12:19:40 KST 예약 실행: search:appearance의 last_success_at1789960780, last_error_code NULL, partial1. D1 pending50/kept2, control 오류없음/blocked_until0. search.list→videos.list→원자적 저장·cursor 전진 실제 확인. 나머지 검색은 다음 due tick 순차 실행. 현재50건은 적격 확정 영상이 아닌 검토 후보이며 Shorts/재업로드가 포함될 수 있음.
+- 최종 Wrangler dry-run266.58 KiB/gzip65.68 KiB 통과. 실시간 원본 영상 저장·중계 없음. 실제7일/30일 경과와 운영 경합/롤백은 미실행이며 해당 동작은 로컬 테스트로 확인.
