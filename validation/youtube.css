@@ -1,8 +1,8 @@
 .youtube-review .youtube-preview img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:contain;background:var(--soft);border-radius:6px}
 .youtube-review h2{font-size:17px;line-height:1.5;margin:0;overflow-wrap:anywhere}
 .youtube-review .review-tags{line-height:1.7}.youtube-review .review-filters{margin-block:16px 0}
-.youtube-review .youtube-confirm{display:flex;gap:8px;flex-direction:row;align-items:flex-start;width:100%;font-size:13px;line-height:1.7}
-.youtube-confirm input[type=checkbox]{width:20px;height:20px;min-height:20px;flex:none;margin:2px 0 0}
+.youtube-review .youtube-confirm,#youtube-bulk-controls .youtube-confirm{display:flex;gap:8px;flex-direction:row;align-items:flex-start;width:100%;font-size:13px;line-height:1.7}
+.youtube-confirm input[type=checkbox]{width:20px;height:20px;min-height:20px;flex:none;margin:2px 0 0;accent-color:var(--ink)}
 #youtube-list{display:grid;gap:28px}#youtube-notice{font-size:14px;color:var(--ink);line-height:1.6;margin-block:12px 20px}
 #youtube-list:empty::after{content:'이 상태의 영상이 없어요.';display:block;padding-block:32px;font-size:14px;color:var(--muted)}
 
@@ -10,5 +10,14 @@
 
 .youtube-selection{display:flex;align-items:center;gap:8px;min-height:44px;font-size:14px;width:fit-content;cursor:pointer}
 .youtube-selection input[type=checkbox]{width:20px;height:20px;min-height:20px;flex:none;margin:0;accent-color:var(--ink)}
-.youtube-bulk{align-items:center;margin-block:0 12px;gap:16px}.youtube-bulk .youtube-selection{display:flex;flex-direction:row;color:var(--text)}.youtube-bulk .review-buttons{margin:0}
-#youtube-bulk-notice{font-size:14px;line-height:1.6}#youtube-bulk-notice:empty{display:none}
+.youtube-bulk{margin-block:16px 24px;border-bottom:1px solid var(--border);padding-bottom:12px}
+.youtube-bulk-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.youtube-bulk-heading .youtube-selection{color:var(--text);font-size:13px}
+#youtube-selected-count{font-size:12px;color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums}
+#youtube-bulk-controls{margin:8px 0 0;gap:12px;align-items:end}#youtube-bulk-controls>label:not(.youtube-confirm){flex:0 1 180px}
+#youtube-bulk-controls .youtube-confirm{flex:0 0 100%;color:var(--text);margin-top:0}
+#youtube-bulk-controls[hidden],#youtube-bulk-controls [hidden]{display:none}
+.youtube-card-heading{display:flex;align-items:flex-start;gap:8px}.youtube-card-heading h2{padding-top:8px}.youtube-card-heading .youtube-selection{width:44px;flex:0 0 44px;justify-content:center}
+#youtube-notice:empty,#youtube-bulk-notice:empty{display:none}#youtube-bulk-notice{font-size:14px;line-height:1.6;margin:0 0 20px}
+@media(max-width:480px){#youtube-bulk-controls>label:not(.youtube-confirm){flex:1 1 120px}#youtube-bulk-apply{order:2;width:100%}.youtube-card-heading{gap:4px}}
+
+.youtube-thumbnail{display:grid;place-items:center;aspect-ratio:16/9;background:var(--soft);border-radius:6px;overflow:hidden;font-size:12px;color:var(--muted)}
