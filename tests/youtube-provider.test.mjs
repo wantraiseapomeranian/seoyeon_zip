@@ -17,3 +17,9 @@ test('provider failures never return raw secrets and bound the response',async()
  await assert.rejects(fetchYouTubeVideos({YOUTUBE_API_KEY:'test'},[id],{fetcher:async()=>Response.json({error:{errors:[{reason:'quotaExceeded'}]}},{status:403})}),/quota_exceeded/);
  await assert.rejects(fetchYouTubeVideos({YOUTUBE_API_KEY:'test'},[id],{fetcher:async()=>new Response('x'.repeat(2*1024*1024+1))}),/response_too_large/);
 });
+
+test('provider diagnostics log only allowlisted reasons, never response messages',async()=>{
+ const entries=[],original=console.warn;console.warn=(...args)=>entries.push(args);
+ try{await assert.rejects(fetchYouTubeVideos({YOUTUBE_API_KEY:'secret-value'},[id],{fetcher:async()=>Response.json({error:{message:'secret-value',errors:[{reason:'secret-value'}],details:[{reason:'API_KEY_INVALID'}]}},{status:400})}),/provider_failure/);}finally{console.warn=original;}
+ assert.deepEqual(entries,[['youtube_provider_error',JSON.stringify({resource:'videos',status:400,reasons:['API_KEY_INVALID']})]]);
+});
