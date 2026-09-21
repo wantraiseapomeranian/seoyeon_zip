@@ -1099,3 +1099,9 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 운영 D1:0027의 선택적 소스 설정3열 추가 성공. 기존 영상/판정 변경 없음. 소스 활성화는 코드 배포 성공 이후 scripts/youtube-backfill.sql 실행. 아직 실제 과거 수집 성공으로 간주하지 않음.
 - 공식 채널 핸들: https://www.youtube.com/@MnetM2 , https://www.youtube.com/@KBSKpop , https://www.youtube.com/@MBCkpop , https://www.youtube.com/@SBSKPOP_ZOOM . ID는 런타임 channels API로 해석하며 검색 결과의 채널도 검증.
 - 한 페이지10개, 보충 성공 간격6시간/동일 채널24시간, 미검토20건부터 보충 대기. 영상 파일은 다운로드하지 않으며 기존 메타데이터 캐시/수동 등록 동작 유지. 모든 과거 영상의 검색 노출을 보장하지 않음.
+
+### 과거 직캠 첫 운영 실행 및 동명이인 보완
+- 0783c33 Workers Builds 성공 후4개 소스 활성화. 기존200개 영상의 decision/category/format/manual/revision 변경0건. 관리자 status API 무인증401, 배포 feed.js 갱신 확인.
+- 첫 예약 실행에서 KBS Kpop 채널 ID를 API로 해석하고2023-08-18 Girls' Capitalism 윤서연 직캠(PptA9CyjCHs)을 미검토로 저장, 다음 page token 보존 확인.
+- 함께 유입된 fromis_9 이서연1건으로 영어 동명이인 재현. 보충 소스만 일시 중지하고 새 후보에 제목(해시태그 제외)의 윤서연 또는 tripleS/트리플에스 소속 조건 추가. 기존 이름/길이/직캠 필터와 함께 적용. 신규 회귀 RED 확인 후 관련19개 GREEN.
+- 동명이인1건은 기존 소유자 검토 UI에서 서연 출연 아님 사유로 제외. 이전200개 판정과 신규 윤서연 후보를 보존. 보충 cursor/기간은 유지하며 후속 배포 이후 재개.
