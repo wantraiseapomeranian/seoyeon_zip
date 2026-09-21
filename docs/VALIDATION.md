@@ -1044,3 +1044,9 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 아직 운영 유튜브 API 실응답/새 코드 배포는 미검증. 채널 목록 초기 데이터는 없음; 검색 기반 발견과 관리자 채널 추가를 제공.
 
 - 운영 0024 적용 성공(17 SQL, 5.37ms). d1_migrations에 새 파일만 기록. 442ed1f GitHub Workers Builds success 및 인증된 브라우저에서 유튜브 검토함·기능 off·키 등록 상태 확인. 직접 등록을 먼저 활성화해 실제 API를 검증한다.
+
+- 후속 최종 로컬 번들 265.32 KiB / gzip65.29 KiB. 61db2f5 직접 등록 활성화 배포 success.
+- 실제 미리보기에서 provider_network 재현. 비밀값 없는 오류 분류로 TypeError/키 형식 정상 확인. 로컬 Wrangler 실행에서 redirect:error가 지원되지 않는다는 정확한 오류 재현. redirect:manual + 3xx 명시적 거절로 변경, 키를 외부 리디렉션에 전달하지 않음. 회귀 테스트 RED→GREEN 및 관련11개 통과(추가2개 포함).
+- 비인증 GET /api/youtube/review 및 POST /api/youtube/preview 모두 HTTP401 확인. 운영 tail 원본은 ignored .local에만 보관, 커밋하지 않음.
+
+- 1375f21 자동 배포 success 후 실제 videos.list 미리보기 성공: NH8w1M9huwc, MUSINSA TV, 1085초(18:05), 제목·게시일·썸네일 표시 확인. 자동 수집 활성화 단계로 진행.
