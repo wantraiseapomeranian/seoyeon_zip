@@ -65,5 +65,5 @@ export async function handleYouTube(request,env,context){
   }
   const match=u.pathname.match(/^\/api\/youtube\/review\/([A-Za-z0-9_-]{11})$/);if(match&&request.method==='PATCH')return reply(await reviewYouTube(env,match[1],input,actor));
   return reply({error:'method_not_allowed'},405);
- }catch(error){return reply({error:error.status?error.message:'save_failed'},error.status??503);}
+ }catch(error){console.warn('youtube_management_error',JSON.stringify({code:error.status?error.message:'save_failed',status:error.status??503}));return reply({error:error.status?error.message:'save_failed'},error.status??503);}
 }
