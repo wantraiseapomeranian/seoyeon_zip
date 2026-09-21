@@ -102,3 +102,5 @@ header .actions .icon-button svg{pointer-events:none}
 #youtube-preview select{min-height:44px;margin-left:12px}
 .youtube-confirm{display:flex;align-items:flex-start;gap:10px;line-height:1.6}
 .youtube-confirm input{width:20px;height:20px;flex:none;margin-top:3px}
+
+#youtube-collection summary{font-size:14px;min-height:44px;display:flex;align-items:center;cursor:pointer}#youtube-channel-form{margin-block:16px}#youtube-channel-form label{font-size:13px;display:block;margin-bottom:8px}#youtube-channel{min-width:0;width:100%}#youtube-retry{margin-top:12px}

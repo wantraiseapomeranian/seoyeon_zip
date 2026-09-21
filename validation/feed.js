@@ -50,7 +50,7 @@ if(live){$('#range').textContent='저장된 게시물을 표시해요. 목록 �
 const stamp=value=>value?new Date(value).toLocaleString('ko-KR',{month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}):'아직 저장 기록 없음';
 function node(tag,className,text){const e=document.createElement(tag);if(className)e.className=className;if(text!=null)e.textContent=text;return e;}
 function applyRole(){
- const owner=role==='owner';$('.review-entry').hidden=!owner;$('#login-link').hidden=owner;$('.management-tabs').hidden=!owner;$('#tools-tab').hidden=!owner;$('#manual-form').hidden=!owner;
+ const owner=role==='owner';$('#youtube-collection').hidden=!owner;if(!owner)$('#youtube-status').textContent='';$('.review-entry').hidden=!owner;$('#login-link').hidden=owner;$('.management-tabs').hidden=!owner;$('#tools-tab').hidden=!owner;$('#manual-form').hidden=!owner;
  $('#status-title').textContent=owner?'수집 및 관리':'수집 현황';$('.collection-note').hidden=!owner;
  if(owner){$('#collection-panel').setAttribute('role','tabpanel');$('#collection-panel').setAttribute('aria-labelledby','collection-tab');}
  else{$('#collection-panel').setAttribute('role','region');$('#collection-panel').setAttribute('aria-labelledby','status-title');$('#tools-panel').hidden=true;$('#manual-url').value='';$('#management-message').textContent='';$('#manual-list').replaceChildren();stopManualRefresh();selectManagementTab($('#collection-tab'));}
@@ -206,6 +206,7 @@ function renderSources(){
  }
 }
 async function refreshSources(options={}){
+ if(role==='owner')refreshYouTubeStatus();
  const button=$('#refresh-status');button.disabled=true;if(!options.preserveMessage)$('#status-message').textContent='상태를 불러오는 중…';
  try{
   states=await fetchSourceState();renderSources();if(role==='owner'&&(!$('#notice').textContent||$('#notice').textContent==='일부 출처의 갱신이 지연되고 있어요. 수집 상태를 확인해 주세요.'))$('#notice').textContent=states.some(sourceHasError)?'일부 출처의 갱신이 지연되고 있어요. 수집 상태를 확인해 주세요.':'';if(!options.preserveMessage)$('#status-message').textContent=live?'갱신 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}):'로컬 저장본이에요. 실제 운영 상태와 다를 수 있어요.';
@@ -302,3 +303,13 @@ async function submitYouTube(generation){
  $('#manual-url').value='';youtubeDraft=null;$('#youtube-preview').replaceChildren();$('#youtube-preview').hidden=true;$('#manual-submit').textContent='게시물 등록';manualOffset=0;if($('#manual-records').open)await refreshManual();else $('#manual-records').open=true;await load();return true;
 }
 window.addEventListener('popstate',()=>{const q=new URLSearchParams(location.search);media=['image','video','youtube'].includes(q.get('media'))?q.get('media'):'image';$('#kind').value=media==='youtube'?'all':q.get('kind')||'all';$('#source').value=media==='youtube'?'all':q.get('source')||'all';$('#month').value=q.get('date')||'';$('#sort').value=q.get('sort')==='oldest'?'oldest':'newest';load();});
+
+async function refreshYouTubeStatus(){
+ const generation=roleGeneration;if(role!=='owner')return;
+ try{const response=await fetch('/api/youtube/status');if(response.status===401||response.status===403){demote();return;}if(!response.ok)throw Error();const s=await response.json();if(role!=='owner'||generation!==roleGeneration)return;
+ const issue=s.last_error_code?' · 수집 연결 확인이 필요해요.':'';
+ $('#youtube-status').textContent=(s.collectionEnabled?'자동 수집 사용':'자동 수집 중지')+' · 미검토 '+s.pending+'건'+issue+' · 마지막 정보 갱신 '+(s.last_refresh_at?stamp(s.last_refresh_at*1000):'기록 없음');
+ }catch{if(role==='owner'&&generation===roleGeneration)$('#youtube-status').textContent='수집 상태를 불러오지 못했어요. 새로고침해 주세요.';}
+}
+$('#youtube-channel-form').addEventListener('submit',async e=>{e.preventDefault();if(role!=='owner')return;const b=e.submitter,generation=roleGeneration;b.disabled=true;try{const r=await management('/api/youtube/channels',{channel:$('#youtube-channel').value.trim()});if(role!=='owner'||generation!==roleGeneration)return;$('#youtube-channel').value='';await refreshYouTubeStatus();$('#youtube-status').textContent=r.title+' 채널을 추가했어요.';}catch(e){if(role==='owner'&&generation===roleGeneration)$('#youtube-status').textContent=e.message;}finally{b.disabled=false;}});
+$('#youtube-retry').addEventListener('click',async()=>{if(role!=='owner')return;const b=$('#youtube-retry'),generation=roleGeneration;b.disabled=true;try{await management('/api/youtube/resume',{});if(role!=='owner'||generation!==roleGeneration)return;await refreshYouTubeStatus();$('#youtube-status').textContent='다음 예약 실행에서 연결을 다시 확인해요.';}catch(e){if(role==='owner'&&generation===roleGeneration)$('#youtube-status').textContent=e.message;}finally{b.disabled=false;}});

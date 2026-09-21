@@ -16,7 +16,7 @@ const server=createServer(async(req,res)=>{try{
  if(url.pathname==='/api/session'){res.setHeader('Content-Type','application/json');res.end('{"role":"owner"}');return;}
  if(url.pathname==='/api/manual-posts'&&req.method==='GET')manualReads++;
  if(url.pathname.startsWith('/api/')){const chunks=[];for await(const c of req)chunks.push(c);
- const response=await handleApi(new Request(url,{method:req.method,headers:req.headers,...(req.method==='POST'?{body:Buffer.concat(chunks)}:{})}),env);
+ const response=await handleApi(new Request(url,{method:req.method,headers:req.headers,...(req.method==='POST'?{body:Buffer.concat(chunks)}:{})}),env,{actor:{id:'owner@local.test'}});
  if(req.method==='POST'&&url.pathname==='/api/manual-posts')ctx.waitUntil(processManual(env,{fetcher}));
  res.writeHead(response.status,Object.fromEntries(response.headers));res.end(await response.text());return;}
  const file=url.pathname.slice(1)||'feed.html';if(!['feed.html','feed.js','feed.css','review-gallery.js'].includes(file)){res.writeHead(404).end();return;}

@@ -1058,3 +1058,9 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 
 - 2026-09-21 12:19:40 KST 예약 실행: search:appearance의 last_success_at1789960780, last_error_code NULL, partial1. D1 pending50/kept2, control 오류없음/blocked_until0. search.list→videos.list→원자적 저장·cursor 전진 실제 확인. 나머지 검색은 다음 due tick 순차 실행. 현재50건은 적격 확정 영상이 아닌 검토 후보이며 Shorts/재업로드가 포함될 수 있음.
 - 최종 Wrangler dry-run266.58 KiB/gzip65.68 KiB 통과. 실시간 원본 영상 저장·중계 없음. 실제7일/30일 경과와 운영 경합/롤백은 미실행이며 해당 동작은 로컬 테스트로 확인.
+
+## 2026-09-21 유튜브 검토함 공통 UI 복구
+
+- 기존 상태 드롭다운 대신 탭으로 검토하도록 브라우저 검증을 먼저 변경해 대상 탭 없음 실패 확인. 구현 후 check-youtube 통과: 네 화면의 X/Instagram/YouTube/내역 이동 순서, 아이콘22px/버튼44px, 320/390/768/1280px 넘침 없음, 수집 탭의 채널 추가·재개, 등록·제외·중복·감사 확인.
+- 기존 check-review-refresh는 메뉴3개 가정을4개로 변경. 세 기존 검토 화면의 아이콘 정렬·클릭 영역·포커스·현재 위치 검증 통과. check-manual-media의 실제 router 호출에 owner fixture를 전달하도록 보완(추가 상태 요청401에 의해 모의 세션이 해제됐던 검증 환경 문제), 기존 등록/재시도/페이지 회귀 통과.
+- 최종 npm test218개 통과. 모바일/데스크톱 스크린샷 확인 후 체크박스 행 정렬과 판정 버튼 줄바꿈을 보완, 재검증 통과. 썸네일은 fixture로 실제 영상 화면과 구분한다. 기능 API/판정 저장 계약/수집 일정은 변경하지 않음.
