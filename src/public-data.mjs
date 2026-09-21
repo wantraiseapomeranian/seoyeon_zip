@@ -10,6 +10,7 @@ export function publicSource(s) {
 
 export function publicPost(p) {
  return {id:p.id,publishedAt:p.publishedAt,canonicalUrl:p.canonicalUrl,
+  ...(p.platform==='youtube'?{title:p.title,channelTitle:p.channelTitle,durationSeconds:p.durationSeconds}:{}),
   authorHandle:p.authorHandle,observedViaSource:p.observedViaSource,
   platform:p.platform,contentKind:p.contentKind,caption:p.caption,
   manual:p.manual,dateEstimated:p.dateEstimated,

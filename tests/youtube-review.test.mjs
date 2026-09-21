@@ -1,0 +1,7 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {testDatabase} from './helpers/d1.mjs';import {reviewYouTube} from '../src/youtube-management.mjs';import {handleReviewAudit} from '../src/review-audit-api.mjs';
+test('review rejects Shorts publication and YouTube events appear in filtered history',async()=>{const {DB,sqlite}=testDatabase(),env={DB,YOUTUBE_ENABLED:'true'},id='AbCdEf123_-',actor={id:'owner@test'};try{
+ sqlite.prepare("INSERT INTO youtube_videos(video_id,metadata_json,metadata_fetched_at) VALUES(?,'{}',unixepoch())").run(id);
+ const input={revision:0,decision:'kept',category:'fancam',format:'shorts',reasonCode:'SEOYEON_CONFIRMED',requestId:crypto.randomUUID()};await assert.rejects(reviewYouTube(env,id,input,actor),/invalid_input/);
+ const saved=await reviewYouTube(env,id,{...input,format:'regular'},actor);const response=await handleReviewAudit(new Request('https://test/api/admin/review-audit?platform=YOUTUBE'),env,{actor});const data=await response.json();assert.equal(data.items.length,1);assert.equal(data.items[0].platform,'YOUTUBE');assert.equal(data.items[0].summary.url,'https://www.youtube.com/watch?v='+id);
+ const detail=await (await handleReviewAudit(new Request('https://test/api/admin/review-audit/'+saved.auditId),env,{actor})).json();assert.equal(detail.item.newState.decision,'kept');assert.equal(detail.item.metadata.title,undefined);
+ }finally{sqlite.close();}});

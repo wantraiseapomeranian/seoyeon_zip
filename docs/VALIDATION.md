@@ -1030,3 +1030,15 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 기존 관리자 UI의 다시 시도를 한 번 실행. Apify run eY2JwSWy6XjtIDqBg는 2026-09-21 10:29:29~10:29:38 KST 성공, 결과1건. 기존 요청 상한 $0.05 유지; 실행 목록의 반올림 표시 $0.00은 정확한 사용 금액으로 간주하지 않음.
 - 운영 D1 읽기 전용 확인: ready, error NULL, video 썸네일 URL 저장, authorHandle greeming4772, publishedAt 2026-09-20T05:12:46.000Z, dateEstimated false. Edge 공개 피드 직접 등록 필터에서 썸네일 실제 렌더링 확인. 이제 표시 날짜는 등록일20:58 대신 실제 게시일14:12 KST.
 - 설정 및 기존 작업 재시도로 해결. 애플리케이션 코드/DB 직접 수정 없음, 테스트/빌드/재배포 불필요.
+
+## 2026-09-21 유튜브 구현 — 로컬 검증
+
+- 기준 main 853e144, codex/youtube 브랜치. 기존 204개 테스트 통과 후 변경.
+- 전체 node:test 216개 통과. URL/응답 제한, 중복·제외 판정 보존, 감사 rollback, 권한/Origin, Shorts 게시 거절, 페이지 순서, 수집 저장 실패·lease 만료·채널 과거 경계·캐시 만료 검증.
+- node scripts/check-youtube.mjs 통과: 미리보기→등록→탭→제외→재등록 판정 보존→감사 내역, 360/1280px 화면과 JS 오류 없음. 썸네일은 fixture이며 실제 API 증거가 아님.
+- node scripts/check-manual-media.mjs 통과: X/Instagram 기존 직접 등록·재시도·목록 페이지 회귀.
+- wrangler deploy --dry-run 통과: 263.52 KiB / gzip 64.90 KiB(초기 번들). 샌드박스 경로 제한으로 외부 권한에서 로컬 번들 검증.
+- 회귀에서 0024 피드 뷰가 인스타 p/reel 판정 제외 조건을 되돌리는 문제를 발견해 0020과 같은 shortcode 비교를 유지하도록 수정.
+- 운영 secret 이름 YOUTUBE_API_KEY 존재 확인. 값은 읽거나 출력하지 않음.
+- 운영 d1_migrations에 0012~0017 일부 기록 누락이 있으나 실제 managed_feed_posts는 0020 정의임을 확인. 기존 마이그레이션을 일괄 재적용하지 않고 새 0024만 적용할 예정.
+- 아직 운영 유튜브 API 실응답/새 코드 배포는 미검증. 채널 목록 초기 데이터는 없음; 검색 기반 발견과 관리자 채널 추가를 제공.

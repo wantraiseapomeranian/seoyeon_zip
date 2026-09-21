@@ -6,7 +6,7 @@ const baseColumns='id,platform,target_type,target_id,action,reason_code,note,rev
 const summaryColumns=`json_extract(metadata_json,'$.author') AS author,json_extract(metadata_json,'$.url') AS url,
 COALESCE(json_extract(metadata_json,'$.thumbnailUrl'),json_extract(metadata_json,'$.leftImageUrl'),json_extract(metadata_json,'$.images[0].url')) AS snapshot_thumbnail_url,
 CASE WHEN target_type='POST' AND platform='X' THEN (SELECT json_extract(data,'$.media[0].previewUrl') FROM posts WHERE id=review_audit_log.target_id)
-WHEN target_type='POST' AND platform='INSTAGRAM' THEN (SELECT COALESCE(json_extract(data,'$.images[0]'),json_extract(data,'$.image'),json_extract(data,'$.media[0].previewUrl')) FROM instagram_review WHERE code=substr(review_audit_log.target_id,4)) END AS current_thumbnail_url`;
+WHEN target_type='POST' AND platform='INSTAGRAM' THEN (SELECT COALESCE(json_extract(data,'$.images[0]'),json_extract(data,'$.image'),json_extract(data,'$.media[0].previewUrl')) FROM instagram_review WHERE code=substr(review_audit_log.target_id,4)) WHEN target_type='POST' AND platform='YOUTUBE' THEN (SELECT json_extract(metadata_json,'$.thumbnailUrl') FROM youtube_videos WHERE video_id=substr(review_audit_log.target_id,4)) END AS current_thumbnail_url`;
 
 function dateBoundary(value,end=false) {
   if(!value)return null;
@@ -19,7 +19,7 @@ function dateBoundary(value,end=false) {
 function queryFilters(params) {
   for(const key of params.keys())if(!['platform','action','from','to','cursor'].includes(key)||params.getAll(key).length!==1)invalid();
   const filters={platform:params.get('platform')||null,action:params.get('action')||null,from:params.get('from')||null,to:params.get('to')||null};
-  if(filters.platform&&!['X','INSTAGRAM'].includes(filters.platform)||filters.action&&!actions.has(filters.action))invalid();
+  if(filters.platform&&!['X','INSTAGRAM','YOUTUBE'].includes(filters.platform)||filters.action&&!actions.has(filters.action))invalid();
   const from=dateBoundary(filters.from),to=dateBoundary(filters.to,true);
   if(filters.from&&filters.to&&filters.from>filters.to)invalid();
   const clauses=[],args=[];
@@ -47,7 +47,7 @@ export async function handleReviewAudit(request,env,context) {
   if(url.pathname===prefix) {
     let query;try{query=queryFilters(url.searchParams);}catch{return reply({error:'invalid_review_audit_query'},400);}
     try {
-      const {results}=await env.DB.prepare(`SELECT ${baseColumns},${summaryColumns} FROM review_audit_log${query.where} ORDER BY reviewed_at DESC,id DESC LIMIT 26`).bind(...query.args).all();
+      const {results}=await env.DB.prepare(`SELECT ${baseColumns},${summaryColumns} FROM combined_review_audit AS review_audit_log${query.where} ORDER BY reviewed_at DESC,id DESC LIMIT 26`).bind(...query.args).all();
       const control=await env.DB.prepare('SELECT started_at FROM review_audit_control WHERE id=1').first();
       const rows=results.slice(0,25),last=rows.at(-1);
       const nextCursor=results.length>25?btoa(JSON.stringify({v:1,filters:query.filters,time:last.reviewed_at,id:last.id})).replaceAll('+','-').replaceAll('/','_').replace(/=+$/,''):null;
@@ -57,7 +57,7 @@ export async function handleReviewAudit(request,env,context) {
   const id=url.pathname.slice(prefix.length+1);
   if(!/^[A-Za-z0-9_-]{1,128}$/.test(id))return reply({error:'not_found'},404);
   try {
-    const row=await env.DB.prepare(`SELECT ${baseColumns},${summaryColumns},previous_state,new_state,metadata_json FROM review_audit_log WHERE id=?`).bind(id).first();
+    const row=await env.DB.prepare(`SELECT ${baseColumns},${summaryColumns},previous_state,new_state,metadata_json FROM combined_review_audit AS review_audit_log WHERE id=?`).bind(id).first();
     if(!row)return reply({error:'not_found'},404);
     return reply({item:{...item(row),previousState:JSON.parse(row.previous_state),newState:JSON.parse(row.new_state),metadata:JSON.parse(row.metadata_json)}});
   }catch{return reply({error:'review_audit_unavailable'},503);}

@@ -94,3 +94,11 @@ header .actions .icon-button svg{pointer-events:none}
 .date-value{grid-area:1/1;display:flex;align-items:center;gap:8px;justify-content:space-between;min-width:0;padding:6px 8px;border:1px solid var(--control-border);border-radius:4px;background:var(--control-surface);color:var(--control-text);font-size:12px;line-height:1.5;pointer-events:none}
 .date-value::after{content:'▾';flex:none}
 .date-display:focus-within{outline:3px solid var(--ink);outline-offset:3px;border-radius:4px}
+/* YouTube shares the existing form and card typography. */
+#youtube-preview{margin-block:16px;display:grid;gap:12px}
+#youtube-preview[hidden]{display:none}
+#youtube-preview img{width:100%;max-width:320px;height:auto;aspect-ratio:16/9;object-fit:contain}
+#youtube-preview p{margin:0;overflow-wrap:anywhere}
+#youtube-preview select{min-height:44px;margin-left:12px}
+.youtube-confirm{display:flex;align-items:flex-start;gap:10px;line-height:1.6}
+.youtube-confirm input{width:20px;height:20px;flex:none;margin-top:3px}

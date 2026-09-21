@@ -1,3 +1,4 @@
+import {youtubeStatus} from './youtube-collection.mjs';
 import {sources} from './sources.mjs';
 import {readOperationsHistory} from './operations-history.mjs';
 import {readOperationsAlerts} from './operations-alerts.mjs';
@@ -79,6 +80,6 @@ export async function handleOperations(request,env){
    readOperationsState(env),
    readOperationsAlerts(env.DB).catch(()=>({status:'unavailable',checkedAt:null,active:[],events:[]}))
   ]);
-  return json({...data,alerts});
+  return json({...data,alerts,youtube:await youtubeStatus(env)});
  }catch{return json({error:'operations_unavailable'},503);}
 }

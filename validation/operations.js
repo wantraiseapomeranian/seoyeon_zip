@@ -129,7 +129,7 @@ async function refresh(){
   const response=await fetch('/api/admin/operations',{cache:'no-store',signal:AbortSignal.timeout(15000)});
   if(response.status===401||response.status===403){$('#operations-content').hidden=true;$('#operations-content').replaceChildren();$('#operations-login').hidden=false;$('#operations-updated').textContent='관리자 인증이 만료되었거나 접근 권한이 없어요.';button.hidden=true;lastSuccess=false;throw Error('auth');}
   if(!response.ok)throw Error('load');
-  const data=await response.json();render(data);lastSuccess=true;$('#operations-content').hidden=false;$('#operations-content').dataset.stale='false';
+  const data=await response.json();render(data);let yt=document.getElementById('youtube-operations');if(!yt){yt=document.createElement('p');yt.id='youtube-operations';document.getElementById('operations-content').append(yt);}yt.textContent=data.youtube?'유튜브 · '+(data.youtube.collectionEnabled?'수집 사용':'수집 중지')+' · 검토 대기 '+data.youtube.pending+'건'+(data.youtube.last_error_code?' · 연결 확인 필요':''):'';lastSuccess=true;$('#operations-content').hidden=false;$('#operations-content').dataset.stale='false';
   const unavailable=[];if(data.alerts?.status!=='ok')unavailable.push('운영 알림');if(data.history?.status!=='ok')unavailable.push('자료 증가');
   $('#operations-content').dataset.partial=String(unavailable.length>0);
   $('#operations-status').textContent=unavailable.length?'':'현황을 확인했어요.';

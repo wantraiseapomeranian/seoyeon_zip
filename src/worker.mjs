@@ -1,3 +1,5 @@
+import {collectYouTube,refreshYouTube} from './youtube-collection.mjs';
+import {handleYouTube} from './youtube-management.mjs';
 import {handleOperations,readOperationsState} from './operations.mjs';
 import {evaluateOperationsAlerts} from './operations-alerts.mjs';
 import {recordOperationsSnapshot} from './operations-history.mjs';
@@ -23,6 +25,7 @@ export { authorize } from './access.mjs';
 // Internal router. fetch enforces owner authentication except for explicit public reads.
 export async function handleApi(request,env,context,ctx) {
   const url=new URL(request.url);
+  if(url.pathname.startsWith('/api/youtube/'))return handleYouTube(request,env,context);
   if(url.pathname==='/api/export'||url.pathname==='/api/manual-posts'||(request.method==='PATCH'&&/^\/api\/sources\/[A-Za-z0-9_]{1,15}$/.test(url.pathname)))return handleManagement(request,env,ctx);
   if(url.pathname==='/api/admin/review-audit'||url.pathname.startsWith('/api/admin/review-audit/'))return handleReviewAudit(request,env,context);
   if(url.pathname==='/api/admin/operations')return handleOperations(request,env);
@@ -54,6 +57,7 @@ export async function handleApi(request,env,context,ctx) {
 export default {
   async scheduled(controller,env,ctx) {
     if(controller.cron==='4-59/5 * * * *'){
+      try{await refreshYouTube(env);await collectYouTube(env);}catch{console.log(JSON.stringify({event:'youtube',status:'failed'}));}
       try{const result=await evaluateOperationsAlerts(env,()=>readOperationsState(env,{details:false}));console.log(JSON.stringify({event:'operations_alerts',...result}));}
       catch(error){console.log(JSON.stringify({event:'operations_alerts',status:'failed'}));throw error;}
       return;
@@ -97,12 +101,13 @@ export default {
       if(!publicRequest&&(url.pathname==='/admin'||url.pathname==='/admin/'))return new Response(null,{status:302,headers:{Location:new URL('/',url),'Cache-Control':'private, no-store'}});
       const assetUrl=new URL(request.url);if(assetUrl.pathname==='/')assetUrl.pathname='/feed.html';
       if(assetUrl.pathname==='/admin/operations'||assetUrl.pathname==='/admin/operations/')assetUrl.pathname='/operations.html';
+      if(assetUrl.pathname==='/admin/youtube'||assetUrl.pathname==='/admin/youtube/')assetUrl.pathname='/youtube.html';
       if(assetUrl.pathname==='/admin/instagram'||assetUrl.pathname==='/admin/instagram/')assetUrl.pathname='/instagram.html';
       if(assetUrl.pathname==='/admin/x'||assetUrl.pathname==='/admin/x/')assetUrl.pathname='/x-review';
       if(assetUrl.pathname==='/admin/review-history'||assetUrl.pathname==='/admin/review-history/')assetUrl.pathname='/review-history.html';
       const asset=await env.ASSETS.fetch(new Request(assetUrl,request));const headers=new Headers(asset.headers);
       headers.set('Cache-Control','private, no-store');
-      headers.set('Content-Security-Policy',"default-src 'self'; img-src https://pbs.twimg.com https://*.cdninstagram.com https://*.fbcdn.net 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
+      headers.set('Content-Security-Policy',"default-src 'self'; img-src https://i.ytimg.com https://i9.ytimg.com https://pbs.twimg.com https://*.cdninstagram.com https://*.fbcdn.net 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
       headers.set('Referrer-Policy','no-referrer');
       return new Response(asset.body,{status:asset.status,headers});
     } catch { return reply({error:'validation_failure'},500); }

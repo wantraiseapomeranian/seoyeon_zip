@@ -38,7 +38,7 @@ applyIcons();
 const mood='zine';
 document.body.dataset.mood=mood;
 document.body.dataset.background='mist';
-let media=['all','image','video'].includes(params.get('media'))?params.get('media'):'all';
+let media=['image','video','youtube'].includes(params.get('media'))?params.get('media'):'image';
 let posts=[],states=[],collectedAt=null,loaded=false,role='visitor',roleGeneration=0;
 const live=!['127.0.0.1','localhost'].includes(location.hostname)||params.get('data')==='live';
 let nextCursor=null,total=0,requestVersion=0;
@@ -90,20 +90,22 @@ function card(post){
  const article=node('article','card');article.dataset.id=post.id;article.dataset.date=post.publishedAt;
  const video=post.media.some(m=>m.kind==='video'||m.kind==='gif');const photos=post.media.filter(m=>m.kind==='image').length;
  const first=post.media[0]??{};
- if(!post.media.some(m=>m.previewUrl)){const link=node('a','manual-preview',post.platform==='instagram'?'Instagram 원문 보기 ↗':'X 원문 보기 ↗');link.href=post.canonicalUrl;link.target='_blank';link.rel='noopener noreferrer';article.append(link);}else{
+ if(!post.media.some(m=>m.previewUrl)){const link=node('a','manual-preview',post.platform==='youtube'?'YouTube에서 보기 ↗':post.platform==='instagram'?'Instagram 원문 보기 ↗':'X 원문 보기 ↗');link.href=post.canonicalUrl;link.target='_blank';link.rel='noopener noreferrer';article.append(link);}else{
  const viewer=window.reviewGallery(post.media.map(m=>({src:smallPreview(m.previewUrl),originalSrc:m.previewUrl,url:post.canonicalUrl,kind:m.kind,alt:post.authorHandle+(m.kind==='image'?' 사진':m.kind==='unknown'?' 미리보기':' 영상 미리보기')})),{label:'피드 사진',managed:true,onChange:i=>photoPositions.set(post.id,i)});
- viewer.element.classList.add('feed-gallery');viewer.element.style.setProperty('--photo-ratio',first.width&&first.height?String(first.width/first.height):'0.75');viewer.select(photoPositions.get(post.id)??0,false);feedViewers.push(viewer);article.append(viewer.element);}
+ viewer.element.classList.add('feed-gallery');viewer.element.style.setProperty('--photo-ratio',first.width&&first.height?String(first.width/first.height):post.platform==='youtube'?'1.7778':'0.75');viewer.select(photoPositions.get(post.id)??0,false);feedViewers.push(viewer);article.append(viewer.element);}
 
  const actions=node('div','feed-actions');
  if(video){const hint=node('span','via');hint.append(node('span','video-hint-prefix','영상은 '),document.createTextNode('원문에서 재생'));actions.append(hint);}
  const controls=node('div','feed-action-controls');
  const original=feedAction('a','feed-original','원문 보기','M224,104a8,8,0,0,1-16,0V59.32l-66.33,66.34a8,8,0,0,1-11.32-11.32L196.68,48H152a8,8,0,0,1,0-16h64a8,8,0,0,1,8,8Zm-40,24a8,8,0,0,0-8,8v72H48V80h72a8,8,0,0,0,0-16H48A16,16,0,0,0,32,80V208a16,16,0,0,0,16,16H176a16,16,0,0,0,16-16V136A8,8,0,0,0,184,128Z');original.href=post.canonicalUrl;original.target='_blank';original.rel='noopener noreferrer';controls.append(original);
  const request=feedAction('button','rights-request','수정·삭제 요청','M168,112a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,112Zm-8,24H96a8,8,0,0,0,0,16h64a8,8,0,0,0,0-16Zm72-8A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Zm-16,0A88,88,0,1,0,51.81,172.06a8,8,0,0,1,.66,6.54L40,216,77.4,203.53a7.85,7.85,0,0,1,2.53-.42,8,8,0,0,1,4,1.08A88,88,0,0,0,216,128Z');request.type='button';request.setAttribute('aria-haspopup','dialog');request.setAttribute('aria-controls','about-dialog');request.addEventListener('click',()=>openAbout(post.canonicalUrl));controls.append(request);actions.append(controls);article.append(actions);
- const meta=node('div','card-meta');meta.append(node('span','author',post.authorHandle?`@${post.authorHandle}`:'직접 등록'),node('span','category',post.platform==='instagram'?'Instagram':(kinds[post.contentKind]||'기타')));article.append(meta);const time=node('time',null,(post.dateEstimated?(post.manual?'등록일 · ':'가져온 날짜 · '):'')+stamp(post.publishedAt));time.dateTime=post.publishedAt;article.append(time);
- const caption=displayCaption(post.caption);if(caption)article.append(node('p','caption',caption));
- if(!post.manual&&post.platform!=='instagram'&&post.authorHandle.toLowerCase()!==post.observedViaSource.toLowerCase())article.append(node('span','via',`발견 출처 @${post.observedViaSource}`));for(const source of post.duplicateSources||[]){const a=node('a','via','같은 사진 출처 @'+source.author);a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';article.append(a);}return article;
+ const meta=node('div','card-meta');meta.append(node('span','author',post.platform==='youtube'?post.channelTitle:post.authorHandle?`@${post.authorHandle}`:'직접 등록'),node('span','category',post.platform==='youtube'?'YouTube':post.platform==='instagram'?'Instagram':(kinds[post.contentKind]||'기타')));article.append(meta);const time=node('time',null,(post.dateEstimated?(post.manual?'등록일 · ':'가져온 날짜 · '):'')+stamp(post.publishedAt));time.dateTime=post.publishedAt;article.append(time);
+ if(post.platform==='youtube'&&Number.isFinite(post.durationSeconds))article.append(node('span','via',Math.floor(post.durationSeconds/60)+':'+String(Math.floor(post.durationSeconds%60)).padStart(2,'0')));
+ const caption=post.platform==='youtube'?post.title:displayCaption(post.caption);if(caption)article.append(node('p','caption',caption));
+ if(!post.manual&&post.platform!=='youtube'&&post.platform!=='instagram'&&post.authorHandle.toLowerCase()!==post.observedViaSource.toLowerCase())article.append(node('span','via',`발견 출처 @${post.observedViaSource}`));for(const source of post.duplicateSources||[]){const a=node('a','via','같은 사진 출처 @'+source.author);a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';article.append(a);}return article;
 }
 function render(){
+ $('#kind').disabled=media==='youtube';$('#source').disabled=media==='youtube';
  clearViewers();
  const activeFilters=Number($('#kind').value!=='all')+Number($('#source').value!=='all');
  $('#filter-toggle').textContent=activeFilters?`필터 · ${activeFilters}`:'필터';
@@ -154,8 +156,8 @@ async function loadLive(append=false){
    }
   }
   try{const nextStates=await fetchSourceState();if(version!==requestVersion)return;states=nextStates;
-   const current=$('#source').value;const names=new Set(['instagram','manual',...states.map(s=>s.source)]);if(current!=='all')names.add(current);
-   $('#source').replaceChildren(new Option('모든 출처','all'),...[...names].sort().map(s=>new Option(s==='instagram'?'Instagram':s==='manual'?'직접 등록':`@${s}`,s)));$('#source').value=current;renderSources();
+   const current=$('#source').value;const names=new Set(['youtube','instagram','manual',...states.map(s=>s.source)]);if(current!=='all')names.add(current);
+   $('#source').replaceChildren(new Option('모든 출처','all'),...[...names].sort().map(s=>new Option(s==='youtube'?'YouTube':s==='instagram'?'Instagram':s==='manual'?'직접 등록':`@${s}`,s)));$('#source').value=current;renderSources();
    if(states.some(sourceHasError))$('#notice').textContent='일부 출처의 갱신이 지연되고 있어요. 수집 상태를 확인해 주세요.';
   }catch(error){if(version===requestVersion&&error.message!=='stale'&&error.message!=='auth'){states=[];renderSources();$('#notice').textContent='게시물은 불러왔지만 수집 상태는 확인하지 못했어요.';}}
  }catch(error){if(version!==requestVersion)return;if(!append){$('#gallery').replaceChildren();$('#count').textContent='목록 조회 실패';}$('#notice').textContent=error.message==='auth'?'로그인이 만료됐어요. 페이지를 새로고침해 로그인해 주세요.':'목록을 불러오지 못했어요. 다시 시도해 주세요.';}
@@ -215,8 +217,8 @@ async function load(){
  $('#refresh').disabled=true;$('#notice').textContent='';
  if(!loaded)$('#gallery').replaceChildren(...Array.from({length:6},()=>{const e=node('div','skeleton');e.setAttribute('aria-hidden','true');return e;}));
  try{const response=await fetch('/api/samples');if(!response.ok)throw Error('feed');const data=await response.json();if(!Array.isArray(data.posts))throw Error('shape');posts=[...data.posts].sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt)||a.id.localeCompare(b.id));collectedAt=data.collectedAt;loaded=true;
- const current=$('#source').value;const known=new Set(['instagram','manual',...posts.map(p=>p.observedViaSource)]);try{states=await fetchSourceState();states.forEach(s=>known.add(s.source));}catch(error){if(error.message==='stale'||error.message==='auth')return;states=[];$('#notice').textContent='게시물은 불러왔지만 수집 상태는 확인하지 못했어요.';}
- $('#source').replaceChildren(new Option('모든 출처','all'),...[...known].sort().map(s=>new Option(s==='instagram'?'Instagram':s==='manual'?'직접 등록':`@${s}`,s)));const requested=loadedOnce?current:params.get('source');if(known.has(requested))$('#source').value=requested;loadedOnce=true;
+ const current=$('#source').value;const known=new Set(['youtube','instagram','manual',...posts.map(p=>p.observedViaSource)]);try{states=await fetchSourceState();states.forEach(s=>known.add(s.source));}catch(error){if(error.message==='stale'||error.message==='auth')return;states=[];$('#notice').textContent='게시물은 불러왔지만 수집 상태는 확인하지 못했어요.';}
+ $('#source').replaceChildren(new Option('모든 출처','all'),...[...known].sort().map(s=>new Option(s==='youtube'?'YouTube':s==='instagram'?'Instagram':s==='manual'?'직접 등록':`@${s}`,s)));const requested=loadedOnce?current:params.get('source');if(known.has(requested))$('#source').value=requested;loadedOnce=true;
  if(states.some(sourceHasError))$('#notice').textContent='일부 출처의 갱신이 지연되고 있어요. 수집 상태를 확인해 주세요.';
  render();renderSources();syncUrl();
  }catch{if(!loaded){$('#gallery').replaceChildren();$('#count').textContent='목록 조회 실패';}$('#notice').textContent='목록을 불러오지 못했어요. 목록 새로고침으로 다시 시도해 주세요.';}finally{$('#refresh').disabled=false;}
@@ -235,18 +237,18 @@ $('#month-trigger').addEventListener('click',()=>{const open=$('#month-panel').h
 document.addEventListener('click',event=>{if(!event.target.closest('.month-filter'))closeMonth();});
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('#month-panel').hidden){event.preventDefault();closeMonth(true);}});
 $('.month-filter').addEventListener('focusout',event=>{if(!event.currentTarget.contains(event.relatedTarget))closeMonth();});
-document.querySelectorAll('[data-media]').forEach(b=>b.addEventListener('click',()=>{media=b.dataset.media;changeFilters();}));
-for(const id of ['#kind','#source'])$(id).addEventListener('change',()=>{changeFilters();});$('#reset').addEventListener('click',()=>{media='all';$("#month").value='';$('#kind').value='all';$('#source').value='all';changeFilters();});$('#refresh').addEventListener('click',load);$('#open-status').addEventListener('click',()=>{$('#source-dialog').showModal();refreshSources();});$('#refresh-status').addEventListener('click',refreshSources);$('#close-status').addEventListener('click',()=>$('#source-dialog').close());
+document.querySelectorAll('[data-media]').forEach(b=>b.addEventListener('click',()=>{media=b.dataset.media;if(media==='youtube'){$('#kind').value='all';$('#source').value='all';}changeFilters();}));
+for(const id of ['#kind','#source'])$(id).addEventListener('change',()=>{changeFilters();});$('#reset').addEventListener('click',()=>{media='image';$("#month").value='';$('#kind').value='all';$('#source').value='all';changeFilters();});$('#refresh').addEventListener('click',load);$('#open-status').addEventListener('click',()=>{$('#source-dialog').showModal();refreshSources();});$('#refresh-status').addEventListener('click',refreshSources);$('#close-status').addEventListener('click',()=>$('#source-dialog').close());
 load();
 
-async function management(path,body,method='POST'){const response=await fetch(path,{method,headers:{'Content-Type':'application/json','X-Management-Action':'manage'},body:JSON.stringify(body)});if(!response.ok){if(response.status===401||response.status===403){demote();throw Error('관리자 로그인이 필요해요.');}const messages={400:'X 또는 인스타 게시물 URL과 입력값을 확인해 주세요.',409:'수집 상태가 바뀌었거나 전체 수집이 중지돼 있어요. 상태를 확인하고 다시 시도해 주세요.'};throw Error(messages[response.status]||'저장하지 못했어요. 잠시 후 다시 시도해 주세요.');}return response.json();}
-$('#manual-form').addEventListener('submit',async e=>{e.preventDefault();const button=$('#manual-submit'),generation=roleGeneration;button.disabled=true;$('#management-message').textContent='등록하고 있어요…';try{const result=await management('/api/manual-posts',{url:$('#manual-url').value});if(generation!==roleGeneration)return;$('#management-message').textContent=result.state?(result.enabled?'링크를 저장했어요. 아래에서 사진 조회 상태를 확인할 수 있어요.':'원문 링크를 등록했어요.'):'이미 저장된 게시물이에요. 검토 상태와 필터에 따라 피드에 표시돼요.';$('#manual-url').value='';manualOffset=0;if($('#manual-records').open)await refreshManual();else $('#manual-records').open=true;await load();}catch(error){if(generation===roleGeneration)$('#management-message').textContent=error.message;}finally{button.disabled=false;}});
+async function management(path,body,method='POST'){const response=await fetch(path,{method,headers:{'Content-Type':'application/json','X-Management-Action':'manage'},body:JSON.stringify(body)});if(!response.ok){if(response.status===401||response.status===403){demote();throw Error('관리자 로그인이 필요해요.');}const messages={400:'게시물 URL과 확인 항목을 확인해 주세요. Shorts는 등록하지 않아요.',422:'공개된 일반 영상인지 확인해 주세요.',429:'요청이 많아요. 1분 뒤 다시 시도해 주세요.',503:'연결 설정이나 API 할당량을 확인해 주세요.',409:'수집 상태가 바뀌었거나 전체 수집이 중지돼 있어요. 상태를 확인하고 다시 시도해 주세요.'};throw Error(messages[response.status]||'저장하지 못했어요. 잠시 후 다시 시도해 주세요.');}return response.json();}
+$('#manual-form').addEventListener('submit',async e=>{e.preventDefault();const button=$('#manual-submit'),generation=roleGeneration;button.disabled=true;$('#management-message').textContent='등록하고 있어요…';try{if(await submitYouTube(generation))return;const result=await management('/api/manual-posts',{url:$('#manual-url').value});if(generation!==roleGeneration)return;$('#management-message').textContent=result.state?(result.enabled?'링크를 저장했어요. 아래에서 사진 조회 상태를 확인할 수 있어요.':'원문 링크를 등록했어요.'):'이미 저장된 게시물이에요. 검토 상태와 필터에 따라 피드에 표시돼요.';$('#manual-url').value='';manualOffset=0;if($('#manual-records').open)await refreshManual();else $('#manual-records').open=true;await load();}catch(error){if(generation===roleGeneration)$('#management-message').textContent=error.message;}finally{button.disabled=false;}});
 
 const managementTabs=[...document.querySelectorAll('.management-tabs [role=tab]')];
 function selectManagementTab(tab){stopManualRefresh();managementTabs.forEach(t=>{const active=t===tab;t.setAttribute('aria-selected',String(active));t.tabIndex=active?0:-1;document.getElementById(t.getAttribute('aria-controls')).hidden=!active;});$('.management-body').scrollTop=0;if(manualVisible())refreshManual();}
 managementTabs.forEach((tab,index)=>{tab.addEventListener('click',()=>selectManagementTab(tab));tab.addEventListener('keydown',event=>{let next;if(event.key==='ArrowRight'||event.key==='ArrowLeft')next=managementTabs[1-index];if(event.key==='Home')next=managementTabs[0];if(event.key==='End')next=managementTabs[1];if(next){event.preventDefault();selectManagementTab(next);next.focus();}});});
 applyRole();detectRole().then(()=>{const target=params.get('manage');if(role==='owner'&&['collection','tools'].includes(target)){$('#source-dialog').showModal();selectManagementTab($(target==='tools'?'#tools-tab':'#collection-tab'));refreshSources();}});
-const manualMessages={pending:'사진 조회를 기다리고 있어요.',starting:'사진을 불러오고 있어요.',waiting:'사진을 불러오고 있어요.',ready:'사진을 불러왔어요.',no_media:'가져올 수 있는 사진·썸네일이 없어요.',existing:'이미 수집된 자료예요. 기존 검토 상태를 따릅니다.'};
+const manualMessages={youtube_kept:'유튜브 탭에 표시 중이에요.',youtube_pending:'유튜브 검토함에서 확인해 주세요.',youtube_held:'보류한 영상이에요.',youtube_excluded:'제외한 영상이에요.',pending:'사진 조회를 기다리고 있어요.',starting:'사진을 불러오고 있어요.',waiting:'사진을 불러오고 있어요.',ready:'사진을 불러왔어요.',no_media:'가져올 수 있는 사진·썸네일이 없어요.',existing:'이미 수집된 자료예요. 기존 검토 상태를 따릅니다.'};
 const manualErrors={not_configured:'사진 조회 연결을 확인해야 해요.',provider_access:'사진 조회 서비스의 접근 권한을 확인해야 해요.',not_found:'게시물을 찾을 수 없어요.',unavailable:'비공개이거나 접근할 수 없는 게시물이에요.',rate_limited:'조회 요청이 많아요. 잠시 후 다시 시도해 주세요.',start_uncertain:'조회 요청 결과를 확인하지 못했어요. 다시 시도하면 새 조회가 실행됩니다.',run_timeout:'사진 조회가 지연되고 있어요. 다시 시도해 주세요.',invalid_response:'게시물의 사진 정보를 확인하지 못했어요.'};
 function manualVisible(){return role==='owner'&&$('#source-dialog').open&&!$('#tools-panel').hidden&&$('#manual-records').open;}
 function stopManualRefresh(){clearTimeout(manualTimer);manualVersion++;manualController?.abort();manualController=null;}
@@ -259,7 +261,7 @@ async function refreshManual(){
   const rows=data.posts.map(p=>{
    if(manualStates.has(p.id)&&manualStates.get(p.id)!==p.state+':'+p.updatedAt&&['ready','no_media','existing'].includes(p.state))changed=true;manualStates.set(p.id,p.state+':'+p.updatedAt);
    const row=node('div','manual-row'),info=node('div','manual-info'),link=node('a','manual-link',p.url);link.href=p.url;link.target='_blank';link.rel='noopener noreferrer';info.append(link,node('p','muted',p.state==='failed'?(manualErrors[p.error]||'사진을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.'):manualMessages[p.state]));row.append(info);
-   if(['ready','no_media','failed'].includes(p.state)){
+   if(p.platform!=='youtube'&&['ready','no_media','failed'].includes(p.state)){
     const button=node('button','manual-retry',p.state==='ready'?'사진 새로고침':'다시 시도');button.type='button';button.dataset.manualId=p.id;if(p.state==='ready'){button.classList.add('modal-icon');button.setAttribute('aria-label','사진 새로고침');button.title='사진 새로고침';button.replaceChildren($('#manual-refresh svg').cloneNode(true));}button.disabled=!data.enabled||p.retryAfter>0;if(p.retryAfter>0)button.title='잠시 후 다시 시도할 수 있어요.';
     button.addEventListener('click',async()=>{button.disabled=true;const generation=roleGeneration;try{await management('/api/manual-posts',{url:p.url,retry:true});if(generation===roleGeneration)await refreshManual();}catch(error){if(generation===roleGeneration)$('#manual-notice').textContent=error.message;}finally{if(button.isConnected)button.disabled=false;}});row.append(button);
    }return row;
@@ -278,3 +280,25 @@ $('#source-dialog').addEventListener('close',stopManualRefresh);
 
 $('#manual-records').addEventListener('toggle',()=>{if(manualVisible())refreshManual();else stopManualRefresh();});
 $('#open-status').addEventListener('click',()=>{if(manualVisible())refreshManual();});
+
+let youtubeDraft=null;
+$('#manual-url').addEventListener('input',()=>{youtubeDraft=null;$('#youtube-preview').replaceChildren();$('#youtube-preview').hidden=true;$('#manual-submit').textContent='게시물 등록';});
+async function submitYouTube(generation){
+ const url=$('#manual-url').value.trim();let host;try{host=new URL(url).hostname;}catch{return false;}
+ if(!['youtube.com','www.youtube.com','m.youtube.com','youtu.be'].includes(host))return false;
+ if(!youtubeDraft||youtubeDraft.url!==url){
+  const data=await management('/api/youtube/preview',{url});if(generation!==roleGeneration||url!==$('#manual-url').value.trim())return true;
+  const box=$('#youtube-preview');box.replaceChildren();box.hidden=false;
+  if(data.thumbnailUrl){const img=node('img');img.src=data.thumbnailUrl;img.alt=data.title;img.referrerPolicy='no-referrer';img.addEventListener('error',()=>img.remove());box.append(img);}
+  box.append(node('p','youtube-title',data.title),node('p','muted',data.channelTitle+' · '+stamp(data.publishedAt)+' · '+Math.floor(data.durationSeconds/60)+':'+String(data.durationSeconds%60).padStart(2,'0')));
+  if(data.existing){const a=node('a','metadata-export','유튜브 검토함에서 확인');a.href='/admin/youtube';box.append(a);$('#management-message').textContent='이미 저장된 영상이에요. 기존 검토 상태를 유지합니다.';return true;}
+  const label=node('label',null,'영상 종류'),select=node('select');select.id='youtube-category';select.append(new Option('개인 직캠','fancam'),new Option('외부 출연','appearance'));label.append(select);
+  const confirm=node('label','youtube-confirm'),check=node('input');check.type='checkbox';check.id='youtube-confirm';confirm.append(check,document.createTextNode('서연이 출연한 일반 영상이며 Shorts·단체 무대·편집본이 아닙니다.'));box.append(label,confirm);
+  youtubeDraft={url,requestId:crypto.randomUUID()};$('#manual-submit').textContent='유튜브에 등록';$('#management-message').textContent='내용을 확인한 뒤 등록해 주세요.';select.focus();return true;
+ }
+ if(!$('#youtube-confirm').checked){$('#management-message').textContent='서연 출연과 일반 영상 여부를 확인해 주세요.';$('#youtube-confirm').focus();return true;}
+ const result=await management('/api/youtube/posts',{...youtubeDraft,category:$('#youtube-category').value,confirmedRegular:true});if(generation!==roleGeneration)return true;
+ $('#management-message').textContent=result.existing?'이미 저장된 영상이에요. 유튜브 검토함에서 확인해 주세요.':'유튜브에 등록했어요.';
+ $('#manual-url').value='';youtubeDraft=null;$('#youtube-preview').replaceChildren();$('#youtube-preview').hidden=true;$('#manual-submit').textContent='게시물 등록';manualOffset=0;if($('#manual-records').open)await refreshManual();else $('#manual-records').open=true;await load();return true;
+}
+window.addEventListener('popstate',()=>{const q=new URLSearchParams(location.search);media=['image','video','youtube'].includes(q.get('media'))?q.get('media'):'image';$('#kind').value=media==='youtube'?'all':q.get('kind')||'all';$('#source').value=media==='youtube'?'all':q.get('source')||'all';$('#month').value=q.get('date')||'';$('#sort').value=q.get('sort')==='oldest'?'oldest':'newest';load();});

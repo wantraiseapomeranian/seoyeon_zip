@@ -3,12 +3,13 @@
   const node=(tag,text,className)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;if(className)n.className=className;return n;};
   const actions={SHOW:'표시 허용',HIDE:'숨김',RESET_AUTO:'자동 기준으로 복귀',KEEP:'승인',EXCLUDE:'제외',HOLD:'보류',RESET_PENDING:'검토 대기로 복귀',MARK_SAME_IMAGE:'같은 사진으로 묶기',MARK_DIFFERENT_IMAGE:'다른 사진 판정',UNMERGE:'묶음 해제'};
   const states={visible:'표시 허용',hidden:'숨김',auto:'자동 기준',kept:'승인',excluded:'제외',held:'보류',pending:'검토 대기'};
-  const platforms={X:'X',INSTAGRAM:'Instagram'};
+  const platforms={X:'X',INSTAGRAM:'Instagram',YOUTUBE:'YouTube'};
   const time=value=>{const date=new Date(value);return value&&!Number.isNaN(date.valueOf())?date.toLocaleString('ko-KR',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})+' (한국시간)':'시각 미확인';};
-  const reason=code=>window.reviewReasonLabels[code]||'이유 미확인';
-  function sourceUrl(value){try{const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password||u.port)return null;const valid=(['x.com','www.x.com','twitter.com','www.twitter.com'].includes(u.hostname)&&/^\/[A-Za-z0-9_]+\/status\/\d+\/?$/.test(u.pathname))||(['instagram.com','www.instagram.com'].includes(u.hostname)&&/^\/(p|reel|tv)\/[A-Za-z0-9_-]+\/?$/.test(u.pathname));return valid?u.href:null;}catch{return null;}}
+  const youtubeReasons={SHORTS:'Shorts',GROUP_STAGE:'단체 무대',REUPLOAD:'재업로드',FAN_EDIT:'팬 편집본'};
+  const reason=code=>youtubeReasons[code]||window.reviewReasonLabels[code]||'이유 미확인';
+  function sourceUrl(value){try{const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password||u.port)return null;const valid=(u.hostname==='www.youtube.com'&&u.pathname==='/watch'&&/^[A-Za-z0-9_-]{11}$/.test(u.searchParams.get('v')))||(['x.com','www.x.com','twitter.com','www.twitter.com'].includes(u.hostname)&&/^\/[A-Za-z0-9_]+\/status\/\d+\/?$/.test(u.pathname))||(['instagram.com','www.instagram.com'].includes(u.hostname)&&/^\/(p|reel|tv)\/[A-Za-z0-9_-]+\/?$/.test(u.pathname));return valid?u.href:null;}catch{return null;}}
   function source(value,label='원문 보기 ↗'){const href=sourceUrl(value);if(!href)return node('span','원문 주소 미확인','review-note');const a=node('a',label,'review-link');a.href=href;a.target='_blank';a.rel='noopener noreferrer';return a;}
-  function imageUrl(value){try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&(u.hostname==='pbs.twimg.com'||u.hostname.endsWith('.cdninstagram.com')||u.hostname.endsWith('.fbcdn.net'))?u.href:null;}catch{return null;}}
+  function imageUrl(value){try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&(u.hostname==='i.ytimg.com'||u.hostname==='i9.ytimg.com'||u.hostname==='pbs.twimg.com'||u.hostname.endsWith('.cdninstagram.com')||u.hostname.endsWith('.fbcdn.net'))?u.href:null;}catch{return null;}}
   async function api(path){const response=await fetch(path);if(!response.ok)throw new Error(response.status===400?'필터와 기간을 확인한 뒤 다시 조회해 주세요.':response.status===404?'이 기록을 찾을 수 없어요.':response.status===401||response.status===403?'로그인 상태를 확인하고 페이지를 다시 열어 주세요.':'내역을 불러오지 못했어요. 다시 시도해 주세요.');return response.json();}
   function facts(entries){const dl=node('dl',null,'history-facts');for(const [key,value] of entries){dl.append(node('dt',key),node('dd',value));}return dl;}
   let cursor=null,query=new URLSearchParams(),generation=0,loading=false,detailGeneration=0,opener=null;

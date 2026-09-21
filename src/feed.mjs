@@ -6,13 +6,15 @@ export async function readFeed(db, params) {
   const invalid=()=>{throw Object.assign(new Error('invalid_feed_query'),{status:400});};
   const day=params.get('date')||'';let dayRange;
   if(day){try{dayRange=publishedDayRange(day);}catch{invalid();}}
-  if(!['newest','oldest'].includes(sort)||!['all','image','video'].includes(media)||!['all','cosmo','fansite','official','other'].includes(kind))invalid();
+  if(!['newest','oldest'].includes(sort)||!['all','image','video','youtube'].includes(media)||!['all','cosmo','fansite','official','other'].includes(kind))invalid();
   if(source!=='all'&&!/^[A-Za-z0-9_]{1,15}$/.test(source))invalid();
   if(month&&!/^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(month))invalid();
   const where=[],args=[];
   if(kind!=='all'){where.push("json_extract(p.data,'$.contentKind')=?");args.push(kind);}
-  if(source==='manual'){where.push("json_extract(p.data,'$.manual')=1");}else if(source==='instagram'){where.push("json_extract(p.data,'$.platform')='instagram'");}else if(source!=='all'){where.push('EXISTS (SELECT 1 FROM discoveries d WHERE d.post_id=p.id AND d.source=?)');args.push(source);}
-  if(media!=='all')where.push(`EXISTS (SELECT 1 FROM json_each(p.data,'$.media') m WHERE json_extract(m.value,'$.kind') ${media==='image'?"= 'image'":"IN ('video','gif')"})`);
+  if(source==='youtube'){where.push("json_extract(p.data,'$.platform')='youtube'");}else if(source==='manual'){where.push("json_extract(p.data,'$.manual')=1");}else if(source==='instagram'){where.push("json_extract(p.data,'$.platform')='instagram'");}else if(source!=='all'){where.push('EXISTS (SELECT 1 FROM discoveries d WHERE d.post_id=p.id AND d.source=?)');args.push(source);}
+  if(media==='youtube')where.push("json_extract(p.data,'$.platform')='youtube'");
+  if(media==='video')where.push("COALESCE(json_extract(p.data,'$.platform'),'x')!='youtube'");
+  if(media!=='all'&&media!=='youtube')where.push(`EXISTS (SELECT 1 FROM json_each(p.data,'$.media') m WHERE json_extract(m.value,'$.kind') ${media==='image'?"= 'image'":"IN ('video','gif')"})`);
   if(dayRange){where.push(`${dateSql}>=? AND ${dateSql}<?`);args.push(...dayRange);}
   else if(month){
     const start=new Date(`${month}-01T00:00:00+09:00`);
@@ -26,7 +28,7 @@ export async function readFeed(db, params) {
   if(params.has('cursor')){
     if(params.get('cursor').length>2048)invalid();
     try{cursor=JSON.parse(atob(params.get('cursor')));}catch{invalid();}
-    if(!cursor||cursor.scope!==scope||typeof cursor.id!=='string'||!/^(?:(?:x:)?\d{1,30}|ig:[A-Za-z0-9_-]{5,64}|manual:(?:x:\d{1,30}|ig:[A-Za-z0-9_-]{5,64}))$/.test(cursor.id)||typeof cursor.date!=='string'||!Number.isFinite(Date.parse(cursor.date)))invalid();
+    if(!cursor||cursor.scope!==scope||typeof cursor.id!=='string'||!/^(?:(?:x:)?\d{1,30}|ig:[A-Za-z0-9_-]{5,64}|yt:[A-Za-z0-9_-]{11}|manual:(?:x:\d{1,30}|ig:[A-Za-z0-9_-]{5,64}))$/.test(cursor.id)||typeof cursor.date!=='string'||!Number.isFinite(Date.parse(cursor.date)))invalid();
   }
   const total=await db.prepare('SELECT COUNT(*) AS count FROM managed_feed_posts p'+condition()).bind(...args).first();
   if(cursor){where.push(`(${dateSql}${sort==='oldest'?'>':'<'}? OR (${dateSql}=? AND p.id>?))`);args.push(cursor.date,cursor.date,cursor.id);}

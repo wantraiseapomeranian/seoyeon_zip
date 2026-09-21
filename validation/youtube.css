@@ -1,0 +1,8 @@
+.youtube-toolbar{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-block:20px}
+.youtube-toolbar button,.youtube-toolbar select,.youtube-review button,.youtube-review select,#youtube-more,#youtube-retry{min-height:44px;font:inherit;border:1px solid #b6c3cd;background:#fff;color:#172634;padding:8px 12px;border-radius:6px}
+.youtube-review{display:grid;grid-template-columns:minmax(180px,320px) 1fr;gap:24px;padding-block:24px;border-bottom:1px solid #cbd5dc}
+.youtube-review img{width:100%;height:auto;aspect-ratio:16/9;object-fit:contain}
+.youtube-review h2{font-size:18px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.youtube-review p{line-height:1.6}.youtube-review form{display:flex;gap:12px;flex-wrap:wrap;margin-block:16px}.youtube-review label{display:flex;flex-direction:column;gap:6px}.youtube-review .youtube-confirm{flex-direction:row;width:100%}
+#youtube-notice{min-height:24px}details{margin-block:24px}#youtube-list:empty::after{content:'이 상태의 영상이 없어요.';display:block;padding-block:40px;color:#526675}
+@media(max-width:600px){.youtube-review{grid-template-columns:1fr;gap:16px}.youtube-review img{max-width:100%}}
