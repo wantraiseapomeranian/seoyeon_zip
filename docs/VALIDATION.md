@@ -1022,3 +1022,11 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 사용자 실기기 증거로 이전 CSS만의 해결 불충분 확인. 삼성 UA에서만 date-controls.js가 기존 입력을 감싸 aria-hidden 일반 텍스트로 날짜 선택/선택값 표시. input은 opacity:0으로 위치·기본 선택기·라벨·값·유효성 유지. input/change 및 기존 클릭 초기화, form reset에 표시 동기화. 비삼성 브라우저 입력 유지.
 - RED: 일반 텍스트 값 undefined != 2026.09.18 확인. GREEN: 네 화면에서 light/dark, 빈 값/선택값/프로그램 초기화, native hit target, 사진 이동·키보드 및390px 가로 넘침 통과. 삼성 UA를 지정한 Chrome 테스트이며 삼성 렌더러 검증은 아님. 스크린샷으로 날짜 값 표시 확인.
 - 인증/공개 데이터/요청 제한21개 통과. 기존 검토 화면320/390/768/1280px 검증 통과. 독립 리뷰 APPROVED. Wrangler dry-run236.31 KiB/gzip58.26 KiB 통과. 잘못 지정한 tests/worker.test.mjs는 존재하지 않아 실행되지 않았고 실제 관련 세 테스트 파일로 수정해 검증.
+
+## 2026-09-21 인스타 직접 등록 썸네일 복구
+
+- 9월20일20:58 KST 등록한 manual:ig:Ddfzabuh3G7: failed/provider_access, run_id 없음 확인. 정기 인스타 결과 조회는 정상. 프로젝트 토큰은 Tasks Read/List runs 및 Storages Read만 있고 Actor 실행 권한이 없었음.
+- 사용자 승인 후 공식 Instagram Scraper에 한정해 Read/Run/List runs와 기본 실행 저장소 접근을 허용. Restricted access 유지, 전체 Actor 실행 및 full-permission Actors 미허용, 토큰 값 노출/교체 없음. 무료 $5 상한 유지.
+- 기존 관리자 UI의 다시 시도를 한 번 실행. Apify run eY2JwSWy6XjtIDqBg는 2026-09-21 10:29:29~10:29:38 KST 성공, 결과1건. 기존 요청 상한 $0.05 유지; 실행 목록의 반올림 표시 $0.00은 정확한 사용 금액으로 간주하지 않음.
+- 운영 D1 읽기 전용 확인: ready, error NULL, video 썸네일 URL 저장, authorHandle greeming4772, publishedAt 2026-09-20T05:12:46.000Z, dateEstimated false. Edge 공개 피드 직접 등록 필터에서 썸네일 실제 렌더링 확인. 이제 표시 날짜는 등록일20:58 대신 실제 게시일14:12 KST.
+- 설정 및 기존 작업 재시도로 해결. 애플리케이션 코드/DB 직접 수정 없음, 테스트/빌드/재배포 불필요.
