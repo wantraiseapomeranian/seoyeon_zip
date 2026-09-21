@@ -1,10 +1,11 @@
+import {youtubeExclusionReason} from './youtube-relevance.mjs';
 import {youtubeStatus} from './youtube-collection.mjs';
 import {addYouTubeChannel} from './youtube-sources.mjs';
 import {parseYouTubeUrl,fetchYouTubeVideos,youtubeId,youtubeError} from './youtube-provider.mjs';
 import {decisionSnapshot} from './youtube-store.mjs';
 import {digest,auditGuard,requireActor} from './review-audit.mjs';
 const categories=['fancam','appearance','cosmo_live','official','other'],decisions=['pending','kept','excluded','held'],formats=['unknown','regular','shorts'];
-const reasons={kept:['SEOYEON_CONFIRMED'],excluded:['SHORTS','GROUP_STAGE','NOT_SEOYEON','REUPLOAD','FAN_EDIT','OTHER'],held:['NEEDS_REVIEW'],pending:['NEEDS_REVIEW']};
+const reasons={kept:['SEOYEON_CONFIRMED'],excluded:['SHORTS','GROUP_STAGE','NOT_SEOYEON','REUPLOAD','FAN_EDIT','OTHER','COLLECTION_SCOPE'],held:['NEEDS_REVIEW'],pending:['NEEDS_REVIEW']};
 const reply=(data,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'private, no-store'}});
 function enabled(env){if(env.YOUTUBE_ENABLED!=='true')throw youtubeError('youtube_disabled',503);}
 async function requestIdentity(input,actor,payload){
@@ -46,7 +47,8 @@ export async function listYouTube(env,params){
  if(params.has('cursor')){let c;try{c=JSON.parse(atob(params.get('cursor')));}catch{throw youtubeError('invalid_input',400);}if(!c||c.state!==state||!youtubeId(c.id)||typeof c.date!=='string'||!Number.isFinite(Date.parse(c.date)))throw youtubeError('invalid_input',400);conditions.push('(created_at<? OR (created_at=? AND video_id>?))');args.push(c.date,c.date,c.id);}
  const rows=(await env.DB.prepare('SELECT * FROM youtube_videos'+(conditions.length?' WHERE '+conditions.join(' AND '):'')+' ORDER BY created_at DESC,video_id ASC LIMIT 26').bind(...args).all()).results;
  const page=rows.slice(0,25),last=page.at(-1);const discoveries=(await env.DB.prepare('SELECT video_id,source_key FROM youtube_discoveries WHERE video_id IN (SELECT value FROM json_each(?))').bind(JSON.stringify(page.map(r=>r.video_id))).all()).results;const counts=(await env.DB.prepare('SELECT decision,count(*) count FROM youtube_videos GROUP BY decision').all()).results;
- return {enabled:env.YOUTUBE_ENABLED==='true',posts:page.map(r=>({videoId:r.video_id,url:'https://www.youtube.com/watch?v='+r.video_id,metadata:r.metadata_json?JSON.parse(r.metadata_json):null,decision:r.decision,category:r.category,format:r.format,revision:r.revision,availability:r.availability,manual:!!r.manual,discoveries:discoveries.filter(d=>d.video_id===r.video_id).map(d=>d.source_key)})),counts,nextCursor:rows.length>25?btoa(JSON.stringify({state,date:last.created_at,id:last.video_id})):null};
+ const channels=new Set((await env.DB.prepare("SELECT query FROM youtube_sources WHERE kind='channel' AND enabled=1").all()).results.map(r=>r.query));
+ return {enabled:env.YOUTUBE_ENABLED==='true',posts:page.map(r=>{const metadata=r.metadata_json?JSON.parse(r.metadata_json):null;return {videoId:r.video_id,url:'https://www.youtube.com/watch?v='+r.video_id,metadata,decision:r.decision,category:r.category,format:r.format,revision:r.revision,availability:r.availability,manual:!!r.manual,collectionReason:metadata?youtubeExclusionReason(metadata,{registeredChannel:channels.has(metadata.channelId)}):'METADATA_UNAVAILABLE',discoveries:discoveries.filter(d=>d.video_id===r.video_id).map(d=>d.source_key)};}),counts,nextCursor:rows.length>25?btoa(JSON.stringify({state,date:last.created_at,id:last.video_id})):null};
 }
 async function body(request){const reader=request.body?.getReader();if(!reader)throw youtubeError('invalid_input',400);const chunks=[];let n=0;while(true){const r=await reader.read();if(r.done)break;n+=r.value.length;if(n>8192){await reader.cancel();throw youtubeError('invalid_input',400);}chunks.push(r.value);}const b=new Uint8Array(n);let at=0;for(const c of chunks){b.set(c,at);at+=c.length;}try{const v=JSON.parse(new TextDecoder().decode(b));if(!v||Array.isArray(v)||typeof v!=='object')throw Error();return v;}catch{throw youtubeError('invalid_input',400);}}
 export async function handleYouTube(request,env,context){

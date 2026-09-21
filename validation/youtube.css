@@ -7,3 +7,8 @@
 #youtube-list:empty::after{content:'이 상태의 영상이 없어요.';display:block;padding-block:32px;font-size:14px;color:var(--muted)}
 
 .youtube-review .review-buttons button{white-space:nowrap}
+
+.youtube-selection{display:flex;align-items:center;gap:8px;min-height:44px;font-size:14px;width:fit-content;cursor:pointer}
+.youtube-selection input[type=checkbox]{width:20px;height:20px;min-height:20px;flex:none;margin:0;accent-color:var(--ink)}
+.youtube-bulk{align-items:center;margin-block:0 12px;gap:16px}.youtube-bulk .youtube-selection{display:flex;flex-direction:row;color:var(--text)}.youtube-bulk .review-buttons{margin:0}
+#youtube-bulk-notice{font-size:14px;line-height:1.6}#youtube-bulk-notice:empty{display:none}

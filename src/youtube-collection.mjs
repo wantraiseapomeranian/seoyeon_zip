@@ -1,4 +1,4 @@
-import {isClearlyOtherMemberFancam} from './youtube-relevance.mjs';
+import {youtubeExclusionReason} from './youtube-relevance.mjs';
 import {youtubeRequest,fetchYouTubeVideos,youtubeId,youtubeError} from './youtube-provider.mjs';
 import {saveVideoStatement,unavailableStatement} from './youtube-store.mjs';
 import {auditGuard} from './review-audit.mjs';
@@ -23,7 +23,9 @@ export async function collectYouTube(env,{now=Math.floor(Date.now()/1000),fetche
   if(data.nextPageToken&&data.nextPageToken===source.page_token)throw youtubeError('repeated_cursor');
   const result=ids.length?await fetchYouTubeVideos(env,[...new Set(ids)],{fetcher}):{videos:[],unavailableIds:[]};
   const known=new Set((await DB.prepare('SELECT video_id FROM youtube_videos WHERE video_id IN (SELECT value FROM json_each(?))').bind(JSON.stringify(ids)).all()).results.map(r=>r.video_id));
-  const rejected=new Set(result.videos.filter(v=>!known.has(v.videoId)&&isClearlyOtherMemberFancam(v.title)).map(v=>v.videoId));
+  const channels=new Set((await DB.prepare("SELECT query FROM youtube_sources WHERE kind='channel' AND enabled=1").all()).results.map(r=>r.query));
+  const rejected=new Set([...result.videos.filter(v=>!known.has(v.videoId)&&youtubeExclusionReason(v,{registeredChannel:channels.has(v.channelId)})).map(v=>v.videoId),...result.unavailableIds.filter(id=>!known.has(id))]);
+  result.unavailableIds=result.unavailableIds.filter(id=>!rejected.has(id));
   result.videos=result.videos.filter(v=>!rejected.has(v.videoId));
   const next=cutoff?null:data.nextPageToken||null,guard=auditGuard(DB,'EXISTS(SELECT 1 FROM youtube_sources WHERE source_key=? AND lease_token=? AND lease_until>unixepoch() AND enabled=1 AND revision=?)',[source.source_key,token,source.revision]);
   const statements=[guard.statement,...result.videos.map(v=>saveVideoStatement(DB,v,now)),...result.unavailableIds.map(id=>unavailableStatement(DB,id,now))];

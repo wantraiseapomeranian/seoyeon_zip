@@ -5,7 +5,7 @@
   const states={visible:'표시 허용',hidden:'숨김',auto:'자동 기준',kept:'승인',excluded:'제외',held:'보류',pending:'검토 대기'};
   const platforms={X:'X',INSTAGRAM:'Instagram',YOUTUBE:'YouTube'};
   const time=value=>{const date=new Date(value);return value&&!Number.isNaN(date.valueOf())?date.toLocaleString('ko-KR',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})+' (한국시간)':'시각 미확인';};
-  const youtubeReasons={SHORTS:'Shorts',GROUP_STAGE:'단체 무대',REUPLOAD:'재업로드',FAN_EDIT:'팬 편집본'};
+  const youtubeReasons={COLLECTION_SCOPE:'자동 수집 기준 밖',SHORTS:'Shorts',GROUP_STAGE:'단체 무대',REUPLOAD:'재업로드',FAN_EDIT:'팬 편집본'};
   const reason=code=>youtubeReasons[code]||window.reviewReasonLabels[code]||'이유 미확인';
   function sourceUrl(value){try{const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password||u.port)return null;const valid=(u.hostname==='www.youtube.com'&&u.pathname==='/watch'&&/^[A-Za-z0-9_-]{11}$/.test(u.searchParams.get('v')))||(['x.com','www.x.com','twitter.com','www.twitter.com'].includes(u.hostname)&&/^\/[A-Za-z0-9_]+\/status\/\d+\/?$/.test(u.pathname))||(['instagram.com','www.instagram.com'].includes(u.hostname)&&/^\/(p|reel|tv)\/[A-Za-z0-9_-]+\/?$/.test(u.pathname));return valid?u.href:null;}catch{return null;}}
   function source(value,label='원문 보기 ↗'){const href=sourceUrl(value);if(!href)return node('span','원문 주소 미확인','review-note');const a=node('a',label,'review-link');a.href=href;a.target='_blank';a.rel='noopener noreferrer';return a;}
