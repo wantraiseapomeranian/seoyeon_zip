@@ -293,7 +293,7 @@ async function submitYouTube(generation){
   if(data.thumbnailUrl){const img=node('img');img.src=data.thumbnailUrl;img.alt=data.title;img.referrerPolicy='no-referrer';img.addEventListener('error',()=>img.remove());box.append(img);}
   box.append(node('p','youtube-title',data.title),node('p','muted',data.channelTitle+' · '+stamp(data.publishedAt)+' · '+Math.floor(data.durationSeconds/60)+':'+String(data.durationSeconds%60).padStart(2,'0')));
   if(data.existing){const a=node('a','metadata-export','유튜브 검토함에서 확인');a.href='/admin/youtube';box.append(a);$('#management-message').textContent='이미 저장된 영상이에요. 기존 검토 상태를 유지합니다.';return true;}
-  const label=node('label',null,'영상 종류'),select=node('select');select.id='youtube-category';select.append(new Option('개인 직캠','fancam'),new Option('외부 출연','appearance'));label.append(select);
+  const label=node('label',null,'영상 종류'),select=node('select');select.id='youtube-category';select.append(new Option('개인 직캠','fancam'),new Option('외부 출연','appearance'),new Option('COSMO 라이브','cosmo_live'),new Option('공식 콘텐츠','official'),new Option('기타','other'));label.append(select);
   const confirm=node('label','youtube-confirm'),check=node('input');check.type='checkbox';check.id='youtube-confirm';confirm.append(check,document.createTextNode('서연이 출연한 일반 영상이며 Shorts·단체 무대·편집본이 아닙니다.'));box.append(label,confirm);
   youtubeDraft={url,requestId:crypto.randomUUID()};$('#manual-submit').textContent='유튜브에 등록';$('#management-message').textContent='내용을 확인한 뒤 등록해 주세요.';select.focus();return true;
  }

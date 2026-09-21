@@ -26,3 +26,13 @@ test('owner, same origin, confirmation and formats are required',async()=>{
  const response=await worker.fetch(new Request('https://test.local/api/youtube/review'),{...env,TEAM_DOMAIN:'https://team.cloudflareaccess.com',POLICY_AUD:'aud',OWNER_EMAIL:actor.id},{});assert.equal(response.status,401);
  }finally{sqlite.close();}
 });
+
+test('additional categories register and review without weakening format checks',async()=>{
+ for(const category of ['cosmo_live','official','other']){const {DB,sqlite}=testDatabase(),env={DB,YOUTUBE_ENABLED:'true',YOUTUBE_API_KEY:'test'};try{
+ await registerYouTube(env,{url,category,confirmedRegular:true,requestId:crypto.randomUUID()},actor,{fetcher});
+ assert.equal(sqlite.prepare('SELECT category FROM youtube_videos').get().category,category);
+ await reviewYouTube(env,id,{revision:1,decision:'kept',category,format:'regular',reasonCode:'SEOYEON_CONFIRMED',requestId:crypto.randomUUID()},actor);
+ assert.equal(sqlite.prepare('SELECT count(*) n FROM youtube_feed_posts').get().n,1);
+ await assert.rejects(reviewYouTube(env,id,{revision:2,decision:'kept',category,format:'shorts',reasonCode:'SEOYEON_CONFIRMED',requestId:crypto.randomUUID()},actor),/invalid_input/);
+ }finally{sqlite.close();}}
+});

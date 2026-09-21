@@ -3,7 +3,7 @@ import {addYouTubeChannel} from './youtube-sources.mjs';
 import {parseYouTubeUrl,fetchYouTubeVideos,youtubeId,youtubeError} from './youtube-provider.mjs';
 import {decisionSnapshot} from './youtube-store.mjs';
 import {digest,auditGuard,requireActor} from './review-audit.mjs';
-const categories=['fancam','appearance'],decisions=['pending','kept','excluded','held'],formats=['unknown','regular','shorts'];
+const categories=['fancam','appearance','cosmo_live','official','other'],decisions=['pending','kept','excluded','held'],formats=['unknown','regular','shorts'];
 const reasons={kept:['SEOYEON_CONFIRMED'],excluded:['SHORTS','GROUP_STAGE','NOT_SEOYEON','REUPLOAD','FAN_EDIT','OTHER'],held:['NEEDS_REVIEW'],pending:['NEEDS_REVIEW']};
 const reply=(data,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'private, no-store'}});
 function enabled(env){if(env.YOUTUBE_ENABLED!=='true')throw youtubeError('youtube_disabled',503);}
