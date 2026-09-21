@@ -1,3 +1,4 @@
+import {isClearlyOtherMemberFancam} from './youtube-relevance.mjs';
 import {youtubeRequest,fetchYouTubeVideos,youtubeId,youtubeError} from './youtube-provider.mjs';
 import {saveVideoStatement,unavailableStatement} from './youtube-store.mjs';
 import {auditGuard} from './review-audit.mjs';
@@ -21,13 +22,16 @@ export async function collectYouTube(env,{now=Math.floor(Date.now()/1000),fetche
   const ids=items.map(item=>source.kind==='search'?item.id?.videoId:item.contentDetails?.videoId);if(!ids.every(youtubeId))throw youtubeError('invalid_response');
   if(data.nextPageToken&&data.nextPageToken===source.page_token)throw youtubeError('repeated_cursor');
   const result=ids.length?await fetchYouTubeVideos(env,[...new Set(ids)],{fetcher}):{videos:[],unavailableIds:[]};
+  const known=new Set((await DB.prepare('SELECT video_id FROM youtube_videos WHERE video_id IN (SELECT value FROM json_each(?))').bind(JSON.stringify(ids)).all()).results.map(r=>r.video_id));
+  const rejected=new Set(result.videos.filter(v=>!known.has(v.videoId)&&isClearlyOtherMemberFancam(v.title)).map(v=>v.videoId));
+  result.videos=result.videos.filter(v=>!rejected.has(v.videoId));
   const next=cutoff?null:data.nextPageToken||null,guard=auditGuard(DB,'EXISTS(SELECT 1 FROM youtube_sources WHERE source_key=? AND lease_token=? AND lease_until>unixepoch() AND enabled=1 AND revision=?)',[source.source_key,token,source.revision]);
   const statements=[guard.statement,...result.videos.map(v=>saveVideoStatement(DB,v,now)),...result.unavailableIds.map(id=>unavailableStatement(DB,id,now))];
-  for(const id of new Set(ids))statements.push(DB.prepare('INSERT INTO youtube_discoveries(video_id,source_key,first_seen_at,last_seen_at) VALUES(?,?,?,?) ON CONFLICT(video_id,source_key) DO UPDATE SET last_seen_at=excluded.last_seen_at').bind(id,source.source_key,now,now));
+  for(const id of new Set(ids.filter(id=>!rejected.has(id))))statements.push(DB.prepare('INSERT INTO youtube_discoveries(video_id,source_key,first_seen_at,last_seen_at) VALUES(?,?,?,?) ON CONFLICT(video_id,source_key) DO UPDATE SET last_seen_at=excluded.last_seen_at').bind(id,source.source_key,now,now));
   // One page per tick. Search budgets bound subsequent ticks; unfinished windows retain their cursor.
   const delay=next?(source.pages%2===1?43200:300):source.kind==='search'?43200:21600;
   statements.push(DB.prepare('UPDATE youtube_sources SET page_token=?,playlist_id=?,pages=?,window_start=?,window_end=?,next_due_at=?,last_success_at=?,last_error_code=NULL,lease_token=NULL,lease_until=0 WHERE source_key=? AND lease_token=?').bind(next,playlist,next?source.pages+1:0,next?source.window_start:iso(now-7*86400),next?source.window_end:null,now+delay,now,source.source_key,token),guard.cleanup);
-  await DB.batch(statements);return {status:next?'partial':'ok',count:ids.length};
+  await DB.batch(statements);return {status:next?'partial':'ok',count:ids.length,filtered:rejected.size};
  }catch(error){const code=await block(env,error,now);await DB.prepare('UPDATE youtube_sources SET last_error_code=?,next_due_at=?,lease_token=NULL,lease_until=0 WHERE source_key=? AND lease_token=?').bind(code,now+300,source.source_key,token).run();return {status:'failed',error:code};}
 }
 export async function refreshYouTube(env,{now=Math.floor(Date.now()/1000),fetcher=fetch}={}){
