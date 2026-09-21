@@ -307,8 +307,10 @@ window.addEventListener('popstate',()=>{const q=new URLSearchParams(location.sea
 async function refreshYouTubeStatus(){
  const generation=roleGeneration;if(role!=='owner')return;
  try{const response=await fetch('/api/youtube/status');if(response.status===401||response.status===403){demote();return;}if(!response.ok)throw Error();const s=await response.json();if(role!=='owner'||generation!==roleGeneration)return;
+ const backfill=(s.sources||[]).filter(source=>source.backfill_handle);
+ const history=backfill.length?' · 과거 직캠 '+backfill.filter(source=>!source.enabled&&source.window_start>=source.backfill_until).length+'/'+backfill.length+'채널 완료'+(s.pending>=20?' (검토 후 계속)':''):'';
  const issue=s.last_error_code?' · 수집 연결 확인이 필요해요.':'';
- $('#youtube-status').textContent=(s.collectionEnabled?'자동 수집 사용':'자동 수집 중지')+' · 미검토 '+s.pending+'건'+issue+' · 마지막 정보 갱신 '+(s.last_refresh_at?stamp(s.last_refresh_at*1000):'기록 없음');
+ $('#youtube-status').textContent=(s.collectionEnabled?'자동 수집 사용':'자동 수집 중지')+' · 미검토 '+s.pending+'건'+history+issue+' · 마지막 정보 갱신 '+(s.last_refresh_at?stamp(s.last_refresh_at*1000):'기록 없음');
  }catch{if(role==='owner'&&generation===roleGeneration)$('#youtube-status').textContent='수집 상태를 불러오지 못했어요. 새로고침해 주세요.';}
 }
 $('#youtube-channel-form').addEventListener('submit',async e=>{e.preventDefault();if(role!=='owner')return;const b=e.submitter,generation=roleGeneration;b.disabled=true;try{const r=await management('/api/youtube/channels',{channel:$('#youtube-channel').value.trim()});if(role!=='owner'||generation!==roleGeneration)return;$('#youtube-channel').value='';await refreshYouTubeStatus();$('#youtube-status').textContent=r.title+' 채널을 추가했어요.';}catch(e){if(role==='owner'&&generation===roleGeneration)$('#youtube-status').textContent=e.message;}finally{b.disabled=false;}});
