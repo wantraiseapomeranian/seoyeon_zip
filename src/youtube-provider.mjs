@@ -20,7 +20,8 @@ export async function youtubeRequest(env,resource,params,{fetcher=fetch,budget='
  const url=new URL('https://www.googleapis.com/youtube/v3/'+resource);for(const [key,value]of Object.entries(params))if(value!==null&&value!==undefined)url.searchParams.set(key,String(value));
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
  try{
-  const response=await fetcher(url.href,{headers:{'x-goog-api-key':env.YOUTUBE_API_KEY},signal:controller.signal,redirect:'error'});
+  const response=await fetcher(url.href,{headers:{'x-goog-api-key':env.YOUTUBE_API_KEY},signal:controller.signal,redirect:'manual'});
+  if(response.status>=300&&response.status<400){await response.body?.cancel();throw youtubeError('provider_failure');}
   const reader=response.body?.getReader();let size=0;const chunks=[];
   if(reader)while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>2*1024*1024){await reader.cancel();throw youtubeError('response_too_large');}chunks.push(value);}
   const bytes=new Uint8Array(size);let pos=0;for(const chunk of chunks){bytes.set(chunk,pos);pos+=chunk.byteLength;}
