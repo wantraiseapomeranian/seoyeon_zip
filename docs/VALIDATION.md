@@ -1217,4 +1217,5 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - `node --test tests/access.test.mjs tests/x-review-pagination.test.mjs tests/instagram-media.test.mjs`:22/22 통과. 새 `/review-filters.js`의 비인증401·위조 토큰403과 자산/DB 접근0 확인. 공개 자산 허용 목록은 변경하지 않았다.
 - `node scripts/check-day-filters.mjs`: 최초 실행은 피드의 루트 URL 새로고침에서 HTTP 오류. 기존 검사 서버가 `/`를404로 처리했으므로 실제 Worker와 같이 `feed.html`로 연결하는1줄 수정 후 통과. feed/X/Instagram×320/390/1280px 날짜 요청·초기화·피드 URL 복원·넘침/페이지 오류 없음 확인.
 - `node scripts/check-review-audit.mjs` 통과: 검토 저장·네트워크/503 동일 요청 재시도·409 복구·이력·안전한 텍스트/링크·사진 대체·키보드/터치·320/390/768/1280px. `node scripts/check-ui-audit-fixes.mjs`의 X/Instagram/YouTube 판정 후 초점14시나리오 통과.
-- 기존 검사 서버5곳에 공통 JS 허용 항목 추가, docs/CHECKS.md에 새 필터 검사 명령 기록. 독립 읽기 전용 리뷰 APPROVED(날짜 검사 서버 보완 포함). 실제 모바일 엔진 검증은 아니며, 커밋·배포 결과는 후속 기록한다.
+- 기존 검사 서버5곳에 공통 JS 허용 항목 추가, docs/CHECKS.md에 새 필터 검사 명령 기록. 독립 읽기 전용 리뷰 APPROVED(날짜 검사 서버 보완 포함). `git diff --check` 통과, HTML은 순서가 보장된 공통 스크립트 태그 추가만 있음을 대조했다. 변경 diff의 비밀값·개인정보 확인 완료. 실제 모바일 엔진 검증은 아니다.
+- 38a973c main 푸시 성공. 연결된 `Workers Builds: seoyeon-zip`이 동일 SHA에서 completed/success(2026-09-22 08:38:02 UTC). 배포 후 비인증 GET `/review-filters.js`·`/api/admin/x`·`/api/admin/instagram`은401, `/feed`는200 확인. 운영의 인증된 관리자 화면 동작은 별도로 실행하지 않았으며 위 UI 검증은 로컬 결과다.
