@@ -55,7 +55,11 @@ Node.js **24.14.1 이상**이 필요합니다.
 ```sh
 npm ci
 npm test
+npm run check:runtime
+npm run check:ui
 ```
+
+검사별 준비 사항과 범위는 [로컬 검증 명령](docs/CHECKS.md), DB 적용 이력 관리는 [마이그레이션 안내](docs/MIGRATIONS.md)를 따른다. UI 검사는 Google Chrome이 필요하다.
 
 Chrome이 설치된 환경에서는 다음 명령으로 공개 화면과 운영자 화면의 분리, 사이트 안내, 반응형 배치를 확인할 수 있습니다.
 

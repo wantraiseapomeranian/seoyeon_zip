@@ -1188,3 +1188,13 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 
 - 운영 ccd5c5a Cloudflare 자동 배포 completed/success. 실제 Chrome4탭에서 저장208/표시85/제외123/미검토0, 검색0/12 및4개 보충 채널의 예정 대기·다음 시각 표시 확인. 과거 일별 youtube_total은 NULL이며 화면 기록 없음으로 표시.
 - 2026-09-22 16:14 KST 예약 알림 점검에서 youtube 상태 행 생성, opened_at=NULL, monitor last_failure_at=NULL 확인. 일별 첫 유튜브 수치와 증감은 다음 예약일부터 쌓이며 과거 날짜를 소급 생성하지 않음.
+
+## 2026-09-22 DB 적용 이력 보완·검증 명령 통합
+
+- 사전 운영 SELECT: 저장소28개 파일 중0012~0017 이력6개 누락, 기존22행 확인. 관련 스키마8개는 최신 마이그레이션을 메모리 DB에 적용한 정의와 대소문자 유지·공백 정리 비교로 일치, 관련 계정4행 존재 확인. 조회 rows_written0/changed_db=false.
+- `tests/migration-ledger.test.mjs`: SQL 보완 전 누락 이력으로2건 실패(RED), 보완 후2건 통과. 실제 SQL의 기존 ID·시각·스키마·게시물·소스 상태 보존, 일부 이력만 이미 존재한 경우, 재실행 시 추가 쓰기0을 검증.
+- 독립 코드 리뷰 APPROVED 후 보완 SQL을 운영에 명시 실행. 2026-09-22 07:42:08 UTC에 d1_migrations6행 추가, 이 값은 최초 적용 시각이 아닌 보완 시각. D1 실행1문장, rows_written13/changes7은 엔진 보고값이며 논리적으로 추가된 이력은6행.
+- 사후 SELECT 대조: 이력28개와 SQL 파일명 전체 일치, 기존22행의 ID·이름·시각 유지, 시스템 내부 객체를 제외한 스키마69개 정의 동일, 관련 계정4행 존재 유지. `wrangler d1 migrations list --remote`: No migrations to apply. 과거 마이그레이션 SQL과 수집/판정 데이터는 재실행·수정하지 않음. 원격 결과는 Git 제외된 `.local/migration-ledger/`에 저장.
+- 기존 npm test 유지, check:runtime·check:ui 추가. npm test247/247 통과. check:ui에서 여섯 화면 테마·저장/system·날짜/레이아웃, 사진 timeout/재시도/오류 복구, X/IG/YT초점,320/390px200%글자 확대 통과. 실제 모바일 기기/전체 접근성 검증은 아님.
+- check:runtime은 Miniflare가 workerd.exe를 시작하며 spawn UNKNOWN으로 실패. workerd --version도 같은 오류, PowerShell 일반·승격 실행 모두 애플리케이션 제어 정책 차단을 확인. 2026-09-22 16:44 KST Windows CodeIntegrity 이벤트3033/3077, VerifiedAndReputableDesktop/0xc0e90002와 대상 실행 파일 경로가 일치. Worker/D1 검사 이전의 OS 서명 정책 차단이며 런타임 검증은 미통과·미검증으로 유지한다. 정책 변경이나 우회는 하지 않았다. 설치 패키지 버전1.20260908.1이며 실행 버전 조회는 실패했다.
+- 독립 코드 리뷰 APPROVED. npm scripts는 첫 실패를 그대로 반환하며 실패한 runtime 검사를 건너뛰는 처리는 추가하지 않았다. 커밋·자동 배포 결과는 후속 기록.
