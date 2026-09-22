@@ -1197,4 +1197,6 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 사후 SELECT 대조: 이력28개와 SQL 파일명 전체 일치, 기존22행의 ID·이름·시각 유지, 시스템 내부 객체를 제외한 스키마69개 정의 동일, 관련 계정4행 존재 유지. `wrangler d1 migrations list --remote`: No migrations to apply. 과거 마이그레이션 SQL과 수집/판정 데이터는 재실행·수정하지 않음. 원격 결과는 Git 제외된 `.local/migration-ledger/`에 저장.
 - 기존 npm test 유지, check:runtime·check:ui 추가. npm test247/247 통과. check:ui에서 여섯 화면 테마·저장/system·날짜/레이아웃, 사진 timeout/재시도/오류 복구, X/IG/YT초점,320/390px200%글자 확대 통과. 실제 모바일 기기/전체 접근성 검증은 아님.
 - check:runtime은 Miniflare가 workerd.exe를 시작하며 spawn UNKNOWN으로 실패. workerd --version도 같은 오류, PowerShell 일반·승격 실행 모두 애플리케이션 제어 정책 차단을 확인. 2026-09-22 16:44 KST Windows CodeIntegrity 이벤트3033/3077, VerifiedAndReputableDesktop/0xc0e90002와 대상 실행 파일 경로가 일치. Worker/D1 검사 이전의 OS 서명 정책 차단이며 런타임 검증은 미통과·미검증으로 유지한다. 정책 변경이나 우회는 하지 않았다. 설치 패키지 버전1.20260908.1이며 실행 버전 조회는 실패했다.
-- 독립 코드 리뷰 APPROVED. npm scripts는 첫 실패를 그대로 반환하며 실패한 runtime 검사를 건너뛰는 처리는 추가하지 않았다. 커밋·자동 배포 결과는 후속 기록.
+- 독립 코드 리뷰 APPROVED. npm scripts는 첫 실패를 그대로 반환하며 실패한 runtime 검사를 건너뛰는 처리는 추가하지 않았다.
+- 2db3022 main 푸시 성공, 연결된 Workers Builds: seoyeon-zip check-run이 동일 커밋에서 completed/success(2026-09-22 07:50:34 UTC). 이 배포 성공은 위 로컬 runtime 검사 통과를 의미하지 않는다. 기존 미커밋 Instagram 조사 기록은 이번 커밋에 포함하지 않았다.
+- 배포 후 비인증 GET: 루트는307로 같은 출처의 `/feed`로 이동 후200, `/api/admin/operations`는401 유지. 최초 루트200 단정 검사 실패 후 Location을 확인해 정상 정적 자원 이동과 구분했다.
