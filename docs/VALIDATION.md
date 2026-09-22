@@ -1156,4 +1156,9 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - scripts/check-feed-preload.mjs: 실제 Worker 응답 헤더/실제 프런트엔드, 로컬 API 표본. no-store 조건에서 기본 API 시작 약51ms, 지연한 feed.js 실행713ms. API1회만 호출, 새로고침은 새 요청. 출처/영상/정렬/날짜 URL에서도 해당 조건 요청1회 확인. 로컬 fixture를 위해 live 분기만 활성화했고 실제 운영 브라우저 효과는 배포 후 별도 측정.
 - scripts/validate-feed-batch.mjs --local: 실제 workerd/D1에서 SELECT batch 반환값·48+3페이지·전체51개·최신 시각·빈 상태·잘못된 cursor400·batch 오류500 확인. 최소 SQL fixture 사용, 실제 뷰 및 표시 판정은 production migrations를 사용하는 feed.test.mjs로 검증. 첫 sandbox 빌드가 디렉터리 접근 제한으로 실패하여 외부 요청을 막은 동일 로컬 검증을 권한 환경에서 실행해 통과.
 - 독립 코드 리뷰 APPROVED(Critical/Major 미발견). Cloudflare 공식 D1 batch 문서(2026-09-22 확인): https://developers.cloudflare.com/d1/worker-api/d1-database/#batch .
-- 배포 직전 운영 기준 재측정7회: desktop LCP4.736초/API0.743초, mobile LCP5.288초/API0.907초(각3회 중앙값), 저속mobile LCP6.388초/API0.756초(1회). HTTP 오류 및 실패 요청0. 원본 .local/feed-speed-before, 배포 후 같은 조건으로 비교 예정.
+- 배포 직전 운영 기준 재측정7회: desktop LCP4.736초/API0.743초, mobile LCP5.288초/API0.907초(각3회 중앙값), 저속mobile LCP6.388초/API0.756초(1회). HTTP 오류 및 실패 요청0. 원본 .local/feed-speed-before, 아래 배포 후 같은 조건 비교와 구분.
+
+- 코드4c391de Workers Builds 성공 및 운영 Link 헤더 반영 확인. 후속7회(데스크톱3/모바일3/저속1) 모두 feed48개, API요청1회, HTTP오류·실패요청0. LCP 중앙값 desktop4.736→4.244초, mobile5.288→4.612초, 저속6.388→5.296초. 실제 iPhone 성능/실사용자 p75 수치는 아니다.
+- API duration 중앙값 desktop0.743→0.819초, mobile0.907→0.763초, 저속0.756→0.721초. desktop API는 감소하지 않았으므로 batch만의 효과로 전체 개선을 단정하지 않음. 문서 TTFB desktop0.802→1.342초 등 네트워크 변동 존재.
+- 별도 운영 상세 추적: 피드 API 시작881ms, feed.js 시작883ms/완료1087ms. JavaScript 실행 전 API 선요청 확인. CLS0.000471 유지, 모바일/저속0. 원본 .local/feed-speed-after/performance.json 및 attribution.json. CDN 원본 주소가 포함되는 상세 자료는 Git 제외.
+- 잔여 한계: LCP2.5초 기준은 여전히 미달. 외부 이미지 전송과 문서 응답 지연이 남음. 실제 기기 화면·VoiceOver 및 장기 현장 성능은 별도 검증 필요. 두 로컬 검수 보고서의 후속 결과를 갱신함.
