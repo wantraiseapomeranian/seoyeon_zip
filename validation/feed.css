@@ -86,9 +86,7 @@ header .actions .icon-button svg{pointer-events:none}
 :root input[type=date]{-webkit-text-fill-color:currentColor}
 :root input[type=date]::-webkit-datetime-edit{color:inherit;-webkit-text-fill-color:currentColor}
 .photo-arrow svg{display:block;width:18px;height:18px;flex:none;pointer-events:none}
-@media(prefers-color-scheme:dark){:root{--control-surface:#20252b;--control-text:#f1f5f7;--control-border:#5c6670;--control-scheme:dark}}
-/* Date fields follow the site's light theme, including the visible mobile text. */
-:root input[type=date],:root .date-display{--control-surface:var(--bg);--control-text:#20252b;--control-border:#dde3e8;--control-scheme:light;color-scheme:light}
+/* Theme colors are resolved in theme.css; native/mobile date text share them. */
 
 /* Visible text avoids Samsung's native date shadow-text conversion. */
 .date-display{position:relative;display:inline-grid;min-width:0;max-width:100%;vertical-align:middle}

@@ -1162,3 +1162,10 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - API duration 중앙값 desktop0.743→0.819초, mobile0.907→0.763초, 저속0.756→0.721초. desktop API는 감소하지 않았으므로 batch만의 효과로 전체 개선을 단정하지 않음. 문서 TTFB desktop0.802→1.342초 등 네트워크 변동 존재.
 - 별도 운영 상세 추적: 피드 API 시작881ms, feed.js 시작883ms/완료1087ms. JavaScript 실행 전 API 선요청 확인. CLS0.000471 유지, 모바일/저속0. 원본 .local/feed-speed-after/performance.json 및 attribution.json. CDN 원본 주소가 포함되는 상세 자료는 Git 제외.
 - 잔여 한계: LCP2.5초 기준은 여전히 미달. 외부 이미지 전송과 문서 응답 지연이 남음. 실제 기기 화면·VoiceOver 및 장기 현장 성능은 별도 검증 필요. 두 로컬 검수 보고서의 후속 결과를 갱신함.
+- 2026-09-22 정식 다크 테마: codex/dark-theme, 기준145d794. 승인 시안의 밝게/어둡게/기기 설정을 여섯 화면에 구현. 초기 밝게, 로컬 저장·다른 탭·OS 변경·저장소 차단 fallback, 날짜 페이지 배경 통일. theme.js/theme.css만 기존 Worker 공개 정적 자원 목록에 추가하며 관리자 보호 유지.
+- RED: check-theme.mjs에서 최초 OS dark 방문의 light 테마 속성 부재 확인. GREEN: 320/390/768/1280px 여섯 화면 패널 및 넘침, 선택·새로고침·OS 수동 선택 유지·탭 동기화·잘못된 저장값·저장소 차단·reduced-motion 통과. 탭 동기화 검사는 Chrome 백그라운드 프레임 대기를 피하도록 원래 탭을 활성화한 뒤 검증한다.
+- npm test 238/238 통과. check-dark-controls.mjs의 iPhone 및 Samsung UA에서 두 테마 날짜 선택/빈 값/초기화/네이티브 hit target·화살표 탐색 통과. 실제 모바일 엔진 검증은 아님.
+- 기존 X/Instagram/YouTube 판정 후 초점 회귀 및 200% YouTube 텍스트 통과. 피드 렌더 검사는 고정180ms 대기 대신 DOM 생성 및 명시적 script gate로 기준 프레임을 잡도록 보완. 모바일 CLS0, 데스크톱0.000221, 기존 이미지 eager/lazy·빈 상태·오류 동작 통과.
+- 토큰 대비 계산: 본문/보조/링크를 각 바탕·패널·선택 배경과 비교했을 때 최저 light5.20:1, dark5.75:1. 입력 경계는 바탕·패널에서 light최저3.64:1, dark최저3.56:1. 선택 경계는 링크 색상을 사용한다. 독립 읽기 전용 리뷰 APPROVED, Critical/Major 없음.
+- 설정 패널 light/dark axe(WCAG2/2.1/2.2 A·AA) 위반0, 320px 200% 텍스트 가로 넘침 없음. 390/768/1280 스크린샷 확인. Wrangler4.130.0 dry-run 성공(33 assets, bundle271.06KiB); 최초 sandbox 디렉터리/로그 접근 실패 후 승인된 로컬 dry-run 재실행으로 확인했다.
+- 실제 iPhone Safari, Samsung 강제 다크, VoiceOver는 미확인. 배포 결과는 후속 기록한다.
