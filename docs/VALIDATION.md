@@ -1147,3 +1147,13 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 
 - 사용자가 흰색이 아닌 페이지와 같은 배경을 요청. 날짜 입력과 모바일 표시 wrapper의 --control-surface를 var(--bg)로 변경해 현재 페이지 #F1F5F7을 사용.
 - 기존 흰 배경 상태에서 기대 색상 검사 실패 확인 후 수정. iPhone/Samsung UA 각각 light/dark × 네 화면 검사 통과: 입력과 표시 텍스트의 배경 rgb(241,245,247), 진한 글자, 날짜 선택값·초기화·터치 유지. 실기기 새 색상 확인은 별도.
+
+## 2026-09-22 사진 로딩 속도 후속 개선
+
+- 분리 브랜치 codex/feed-load-speed, 기준2ee6d16. src/feed.mjs: count/page/최신 시각을 첫 D1 batch, X/Instagram 중복 출처를 두 번째 batch로 묶음. SQL 필터·순서·공개 판정·48개 pagination 유지. 조회 왕복5회→2회, 빈 결과는1회. 캐시·DB 스키마·이미지 원본·품질 변경 없음.
+- src/worker.mjs: 검색 쿼리 없는 /, /feed, /feed.html의 성공 GET HTML에만 Link preload로 /api/feed?media=image를 지정. 기존 인증 처리 뒤 적용하며 API의 rate limit·공개 필드 제한·no-store 유지. 필터 있는 주소·HEAD·관리자·오류 응답은 적용하지 않음.
+- RED: 왕복 횟수5 !=2 및 기본 HTML Link 없음 확인. GREEN: npm test238/238 통과. 날짜·월·소스·페이지·총수·중복 출처·비공개 경로 검사 포함.
+- scripts/check-feed-preload.mjs: 실제 Worker 응답 헤더/실제 프런트엔드, 로컬 API 표본. no-store 조건에서 기본 API 시작 약51ms, 지연한 feed.js 실행713ms. API1회만 호출, 새로고침은 새 요청. 출처/영상/정렬/날짜 URL에서도 해당 조건 요청1회 확인. 로컬 fixture를 위해 live 분기만 활성화했고 실제 운영 브라우저 효과는 배포 후 별도 측정.
+- scripts/validate-feed-batch.mjs --local: 실제 workerd/D1에서 SELECT batch 반환값·48+3페이지·전체51개·최신 시각·빈 상태·잘못된 cursor400·batch 오류500 확인. 최소 SQL fixture 사용, 실제 뷰 및 표시 판정은 production migrations를 사용하는 feed.test.mjs로 검증. 첫 sandbox 빌드가 디렉터리 접근 제한으로 실패하여 외부 요청을 막은 동일 로컬 검증을 권한 환경에서 실행해 통과.
+- 독립 코드 리뷰 APPROVED(Critical/Major 미발견). Cloudflare 공식 D1 batch 문서(2026-09-22 확인): https://developers.cloudflare.com/d1/worker-api/d1-database/#batch .
+- 배포 직전 운영 기준 재측정7회: desktop LCP4.736초/API0.743초, mobile LCP5.288초/API0.907초(각3회 중앙값), 저속mobile LCP6.388초/API0.756초(1회). HTTP 오류 및 실패 요청0. 원본 .local/feed-speed-before, 배포 후 같은 조건으로 비교 예정.

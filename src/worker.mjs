@@ -107,6 +107,9 @@ export default {
       if(assetUrl.pathname==='/admin/review-history'||assetUrl.pathname==='/admin/review-history/')assetUrl.pathname='/review-history.html';
       const asset=await env.ASSETS.fetch(new Request(assetUrl,request));const headers=new Headers(asset.headers);
       headers.set('Cache-Control','private, no-store');
+      // Match the default UI request exactly; filtered pages fetch their own scope.
+      if(request.method==='GET'&&!url.search&&['/','/feed','/feed.html'].includes(url.pathname)&&asset.ok&&headers.get('Content-Type')?.includes('text/html'))
+        headers.append('Link','</api/feed?media=image>; rel=preload; as=fetch; crossorigin=anonymous');
       headers.set('Content-Security-Policy',"default-src 'self'; img-src https://i.ytimg.com https://i9.ytimg.com https://pbs.twimg.com https://*.cdninstagram.com https://*.fbcdn.net 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
       headers.set('Referrer-Policy','no-referrer');
       return new Response(asset.body,{status:asset.status,headers});

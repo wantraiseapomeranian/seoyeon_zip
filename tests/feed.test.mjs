@@ -24,6 +24,26 @@ function add(sqlite,id,date,kind='image') {
  sqlite.prepare('INSERT INTO posts VALUES (?,?)').run(post.id,JSON.stringify(post));
  return post;
 }
+
+test('feed limits D1 round trips while preserving totals, dates and next-page cursor',async()=>{
+ const {sqlite,DB}=testDatabase();try{
+  for(let i=100;i<151;i++)add(sqlite,i,'2026-09-22T00:00:00Z');
+  sqlite.exec('UPDATE collection_state SET last_success_at=1000');
+  let trips=0;
+  const measured={prepare(sql){const statement=DB.prepare(sql);return {
+   bind(...args){statement.bind(...args);return this;},statement,
+   async all(){trips++;return statement.all();},async first(){trips++;return statement.first();}
+  };},async batch(statements){trips++;return DB.batch(statements.map(s=>s.statement));}};
+  const first=await readFeed(measured,new URLSearchParams({media:'image'}));
+  assert.equal(first.total,51);assert.equal(first.posts.length,48);assert.ok(first.nextCursor);
+  assert.equal(first.collectedAt,'1970-01-01T00:16:40.000Z');assert.equal(trips,2);
+  trips=0;const next=await readFeed(measured,new URLSearchParams({media:'image',cursor:first.nextCursor}));
+  assert.equal(next.total,51);assert.equal(next.posts.length,3);assert.equal(next.nextCursor,null);assert.equal(trips,2);
+  assert.equal(new Set([...first.posts,...next.posts].map(p=>p.id)).size,51);
+  trips=0;const empty=await readFeed(measured,new URLSearchParams({media:'video'}));
+  assert.equal(empty.total,0);assert.deepEqual(empty.posts,[]);assert.equal(trips,1);
+ }finally{sqlite.close();}
+});
 test('pagination crosses equal dates without omission in both directions',async()=>{
  const {sqlite,DB}=testDatabase();
  try {

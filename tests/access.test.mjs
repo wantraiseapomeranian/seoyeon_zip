@@ -65,6 +65,19 @@ test('public mode permits only the exact asset method and path allowlist',async(
   }
 });
 
+test('only unfiltered feed HTML preloads its exact first API request',async()=>{
+ for(const [path,method,expected] of [['/','GET',true],['/feed','GET',true],['/feed.html','GET',true],['/?media=video','GET',false],['/?source=instagram','GET',false],['/?date=2026-09-22','GET',false],['/?sort=oldest','GET',false],['/feed.css','GET',false],['/','HEAD',false]]){
+  const {env}=spies();env.ASSETS={fetch:async()=>new Response('<html></html>',{headers:{'Content-Type':'text/html'}})};
+  const response=await worker.fetch(new Request('https://example.test'+path,{method}),env);
+  assert.equal(response.headers.get('Link'),expected?'</api/feed?media=image>; rel=preload; as=fetch; crossorigin=anonymous':null,path);
+  assert.equal(response.headers.get('Cache-Control'),'private, no-store');
+ }
+ const {env}=spies();env.ASSETS={fetch:async()=>new Response('missing',{status:404})};
+ assert.equal((await worker.fetch(new Request('https://example.test/'),env)).headers.get('Link'),null);
+ const denied=await worker.fetch(new Request('https://example.test/admin/x'),env);
+ assert.equal(denied.status,401);assert.equal(denied.headers.get('Link'),null);
+});
+
 test('verifyOwnerToken enforces owner identity and Access JWT claims',async()=>{
   assert.equal(await verifyOwnerToken(await signedToken(),accessEnv,localKeyResolver),200);
   for(const token of [await signedToken({email:'other@example.test'}),await signedToken({email:7}),await signedToken({aud:'wrong'}),await signedToken({iss:'https://wrong.cloudflareaccess.com'}),await signedToken({exp:Math.floor(Date.now()/1000)-1}),`${await signedToken()}x`])
