@@ -1130,4 +1130,9 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - check-feed-render: JS600ms/API250ms 지연 조건. 수정 전 CLS 모바일0.77451/데스크톱0.71686, 고정 테마·아이콘·6개 skeleton을 HTML에 반영한 뒤 390px0/1280px0.000221. 첫 행은 eager/high, 화면 밖 마지막 사진은 lazy 및 src 미할당 확인. 빈/오류 상태 gallery region 및 axe aria-prohibited-attr 위반0 확인.
 - 기존 check-review-audit 및 check-photo-comparison 통과. check-instagram 최초 실패는 수정 전 ca2264d에서도 동일 재현: 오래된 childPosts 표본에 Image 유형이 없어 기본 사진 필터에서 제외됨. 표본에 명시적 Image 유형을 추가한 뒤 실제 로컬 API/DB 가져오기·표시·보류·피드 사진 이동 통과.
 - npm test 236/236 통과. 새 private review-focus.js 경로를 추가한 access 검사14/14 통과. 독립 읽기 전용 코드 리뷰 APPROVED(Critical/Major 미발견, 실행 검증과 별도).
-- 기준 web-design-guidelines 규칙을 2026-09-22 재조회, 변경된 이름·역할·초점·줄바꿈·초기 이미지 우선순위 범위 점검. 실제 iPhone Safari 날짜 재확인 및 VoiceOver 음성은 미실행. 운영 성능 전후는 배포 후 별도 측정 예정이며 로컬 CLS를 운영값으로 표현하지 않음.
+- 기준 web-design-guidelines 규칙을 2026-09-22 재조회, 변경된 이름·역할·초점·줄바꿈·초기 이미지 우선순위 범위 점검. 실제 iPhone Safari 날짜 재확인 및 VoiceOver 음성은 미실행. 운영 성능 전후는 아래 별도 측정 결과로 구분하며 로컬 CLS를 운영값으로 표현하지 않음.
+
+- 배포: 코드9c77bc9의 Workers Builds: seoyeon-zip completed/success 및 운영 HTML의 정적 data-mood 반영 확인.
+- 운영 후속7회(데스크톱3/모바일3/저속1), 이전과 동일한 Chrome 캐시 비활성 조건. LCP 중앙값 데스크톱5.332→4.732초, 모바일4.768→4.316초, 저속6.992→6.632초. TTFB 중앙값 후속1.064/1.292/0.840초. 네트워크 변동이 있어 코드만의 인과 효과나 전체 사용자 p75로 해석하지 않음. LCP2.5초 기준은 미달.
+- 데스크톱 초기 CLS0.717115→0.000471, 모바일/저속0 유지. 별도 최대 세션 윈도 추적으로 CLS0.000471 재확인; 남은 이동은 출처 select 폭 변경1회뿐. 후속7회 피드48개, 실패 요청·HTTP4xx/5xx0.
+- 두 로컬 보고서 갱신: .local/ui-audit/REPORT.md, .local/ui-audit-live/REPORT.md. 최초 기록과 후속 수정·검증·배포·미확인 상태 구분. 원본 후속 성능은 .local/ui-audit-live-after에 저장하며 만료 CDN 주소가 포함될 수 있어 Git에 추가하지 않음.
