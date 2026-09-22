@@ -1200,3 +1200,11 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 독립 코드 리뷰 APPROVED. npm scripts는 첫 실패를 그대로 반환하며 실패한 runtime 검사를 건너뛰는 처리는 추가하지 않았다.
 - 2db3022 main 푸시 성공, 연결된 Workers Builds: seoyeon-zip check-run이 동일 커밋에서 completed/success(2026-09-22 07:50:34 UTC). 이 배포 성공은 위 로컬 runtime 검사 통과를 의미하지 않는다. 기존 미커밋 Instagram 조사 기록은 이번 커밋에 포함하지 않았다.
 - 배포 후 비인증 GET: 루트는307로 같은 출처의 `/feed`로 이동 후200, `/api/admin/operations`는401 유지. 최초 루트200 단정 검사 실패 후 Location을 확인해 정상 정적 자원 이동과 구분했다.
+
+## 2026-09-22 검증 표본 모듈 분리
+
+- `createReviewFixtures()` 반환값을 변경 전 HEAD의 표본 전체와 deepEqual 비교해 일치 확인. 첫 반환값의 비교 사진·미디어·Instagram 사유·이력 요약·이전 상태·근거 작성자를 변경한 뒤 다른 호출의 값이 원본과 동일함을 확인했다.
+- `node scripts/check-review-audit.mjs` 통과: 검토 저장·중복 제출 방지·네트워크/503 재시도·409 복구·이력 필터/페이지 이동·안전한 텍스트/링크·legacy 근거·사진 대체·320/390/768/1280px·키보드 초점/터치 영역.
+- `node scripts/check-ui-audit-fixes.mjs` 통과: X/Instagram/YouTube의 유지·다음 항목·빈 목록·사용자가 옮긴 초점 보존 및 X/Instagram 취소 복귀, 총14개 시나리오.
+- `node scripts/check-ui-audit-fixes.mjs text` 통과: YouTube 320/390px에서 글자200% 확대 시 버튼·문서 가로 넘침 없음.
+- 독립 읽기 전용 코드 리뷰 APPROVED. 제품 코드·DB·배포 설정 변경 없이 검사 표본만 분리했으며, 이번 작업은 관련 브라우저 검사만 실행했다. `git diff --check` 통과. 커밋·배포 결과는 후속 기록한다.

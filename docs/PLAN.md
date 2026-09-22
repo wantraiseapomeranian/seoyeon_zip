@@ -586,3 +586,10 @@ X·Instagram·검토 내역의 새로고침 버튼 전체를 오른쪽으로 이
 - [x] package.json에 check:runtime·check:ui를 추가하고 docs/CHECKS.md에 준비 사항·포함 검사·실기기/전체 접근성 검증과의 차이를 기록한다. 기존 npm test는 유지한다.
 - [x] npm test247개·UI검사 통과, 독립 리뷰 및 비밀값/diff 점검 후2db3022 커밋·main 푸시·Cloudflare 자동 배포 성공 확인. runtime 검사는 Windows 코드 무결성 정책의 workerd 실행 차단으로 실패·미검증이며, 해당 제한과 기존 검사 실패 전파를 문서화했다.
 - 후속 확인: OS가 허용하는 환경에서 `npm run check:runtime` 실행. 배포 성공을 로컬 runtime 검증 통과로 간주하지 않는다.
+
+## 2026-09-22 검증 표본 모듈 분리
+
+- 사용자 승인: 후속 모듈화 중 검증 표본 분리부터 진행한다.
+- [x] `scripts/fixtures/review.mjs`의 `createReviewFixtures()`로 X·Instagram·검토 이력 표본을 추출하고 두 브라우저 검사에서 직접 import한다. 검사 파일의 소스 문자열 추출과 `new Function` 실행을 제거한다.
+- [x] 기존 표본 전체 값과 일치하고 호출 간 중첩 상태가 독립적임을 확인한다. 관련 브라우저 검사 3개와 독립 코드 리뷰를 통과했다.
+- [ ] 변경 diff·비밀값 점검 후 커밋·푸시하고 기존 Cloudflare 자동 배포 결과를 확인한다.
