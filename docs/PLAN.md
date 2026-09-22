@@ -592,4 +592,4 @@ X·Instagram·검토 내역의 새로고침 버튼 전체를 오른쪽으로 이
 - 사용자 승인: 후속 모듈화 중 검증 표본 분리부터 진행한다.
 - [x] `scripts/fixtures/review.mjs`의 `createReviewFixtures()`로 X·Instagram·검토 이력 표본을 추출하고 두 브라우저 검사에서 직접 import한다. 검사 파일의 소스 문자열 추출과 `new Function` 실행을 제거한다.
 - [x] 기존 표본 전체 값과 일치하고 호출 간 중첩 상태가 독립적임을 확인한다. 관련 브라우저 검사 3개와 독립 코드 리뷰를 통과했다.
-- [ ] 변경 diff·비밀값 점검 후 커밋·푸시하고 기존 Cloudflare 자동 배포 결과를 확인한다.
+- [x] 변경 diff·비밀값 점검 후 a5b20bf 커밋·main 푸시 완료. 동일 커밋의 Cloudflare 자동 배포 completed/success 확인.

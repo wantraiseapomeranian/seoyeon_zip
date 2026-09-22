@@ -1207,4 +1207,5 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - `node scripts/check-review-audit.mjs` 통과: 검토 저장·중복 제출 방지·네트워크/503 재시도·409 복구·이력 필터/페이지 이동·안전한 텍스트/링크·legacy 근거·사진 대체·320/390/768/1280px·키보드 초점/터치 영역.
 - `node scripts/check-ui-audit-fixes.mjs` 통과: X/Instagram/YouTube의 유지·다음 항목·빈 목록·사용자가 옮긴 초점 보존 및 X/Instagram 취소 복귀, 총14개 시나리오.
 - `node scripts/check-ui-audit-fixes.mjs text` 통과: YouTube 320/390px에서 글자200% 확대 시 버튼·문서 가로 넘침 없음.
-- 독립 읽기 전용 코드 리뷰 APPROVED. 제품 코드·DB·배포 설정 변경 없이 검사 표본만 분리했으며, 이번 작업은 관련 브라우저 검사만 실행했다. `git diff --check` 통과. 커밋·배포 결과는 후속 기록한다.
+- 독립 읽기 전용 코드 리뷰 APPROVED. 제품 코드·DB·배포 설정 변경 없이 검사 표본만 분리했으며, 이번 작업은 관련 브라우저 검사만 실행했다. `git diff --check` 통과. 표본의 이메일·계정·URL은 기존 검사에서 쓰던 가상값이며 실제 수집 데이터나 비밀값을 추가하지 않았다.
+- a5b20bf main 푸시 성공. 연결된 `Workers Builds: seoyeon-zip`이 동일 SHA에서 completed/success(2026-09-22 08:20:39 UTC). 기존 미커밋 Instagram 조사 기록과 `.impeccable/`은 포함하지 않았다.
