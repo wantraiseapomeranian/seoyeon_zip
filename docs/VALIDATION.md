@@ -1142,3 +1142,8 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - iPhone에서 기존 날짜 텍스트 표시 보완은 사용자 확인 완료. 검은 배경의 이질감을 해소하기 위해 날짜 input 및 .date-display에만 밝은 컨트롤 색상 변수를 적용. 흰 배경 #fff, 진한 글자 #20252b, 테두리 #dde3e8, color-scheme light. iOS/Samsung 날짜 표시 JS 유지.
 - 기존 검사에서 dark 선호일 때 date scheme dark로 실패 확인 후 수정. node scripts/check-dark-controls.mjs --iphone 및 기본 Samsung 검사 통과: 각 light/dark × 네 화면, 실제 입력과 표시 텍스트의 계산된 배경·글자색, 빈 값/선택/초기화/터치/사진 이동/390px 넘침 확인. 로컬 Chrome UA 에뮬레이션이며 실제 모바일 렌더링 검증과 구분.
 - 새 밝은 배경의 iPhone Safari 최종 확인은 남음. 전체 다크 모드 도입은 이번 범위 아님.
+
+## 2026-09-22 날짜 배경 색상 정정
+
+- 사용자가 흰색이 아닌 페이지와 같은 배경을 요청. 날짜 입력과 모바일 표시 wrapper의 --control-surface를 var(--bg)로 변경해 현재 페이지 #F1F5F7을 사용.
+- 기존 흰 배경 상태에서 기대 색상 검사 실패 확인 후 수정. iPhone/Samsung UA 각각 light/dark × 네 화면 검사 통과: 입력과 표시 텍스트의 배경 rgb(241,245,247), 진한 글자, 날짜 선택값·초기화·터치 유지. 실기기 새 색상 확인은 별도.
