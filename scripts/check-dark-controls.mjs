@@ -5,7 +5,8 @@ import {chromium} from 'playwright';
 const server=createServer((req,res)=>{const file=req.url.slice(1);if(!/^[\w.-]+\.(html|css|js)$/.test(file)){res.writeHead(404).end();return;}try{let body=readFileSync('validation/'+file,'utf8');if(file.endsWith('.html'))body=body.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g,t=>t.includes('/date-controls.js')?t:'');res.setHeader('Content-Type',file.endsWith('.css')?'text/css':file.endsWith('.js')?'text/javascript':'text/html');res.end(body);}catch{res.writeHead(404).end();}});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));let browser;
 try{
- browser=await chromium.launch({channel:'chrome',headless:true});const page=await browser.newPage({userAgent:'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 SamsungBrowser/28.0 Chrome/130.0.0.0 Mobile Safari/537.36'});mkdirSync('.local/dark-controls',{recursive:true});
+ const iphone=process.argv.includes('--iphone');
+ browser=await chromium.launch({channel:'chrome',headless:true});const page=await browser.newPage({userAgent:iphone?'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1':'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 SamsungBrowser/28.0 Chrome/130.0.0.0 Mobile Safari/537.36'});mkdirSync('.local/dark-controls',{recursive:true});
  for(const theme of ['light','dark'])for(const file of ['feed.html','x-review.html','instagram.html','review-history.html']){
   await page.emulateMedia({colorScheme:theme});await page.setViewportSize({width:390,height:844});await page.goto(`http://127.0.0.1:${server.address().port}/${file}`);
   await page.addScriptTag({url:'/review-gallery.js'});
@@ -20,7 +21,7 @@ try{
   }
   const next=page.getByRole('button',{name:'검증 사진 다음',exact:true});await next.click();assert.equal(await page.locator('.photo-count').last().textContent(),'2 / 2');await page.getByRole('button',{name:'검증 사진 이전',exact:true}).press('ArrowLeft');assert.equal(await page.locator('.photo-count').last().textContent(),'1 / 2');
   assert.equal(await next.locator('svg[aria-hidden=true]').count(),1);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-  await page.screenshot({path:`.local/dark-controls/${file}-${theme}.png`,fullPage:true});
+  await page.screenshot({path:`.local/dark-controls/${iphone?'iphone':'samsung'}-${file}-${theme}.png`,fullPage:true});
  }
- console.log('PASS: Samsung-UA fallback empty/selected/reset values, native tap target, light/dark scheme, arrows/navigation, 390px overflow on four pages. Real Samsung engine is unverified.');
+ console.log(`PASS: ${iphone?'iPhone':'Samsung'}-UA fallback empty/selected/reset values, native tap target, light/dark scheme, arrows/navigation, 390px overflow on four pages. Chrome emulation only; real mobile engine is unverified.`);
 }finally{await browser?.close();server.close();}

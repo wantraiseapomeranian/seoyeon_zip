@@ -1,6 +1,7 @@
-// Samsung Internet may hide the native date's inner text in forced dark mode.
+// Samsung forced dark mode and iOS date fields may hide native inner text.
 // Keep the native input (picker, value, labels and validation) as the hit target.
-if(/SamsungBrowser\//.test(navigator.userAgent)){
+const needsDateText=/SamsungBrowser\/|iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+if(needsDateText){
  const fields=[];
  for(const input of document.querySelectorAll('input[type=date]')){
   const wrapper=document.createElement('span'),value=document.createElement('span');
