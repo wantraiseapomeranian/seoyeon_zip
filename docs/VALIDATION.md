@@ -1170,3 +1170,4 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 설정 패널 light/dark axe(WCAG2/2.1/2.2 A·AA) 위반0, 320px 200% 텍스트 가로 넘침 없음. 390/768/1280 스크린샷 확인. Wrangler4.130.0 dry-run 성공(33 assets, bundle271.06KiB); 최초 sandbox 디렉터리/로그 접근 실패 후 승인된 로컬 dry-run 재실행으로 확인했다.
 - 배포: 기능 커밋667bb42, Workers Builds 2e406672-160f-48a3-98d3-bdb7ebe080f2 completed/success. 운영 피드 실제48개 표시, OS dark 최초방문light, 수동dark 및 새로고침 유지, system→OS light 반응 확인. 390/768/1280px 가로 넘침 없음, 테마 전환 추가 API 요청0(최초+새로고침 총2회), 페이지 오류0, 비인증 관리자 API401. 운영 캡처는 .local/theme/live-*.png에만 보관한다.
 - 실제 iPhone Safari, Samsung 강제 다크, VoiceOver는 미확인. 여섯 화면 전체 검사는 로컬 Chrome이며 운영 브라우저 검사는 공개 피드에 한정한다. 기존 미커밋 운영 화면 변경을 별도로 보존·복원하고 원본 diff 일치를 확인했다.
+- 2026-09-22 화면 설정 버튼 후속: 사용자 요청으로 상시 텍스트를 제거하고 46px 원형 아이콘으로 변경. aria-label 및 hover/focus 툴팁 유지. check-theme.mjs에서 여섯 화면·320/390/768/1280px·이름으로 버튼 접근·열기/닫기 및 초점 복귀·테마 선택/저장 회귀 통과.

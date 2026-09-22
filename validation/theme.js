@@ -35,7 +35,8 @@
     };
     launcher=document.createElement('button');launcher.type='button';launcher.className='theme-launch';
     launcher.setAttribute('aria-haspopup','dialog');launcher.setAttribute('aria-controls','theme-dialog');launcher.setAttribute('aria-expanded','false');
-    launcher.innerHTML=icons.settings+'<span>화면 설정</span>';
+    launcher.setAttribute('aria-label','화면 설정');
+    launcher.innerHTML=icons.settings+'<span class="icon-tooltip" aria-hidden="true">화면 설정</span>';
     dialog=document.createElement('dialog');dialog.id='theme-dialog';dialog.setAttribute('aria-labelledby','theme-title');
     dialog.innerHTML=`<div class="theme-heading"><h2 id="theme-title">화면 설정</h2><button type="button" class="theme-close" aria-label="화면 설정 닫기">닫기</button></div><fieldset><legend>화면 스타일</legend><div class="theme-options">${[['light','밝게'],['dark','어둡게'],['system','기기 설정']].map(([value,label])=>`<label class="theme-choice"><input type="radio" name="site-theme" value="${value}">${icons[value]}<span>${label}</span></label>`).join('')}</div></fieldset><p class="theme-status" role="status"></p>`;
     document.body.append(launcher,dialog);root.classList.add('has-theme-control');apply();
