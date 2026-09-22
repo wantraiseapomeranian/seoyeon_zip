@@ -22,7 +22,7 @@ async function api(path='',body){
 function el(tag,text,className){const n=document.createElement(tag);if(text!=null)n.textContent=text;if(className)n.className=className;return n;}
 function link(url,text,className){const n=el('a',text,className);n.href=url;n.target='_blank';n.rel='noopener noreferrer';return n;}
 function card(p){
-  const article=el('article',null,'review-card');
+  const article=el('article',null,'review-card');article.dataset.reviewId=p.code;
   const images=p.images?.length?p.images:(p.image?[p.image]:[]);
   const preview=window.reviewGallery(images.map((src,i)=>({src,url:p.url,kind:p.media?.find(m=>m.previewUrl===src)?.kind,alt:(p.author||'인스타그램')+' 사진 '+(i+1)})),{label:'게시물 사진'}).element;
   const body=el('div',null,'review-body'),meta=el('div',null,'review-meta');
@@ -36,8 +36,8 @@ function card(p){
   body.append(meta,tags,reasons,el('p',p.caption||'본문이 없는 게시물이에요.','review-caption'),link(p.url,'원문에서 보기 ↗','review-link'));
   const actions=el('div',null,'review-buttons');
   for(const value of ['kept','excluded','held','pending']){const button=el('button',value==='pending'?'판단 취소':value==='kept'?'피드에 표시':labels[value]);button.setAttribute('aria-pressed',String(p.status===value));button.disabled=p.status===value;button.addEventListener('click',async()=>{
-    if(busy)return;busy=true;actions.querySelectorAll('button').forEach(b=>b.disabled=true);
-    try{if(await window.reviewDecision({action:value,label:button.textContent,submit:details=>api('/'+p.code,{status:value,revision:p.revision,...details})})){await load();$('#message').textContent=`${labels[value]} 상태로 저장했어요.`;}else actions.querySelectorAll('button').forEach(b=>b.disabled=b.getAttribute('aria-pressed')==='true');}catch(e){$('#message').textContent=e.message;actions.querySelectorAll('button').forEach(b=>b.disabled=b.getAttribute('aria-pressed')==='true');}finally{busy=false;}
+    if(busy)return;const focus=window.reviewFocus(button);busy=true;actions.querySelectorAll('button').forEach(b=>b.disabled=true);
+    try{if(await window.reviewDecision({action:value,label:button.textContent,submit:details=>api('/'+p.code,{status:value,revision:p.revision,...details})})){await load();focus.restore();$('#message').textContent=`${labels[value]} 상태로 저장했어요.`;}else actions.querySelectorAll('button').forEach(b=>b.disabled=b.getAttribute('aria-pressed')==='true');}catch(e){$('#message').textContent=e.message;actions.querySelectorAll('button').forEach(b=>b.disabled=b.getAttribute('aria-pressed')==='true');}finally{focus.stop();busy=false;}
   });actions.append(button);}body.append(actions);article.append(preview,body);return article;
 }
 let generation=0;

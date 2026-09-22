@@ -1,5 +1,4 @@
 // Official icon SVGs; licenses and sources: docs/icon-licenses/README.md
-const iconSets={"phosphor":["<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M224,48V96a8,8,0,0,1-8,8H168a8,8,0,0,1,0-16h28.69L182.06,73.37a79.56,79.56,0,0,0-56.13-23.43h-.45A79.52,79.52,0,0,0,69.59,72.71,8,8,0,0,1,58.41,61.27a96,96,0,0,1,135,.79L208,76.69V48a8,8,0,0,1,16,0ZM186.41,183.29a80,80,0,0,1-112.47-.66L59.31,168H88a8,8,0,0,0,0-16H40a8,8,0,0,0-8,8v48a8,8,0,0,0,16,0V179.31l14.63,14.63A95.43,95.43,0,0,0,130,222.06h.53a95.36,95.36,0,0,0,67.07-27.33,8,8,0,0,0-11.18-11.44Z\"/></svg>","<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M224,128a8,8,0,0,1-8,8H128a8,8,0,0,1,0-16h88A8,8,0,0,1,224,128ZM128,72h88a8,8,0,0,0,0-16H128a8,8,0,0,0,0,16Zm88,112H128a8,8,0,0,0,0,16h88a8,8,0,0,0,0-16ZM82.34,42.34,56,68.69,45.66,58.34A8,8,0,0,0,34.34,69.66l16,16a8,8,0,0,0,11.32,0l32-32A8,8,0,0,0,82.34,42.34Zm0,64L56,132.69,45.66,122.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32,0l32-32a8,8,0,0,0-11.32-11.32Zm0,64L56,196.69,45.66,186.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32,0l32-32a8,8,0,0,0-11.32-11.32Z\"/></svg>"],"tabler":["<!--\ntags: [synchronization, reload, restart, spinner, loader, ajax, update, arrows, refresh, navigation]\ncategory: Arrows\nversion: \"1.0\"\nunicode: \"eb13\"\n-->\n<svg\n  xmlns=\"http://www.w3.org/2000/svg\"\n  width=\"24\"\n  height=\"24\"\n  viewBox=\"0 0 24 24\"\n  fill=\"none\"\n  stroke=\"currentColor\"\n  stroke-width=\"2\"\n  stroke-linecap=\"round\"\n  stroke-linejoin=\"round\"\n>\n  <path d=\"M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4\" />\n  <path d=\"M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4\" />\n</svg>\n","<!--\ntags: [to-do, checklist, form, template, task, reminder, schedule, agenda, list, check]\ncategory: Text\nversion: \"1.2\"\nunicode: \"eb6a\"\n-->\n<svg\n  xmlns=\"http://www.w3.org/2000/svg\"\n  width=\"24\"\n  height=\"24\"\n  viewBox=\"0 0 24 24\"\n  fill=\"none\"\n  stroke=\"currentColor\"\n  stroke-width=\"2\"\n  stroke-linecap=\"round\"\n  stroke-linejoin=\"round\"\n>\n  <path d=\"M3.5 5.5l1.5 1.5l2.5 -2.5\" />\n  <path d=\"M3.5 11.5l1.5 1.5l2.5 -2.5\" />\n  <path d=\"M3.5 17.5l1.5 1.5l2.5 -2.5\" />\n  <path d=\"M11 6l9 0\" />\n  <path d=\"M11 12l9 0\" />\n  <path d=\"M11 18l9 0\" />\n</svg>\n"],"lucide":["<svg\n  xmlns=\"http://www.w3.org/2000/svg\"\n  width=\"24\"\n  height=\"24\"\n  viewBox=\"0 0 24 24\"\n  fill=\"none\"\n  stroke=\"currentColor\"\n  stroke-width=\"2\"\n  stroke-linecap=\"round\"\n  stroke-linejoin=\"round\"\n>\n  <path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\" />\n  <path d=\"M21 3v5h-5\" />\n  <path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\" />\n  <path d=\"M8 16H3v5\" />\n</svg>\n","<svg\n  xmlns=\"http://www.w3.org/2000/svg\"\n  width=\"24\"\n  height=\"24\"\n  viewBox=\"0 0 24 24\"\n  fill=\"none\"\n  stroke=\"currentColor\"\n  stroke-width=\"2\"\n  stroke-linecap=\"round\"\n  stroke-linejoin=\"round\"\n>\n  <path d=\"M13 5h8\" />\n  <path d=\"M13 12h8\" />\n  <path d=\"M13 19h8\" />\n  <path d=\"m3 17 2 2 4-4\" />\n  <path d=\"m3 7 2 2 4-4\" />\n</svg>\n"]};
 const $=s=>document.querySelector(s);
 let manualTimer,manualController,manualVersion=0,manualOffset=0,manualNext=null;
 const manualStates=new Map();
@@ -24,20 +23,7 @@ $('#copy-contact').addEventListener('click',async()=>{
 });
 const kinds={cosmo:'COSMO',fansite:'직찍',official:'공식',other:'기타'};
 const params=new URLSearchParams(location.search);
-const iconFamily='phosphor';
-function applyIcons(){
- ['refresh','open-status'].forEach((id,index)=>{
-  const button=document.getElementById(id);const label=index?'수집 상태':'목록 새로고침';
-  const svg=new DOMParser().parseFromString(iconSets[iconFamily][index],'image/svg+xml').documentElement;
-  svg.setAttribute('aria-hidden','true');svg.setAttribute('focusable','false');
-  button.classList.add('icon-button');button.setAttribute('aria-label',label);
-  button.replaceChildren(document.importNode(svg,true),node('span','icon-tooltip',label));
- });
-}
-applyIcons();
 const mood='zine';
-document.body.dataset.mood=mood;
-document.body.dataset.background='mist';
 let media=['image','video','youtube'].includes(params.get('media'))?params.get('media'):'image';
 let posts=[],states=[],collectedAt=null,loaded=false,role='visitor',roleGeneration=0;
 const live=!['127.0.0.1','localhost'].includes(location.hostname)||params.get('data')==='live';
@@ -86,12 +72,12 @@ function feedAction(tag,className,label,path){
  const shape=document.createElementNS(svg.namespaceURI,'path');shape.setAttribute('d',path);svg.append(shape);
  const tooltip=node('span','icon-tooltip',label);tooltip.setAttribute('aria-hidden','true');control.append(svg,tooltip);return control;
 }
-function card(post){
+function card(post,priority=false){
  const article=node('article','card');article.dataset.id=post.id;article.dataset.date=post.publishedAt;
  const video=post.media.some(m=>m.kind==='video'||m.kind==='gif');const photos=post.media.filter(m=>m.kind==='image').length;
  const first=post.media[0]??{};
  if(!post.media.some(m=>m.previewUrl)){const link=node('a','manual-preview',post.platform==='youtube'?'YouTube에서 보기 ↗':post.platform==='instagram'?'Instagram 원문 보기 ↗':'X 원문 보기 ↗');link.href=post.canonicalUrl;link.target='_blank';link.rel='noopener noreferrer';article.append(link);}else{
- const viewer=window.reviewGallery(post.media.map(m=>({src:smallPreview(m.previewUrl),originalSrc:m.previewUrl,url:post.canonicalUrl,kind:m.kind,alt:post.authorHandle+(m.kind==='image'?' 사진':m.kind==='unknown'?' 미리보기':' 영상 미리보기')})),{label:'피드 사진',managed:true,onChange:i=>photoPositions.set(post.id,i)});
+ const viewer=window.reviewGallery(post.media.map(m=>({src:smallPreview(m.previewUrl),originalSrc:m.previewUrl,url:post.canonicalUrl,kind:m.kind,alt:post.authorHandle+(m.kind==='image'?' 사진':m.kind==='unknown'?' 미리보기':' 영상 미리보기')})),{label:'피드 사진',managed:true,priority,onChange:i=>photoPositions.set(post.id,i)});
  viewer.element.classList.add('feed-gallery');viewer.element.style.setProperty('--photo-ratio',first.width&&first.height?String(first.width/first.height):post.platform==='youtube'?'1.7778':'0.75');viewer.select(photoPositions.get(post.id)??0,false);feedViewers.push(viewer);article.append(viewer.element);}
 
  const actions=node('div','feed-actions');
@@ -121,10 +107,10 @@ function render(){
  const direction=$('#sort').value==='oldest'?1:-1;
  selected.sort((a,b)=>direction*(Date.parse(a.publishedAt)-Date.parse(b.publishedAt))||a.id.localeCompare(b.id));
  const elements=[];let previousDay=null;
- for(const post of selected){
+ for(const [index,post] of selected.entries()){
   const day=new Date(post.publishedAt).toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'});
   if(mood==='zine'&&day!==previousDay){const heading=node('h2','day-heading');heading.append(node('span',null,day.replaceAll('-','.')),node('span','day-note','게시일'));elements.push(heading);previousDay=day;}
-  const item=card(post);
+  const item=card(post,index<(matchMedia('(max-width:600px)').matches?2:3));
   if(mood==='album'||mood==='archive'){
    const time=item.querySelector('time');time.textContent=new Date(post.publishedAt).toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'});
   }
@@ -222,7 +208,7 @@ async function load(){
  $('#source').replaceChildren(new Option('모든 출처','all'),...[...known].sort().map(s=>new Option(s==='youtube'?'YouTube':s==='instagram'?'Instagram':s==='manual'?'직접 등록':`@${s}`,s)));const requested=loadedOnce?current:params.get('source');if(known.has(requested))$('#source').value=requested;loadedOnce=true;
  if(states.some(sourceHasError))$('#notice').textContent='일부 출처의 갱신이 지연되고 있어요. 수집 상태를 확인해 주세요.';
  render();renderSources();syncUrl();
- }catch{if(!loaded){$('#gallery').replaceChildren();$('#count').textContent='목록 조회 실패';}$('#notice').textContent='목록을 불러오지 못했어요. 목록 새로고침으로 다시 시도해 주세요.';}finally{$('#refresh').disabled=false;}
+ }catch{if(!loaded){$('#gallery').replaceChildren();$('#count').textContent='목록 조회 실패';}$('#notice').textContent='목록을 불러오지 못했어요. 목록 새로고침으로 다시 시도해 주세요.';}finally{$('#refresh').disabled=false;$('#gallery').setAttribute('aria-busy','false');}
 }
 let loadedOnce=false;
 if(live && /^[A-Za-z0-9_]{1,15}$/.test(params.get('source')||'')){const source=params.get('source');document.querySelector('#source').append(new Option('@'+source,source));document.querySelector('#source').value=source;}

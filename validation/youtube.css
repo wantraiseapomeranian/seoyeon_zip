@@ -4,9 +4,8 @@
 .youtube-review .youtube-confirm,#youtube-bulk-controls .youtube-confirm{display:flex;gap:8px;flex-direction:row;align-items:flex-start;width:100%;font-size:13px;line-height:1.7}
 .youtube-confirm input[type=checkbox]{width:20px;height:20px;min-height:20px;flex:none;margin:2px 0 0;accent-color:var(--ink)}
 #youtube-list{display:grid;gap:28px}#youtube-notice{font-size:14px;color:var(--ink);line-height:1.6;margin-block:12px 20px}
-#youtube-list:empty::after{content:'이 상태의 영상이 없어요.';display:block;padding-block:32px;font-size:14px;color:var(--muted)}
 
-.youtube-review .review-buttons button{white-space:nowrap}
+.youtube-review .review-buttons button{flex:1 1 max-content;white-space:normal;overflow-wrap:anywhere;max-width:100%}
 
 .youtube-selection{display:flex;align-items:center;gap:8px;min-height:44px;font-size:14px;width:fit-content;cursor:pointer}
 .youtube-selection input[type=checkbox]{width:20px;height:20px;min-height:20px;flex:none;margin:0;accent-color:var(--ink)}

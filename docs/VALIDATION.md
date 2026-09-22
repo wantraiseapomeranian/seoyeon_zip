@@ -1121,3 +1121,13 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 기존 삼성 전용 일반 텍스트 표시를 iPhone/iPad/iPod 및 데스크톱 UA를 사용하는 터치 iPad로 확장. 네이티브 입력의 내부 텍스트 렌더링에 의존하지 않고 빈 값은 날짜 선택, 선택값은 YYYY.MM.DD로 표시. 기존 네이티브 입력·접근성 라벨·값·날짜 선택기 유지.
 - RED: node scripts/check-dark-controls.mjs --iphone에서 표시 텍스트 undefined 확인. 수정 후 GREEN: 같은 명령 및 기본 삼성 UA 검사 통과. Chrome에서 각 light/dark × feed/X/Instagram/history 8개 조건, 빈 값/선택/클릭 초기화/터치 대상/가로 넘침/사진 이동 회귀 확인.
 - 로컬 스크린샷에서 X dark 날짜 글자와 배경 대비 육안 확인. iPhone UA를 사용하는 Chrome 검사이며 실제 Safari 렌더링·iOS 기본 달력 조작·VoiceOver 검증을 대체하지 않는다. 실제 iPhone 재확인은 남음.
+
+## 2026-09-22 UI 검수 후속 수정
+
+- 범위: ca2264d에서 분리한 codex/ui-audit-fixes 작업 폴더. 진행 중인 운영 현황·YouTube 운영 기록 변경은 포함하지 않음.
+- X/Instagram/YouTube 저장 후 초점 복귀: 동일 카드 제목 → 기존 위치의 다음 카드 제목 → 빈 상태 순서. 대기 중 사용자가 다른 곳으로 옮긴 초점은 유지. 피드 gallery에 region 역할을 부여하고 유튜브 빈 상태를 실제 status 텍스트로 제공.
+- check-ui-audit-fixes RED: X 저장 후 BODY, YouTube 320px 200% 버튼 내용 넘침 재현. GREEN: 세 화면의 같은 카드·다음 카드·빈 목록·대기 중 사용자 이동, X/Instagram 취소 복귀. YouTube 모든 가시 요소 200% 글자 확대에서 320/390px 버튼 잘림·문서 넘침 없음.
+- check-feed-render: JS600ms/API250ms 지연 조건. 수정 전 CLS 모바일0.77451/데스크톱0.71686, 고정 테마·아이콘·6개 skeleton을 HTML에 반영한 뒤 390px0/1280px0.000221. 첫 행은 eager/high, 화면 밖 마지막 사진은 lazy 및 src 미할당 확인. 빈/오류 상태 gallery region 및 axe aria-prohibited-attr 위반0 확인.
+- 기존 check-review-audit 및 check-photo-comparison 통과. check-instagram 최초 실패는 수정 전 ca2264d에서도 동일 재현: 오래된 childPosts 표본에 Image 유형이 없어 기본 사진 필터에서 제외됨. 표본에 명시적 Image 유형을 추가한 뒤 실제 로컬 API/DB 가져오기·표시·보류·피드 사진 이동 통과.
+- npm test 236/236 통과. 새 private review-focus.js 경로를 추가한 access 검사14/14 통과. 독립 읽기 전용 코드 리뷰 APPROVED(Critical/Major 미발견, 실행 검증과 별도).
+- 기준 web-design-guidelines 규칙을 2026-09-22 재조회, 변경된 이름·역할·초점·줄바꿈·초기 이미지 우선순위 범위 점검. 실제 iPhone Safari 날짜 재확인 및 VoiceOver 음성은 미실행. 운영 성능 전후는 배포 후 별도 측정 예정이며 로컬 CLS를 운영값으로 표현하지 않음.
