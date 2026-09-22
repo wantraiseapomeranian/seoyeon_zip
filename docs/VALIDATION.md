@@ -1168,4 +1168,5 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 기존 X/Instagram/YouTube 판정 후 초점 회귀 및 200% YouTube 텍스트 통과. 피드 렌더 검사는 고정180ms 대기 대신 DOM 생성 및 명시적 script gate로 기준 프레임을 잡도록 보완. 모바일 CLS0, 데스크톱0.000221, 기존 이미지 eager/lazy·빈 상태·오류 동작 통과.
 - 토큰 대비 계산: 본문/보조/링크를 각 바탕·패널·선택 배경과 비교했을 때 최저 light5.20:1, dark5.75:1. 입력 경계는 바탕·패널에서 light최저3.64:1, dark최저3.56:1. 선택 경계는 링크 색상을 사용한다. 독립 읽기 전용 리뷰 APPROVED, Critical/Major 없음.
 - 설정 패널 light/dark axe(WCAG2/2.1/2.2 A·AA) 위반0, 320px 200% 텍스트 가로 넘침 없음. 390/768/1280 스크린샷 확인. Wrangler4.130.0 dry-run 성공(33 assets, bundle271.06KiB); 최초 sandbox 디렉터리/로그 접근 실패 후 승인된 로컬 dry-run 재실행으로 확인했다.
-- 실제 iPhone Safari, Samsung 강제 다크, VoiceOver는 미확인. 배포 결과는 후속 기록한다.
+- 배포: 기능 커밋667bb42, Workers Builds 2e406672-160f-48a3-98d3-bdb7ebe080f2 completed/success. 운영 피드 실제48개 표시, OS dark 최초방문light, 수동dark 및 새로고침 유지, system→OS light 반응 확인. 390/768/1280px 가로 넘침 없음, 테마 전환 추가 API 요청0(최초+새로고침 총2회), 페이지 오류0, 비인증 관리자 API401. 운영 캡처는 .local/theme/live-*.png에만 보관한다.
+- 실제 iPhone Safari, Samsung 강제 다크, VoiceOver는 미확인. 여섯 화면 전체 검사는 로컬 Chrome이며 운영 브라우저 검사는 공개 피드에 한정한다. 기존 미커밋 운영 화면 변경을 별도로 보존·복원하고 원본 diff 일치를 확인했다.
