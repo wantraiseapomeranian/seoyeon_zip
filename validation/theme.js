@@ -1,4 +1,4 @@
-// Runs before stylesheets so a saved theme is resolved before the first paint.
+// Independent async settings UI. The hash-authorized HTML bootstrap resolves first paint.
 (() => {
   const key='seoyeon-theme', root=document.documentElement;
   const system=window.matchMedia('(prefers-color-scheme: dark)');

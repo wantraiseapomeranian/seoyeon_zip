@@ -110,7 +110,7 @@ export default {
       // Match the default UI request exactly; filtered pages fetch their own scope.
       if(request.method==='GET'&&!url.search&&['/','/feed','/feed.html'].includes(url.pathname)&&asset.ok&&headers.get('Content-Type')?.includes('text/html'))
         headers.append('Link','</api/feed?media=image>; rel=preload; as=fetch; crossorigin=anonymous');
-      headers.set('Content-Security-Policy',"default-src 'self'; img-src https://i.ytimg.com https://i9.ytimg.com https://pbs.twimg.com https://*.cdninstagram.com https://*.fbcdn.net 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
+      headers.set('Content-Security-Policy',"default-src 'self'; script-src 'self' 'sha256-HzyTGjUU33k/Kv+MfVNbzz3t7E717fOQCbeUzo3O2Bg='; img-src https://i.ytimg.com https://i9.ytimg.com https://pbs.twimg.com https://*.cdninstagram.com https://*.fbcdn.net 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
       headers.set('Referrer-Policy','no-referrer');
       return new Response(asset.body,{status:asset.status,headers});
     } catch { return reply({error:'validation_failure'},500); }

@@ -30,6 +30,12 @@ try{
   const colors=await page.locator('input[type=date]').evaluateAll(es=>es.map(e=>({bg:getComputedStyle(e.closest('.date-display')?.querySelector('.date-value')||e).backgroundColor,page:getComputedStyle(document.body).backgroundColor})));
   colors.forEach(c=>assert.equal(c.bg,c.page,file+' date background'));
   await page.reload();assert.equal(await resolved(),'dark');console.log('PASS themes/layout/date',file);
+  if(file==='instagram'){
+   await page.locator('#import-dialog').evaluate(d=>d.showModal());
+   const colors=await page.evaluate(()=>{const t=getComputedStyle(document.querySelector('#json')),b=getComputedStyle(document.querySelector('#import-submit'));return {inputBg:t.backgroundColor,inputText:t.color,buttonBg:b.backgroundColor,buttonText:b.color}});
+   assert.deepEqual(colors,{inputBg:'rgb(36, 46, 54)',inputText:'rgb(230, 237, 242)',buttonBg:'rgb(230, 237, 242)',buttonText:'rgb(25, 33, 39)'});
+   await page.locator('#import-dialog').evaluate(d=>d.close());
+  }
  }
  await page.getByRole('button',{name:'화면 설정',exact:true}).click();await page.getByRole('radio',{name:'기기 설정',exact:true}).check();
  await page.emulateMedia({colorScheme:'light'});await page.waitForFunction(()=>document.documentElement.dataset.theme==='light');await page.emulateMedia({colorScheme:'dark'});await page.waitForFunction(()=>document.documentElement.dataset.theme==='dark');
