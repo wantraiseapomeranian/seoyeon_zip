@@ -280,7 +280,8 @@ V1은 원문 새 탭 이동을 기본으로 한다. 외부 이미지 프록시, 
 2. 배치 선택이 필요할 때 `variant`로 두 안을 비교한다.
 3. `better-colors`와 `better-typography`로 실제 콘텐츠의 색상·글자 표현을 보정한다.
 4. `emil-design-eng`로 필요한 인터랙션만 다듬는다.
-5. Playwright로 화면·동작을 확인한다. 구체적인 카드 위험이나 움직임 문제가 남을 때만 `break` 또는 `review-animations`를 추가한다.
+5. 변경한 UI 파일에 `web-design-guidelines`로 적용 가능한 접근성·UX 규칙을 점검한다. 같은 범위의 Impeccable audit 결과가 있으면 누락된 항목만 보완한다.
+6. Playwright로 화면·동작을 확인한다. 구체적인 카드 위험이나 움직임 문제가 남을 때만 `break` 또는 `review-animations`를 추가한다.
 
 스킬 설치 여부와 참조 파일·사용법은 실제 Codex 환경에서 확인한다. 여러 디자인 스킬의 상충하는 스타일을 섞지 않는다. 스타일 스킬의 일반적인 기본값보다 이 문서의 프로젝트 맥락을 우선한다. 종합 리뷰를 스킬별로 반복하거나, 스킬을 사용하기 위해 불필요한 애니메이션·라이브러리를 추가하지 않는다.
 
@@ -297,3 +298,15 @@ V1은 원문 새 탭 이동을 기본으로 한다. 외부 이미지 프록시, 
 ## 2026-09-21 유튜브 검토함 공통 규칙 복구
 
 유튜브는 기존 검토함의 헤더 이동 메뉴(X/Instagram/YouTube/검토 내역), 상태 탭, 새로고침, 카드·판정 버튼·700px 반응형을 공유한다. 아이콘22px/조작44px 및 현재 위치·툴팁·포커스를 유지한다. YouTube 아이콘은 Phosphor Regular youtube-logo 공식 SVG를 사용한다. 채널 추가·수집 재개는 수집 및 관리의 수집 탭에 두고, 직접 등록은 자료 관리에 유지한다. 좁은 화면에서 헤더는 공통으로 줄바꿈하며 아이콘 조작 크기를 줄이지 않는다.
+
+
+## 2026-09-22 UI 검수 스킬 도입
+
+- `web-design-guidelines`를 프로젝트 로컬 `.agents/skills/web-design-guidelines`에 설치했다. 기존 `emil-design-eng`는 유지하고 `frontend-design`, `ui-ux-pro-max`, `hallmark`는 이번 도입에서 제외한다.
+- 원본: https://github.com/vercel-labs/agent-skills/tree/063bee94c3f4df8453406c830b0a7df0f2860278/skills/web-design-guidelines (metadata version 1.0.0). 기존 `.gitignore` 정책에 따라 스킬 파일은 Git에 포함하지 않는다.
+- 재설치: Codex의 `skill-installer/scripts/install-skill-from-github.py`를 Python으로 실행하며 `--repo vercel-labs/agent-skills --ref 063bee94c3f4df8453406c830b0a7df0f2860278 --path skills/web-design-guidelines --dest .agents/skills`를 전달한다. 프로젝트 루트에서 실행하며 기존 설치는 덮어쓰지 않는다.
+- 역할은 변경한 UI의 코드 검수다. 대상 파일은 작업 diff에서 정하고 전체 저장소 재검토나 디자인 시스템 재생성으로 확대하지 않는다. 발견 사항은 파일·줄과 실제 사용자 영향을 함께 기록한다. 명시적 리뷰 전용 요청에서는 사용자의 Critical/Major 보고 기준을 따른다.
+- 매 검수 시 원본이 지정한 https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md 를 읽고 조회일과 사용한 규칙의 커밋 또는 해시를 결과에 남긴다. 위 설치 버전은 스킬 진입 문서의 버전이며 외부 규칙을 고정하지 않는다. 규칙 조회 실패 시 최신 규칙 검수 완료로 보고하지 않는다.
+- 주요 항목: 아이콘 버튼의 접근 가능한 이름, 포커스·키보드 탐색, 폼 라벨·오류, 비동기 상태 알림, 이미지 크기·로딩, 긴 한글·계정명, reduced-motion, 좁은 화면의 넘침.
+- 이 문서와 기능 계약을 우선한다. 영문 Title Case, React 전용 패턴 등 해당하지 않는 규칙은 제외한다. 가상화·URL 동기화·새 라이브러리는 체크리스트만을 이유로 추가하지 않고 실제 요구와 비용을 판단한다. 합의된 사진 그리드와 색·글꼴 방향을 유지한다.
+- 정적 코드 검수는 실제 브라우저·키보드·터치 검증이나 접근성 적합성 인증을 대신하지 않는다. 새 스킬의 자동 인식은 다음 턴에 확인한다.
