@@ -29,7 +29,7 @@ test('empty operations are read only, private, and do not manufacture overdue al
  const response=await get(env),data=await response.json();
  assert.equal(response.status,200);assert.match(response.headers.get('cache-control'),/private.*no-store/);
  assert.equal(sqlite.prepare('SELECT total_changes() n').get().n,before);
- assert.deepEqual(data.totals,{x:0,instagram:0,manual:0});assert.equal(data.x.enabled,false);
+ assert.deepEqual(data.totals,{x:0,instagram:0,manual:0,youtube:0});assert.equal(data.x.enabled,false);
  assert.equal(data.instagram.status,'waiting');assert.equal(data.instagram.overdue,0);assert.equal(data.manual.overdue,0);
  assert.equal(data.instagram.syncedAt,null);assert.ok(Date.parse(data.generatedAt));
 });
@@ -114,6 +114,6 @@ test('totals count storage records without loading private content or writing po
  const {sqlite,env}=setup();
  sqlite.exec("INSERT INTO posts(id,data) VALUES('x:123','{\"caption\":\"secret content\"}'); INSERT INTO instagram_review(code,data,imported_at,status) VALUES('ig123','{\"caption\":\"secret content\"}','2026-01-01','excluded')");
  const before=sqlite.prepare('SELECT total_changes() AS n').get().n;
- const data=await (await get(env)).json();assert.deepEqual(data.totals,{x:1,instagram:1,manual:0});assert.doesNotMatch(JSON.stringify(data),/secret content/);
+ const data=await (await get(env)).json();assert.deepEqual(data.totals,{x:1,instagram:1,manual:0,youtube:0});assert.doesNotMatch(JSON.stringify(data),/secret content/);
  assert.equal(sqlite.prepare('SELECT total_changes() AS n').get().n,before);
 });

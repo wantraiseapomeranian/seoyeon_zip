@@ -1,7 +1,7 @@
 import {sources} from './sources.mjs';
 
 const badStatuses=new Set(['retry','attention','delayed','unconfigured']);
-const labels=new Map([...sources.map(({handle})=>['x:'+handle,'X · '+handle]),['instagram','Instagram 수집'],['manual','직접 등록 사진'],['history','일별 운영 기록']]);
+const labels=new Map([...sources.map(({handle})=>['x:'+handle,'X · '+handle]),['youtube','YouTube 수집'],['instagram','Instagram 수집'],['manual','직접 등록 사진'],['history','일별 운영 기록']]);
 const iso=value=>value===null||value===undefined?null:new Date(value*1000).toISOString();
 const statusOf=status=>badStatuses.has(status)?'bad':status==='healthy'?'healthy':['disabled','completed'].includes(status)?'stopped':'unknown';
 
@@ -19,6 +19,7 @@ function historySignal(row,now){
 function observations(signals,history,now){
  const result=new Map([...labels.keys()].map(key=>[key,'unknown']));
  for(const row of signals?.x?.sources??[]){const key='x:'+row.source;if(labels.has(key))result.set(key,statusOf(row.status));}
+ if(signals?.youtube)result.set('youtube',statusOf(signals.youtube.status));
  const ig=signals?.instagram;
  if(ig)result.set('instagram',['disabled','completed'].includes(ig.status)?'stopped':ig.pendingErrors>0||ig.overdue>0||ig.pendingOverdue>0?'bad':statusOf(ig.status));
  const manual=signals?.manual;

@@ -61,7 +61,7 @@ test('unavailable alert storage does not hide current operations or fake an empt
  try{
   sqlite.exec('DROP TABLE operations_alert_events');
   const response=await operations.handleOperations(new Request('https://test.local/api/admin/operations'),{DB});
-  const data=await response.json();assert.equal(response.status,200);assert.equal(data.alerts.status,'unavailable');assert.deepEqual(data.totals,{x:0,instagram:0,manual:0});
+  const data=await response.json();assert.equal(response.status,200);assert.equal(data.alerts.status,'unavailable');assert.deepEqual(data.totals,{x:0,instagram:0,manual:0,youtube:0});
  }finally{sqlite.close();}
 });
 

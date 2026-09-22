@@ -3,6 +3,7 @@ import {readFileSync,mkdirSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 import {testDatabase} from '../tests/helpers/d1.mjs';
+import {recordOperationsSnapshot} from '../src/operations-history.mjs';
 import {handleApi} from '../src/worker.mjs';
 
 // Real worker + SQLite fixture: only failure responses are injected at HTTP boundary.
@@ -12,7 +13,11 @@ sqlite.exec("UPDATE collection_state SET history_paused=1,catchup_status='limite
 sqlite.exec("INSERT INTO instagram_sync(id,task_id,last_checked_at,last_success_at,next_due_at) VALUES(1,'testTask',datetime('now'),datetime('now','-1 day'),unixepoch()+300)");
 sqlite.prepare('INSERT INTO manual_posts VALUES(?,?,?,?)').run('manual:x:123','https://x.com/sample/status/123','{}',new Date().toISOString());
 sqlite.exec("INSERT INTO manual_media_jobs(post_id,state,error) VALUES('manual:x:123','failed','provider_network')");
-const env={DB,COLLECTION_ENABLED:'true',APIFY_SYNC_ENABLED:'true',APIFY_TASK_ID:'testTask',APIFY_TOKEN:'local-test-only',MANUAL_MEDIA_ENABLED:'true'};
+const env={DB,YOUTUBE_ENABLED:'true',YOUTUBE_COLLECTION_ENABLED:'true',YOUTUBE_API_KEY:'fixture',COLLECTION_ENABLED:'true',APIFY_SYNC_ENABLED:'true',APIFY_TASK_ID:'testTask',APIFY_TOKEN:'local-test-only',MANUAL_MEDIA_ENABLED:'true'};
+sqlite.exec("INSERT INTO youtube_videos(video_id) VALUES('Pending1234'); UPDATE youtube_sources SET last_success_at=unixepoch()-60,next_due_at=unixepoch()+3600");
+await recordOperationsSnapshot(env,Date.now()-86400000);
+sqlite.exec("INSERT INTO youtube_videos(video_id) VALUES('Pending5678'); INSERT INTO operations_alert_events(key,label,type,created_at) VALUES('youtube','YouTube 수집','problem',unixepoch()-600),('youtube','YouTube 수집','recovered',unixepoch()-60)");
+await recordOperationsSnapshot(env);
 let mode='normal',reads=0,writes=0;
 const server=createServer(async(req,res)=>{
  try{
@@ -72,12 +77,17 @@ try{
   assert.equal(await page.locator('#ops-panel-'+keys[index]).getAttribute('role'),'tabpanel');
   assert.equal(await page.locator('#ops-panel-'+keys[index]).getAttribute('aria-labelledby'),'ops-tab-'+keys[index]);
  }
+ assert.match(await page.locator('#overview-values').innerText(),/YouTube\s*정상/);
+ assert.match(await page.locator('#overview-values').innerText(),/유튜브 미검토\s*2건/);
+ assert.equal(await page.locator('#youtube-operations').count(),0);
  await selected('overview');assert.equal(reads,1,'initial data uses one API read');
  assert.equal(await page.locator('#ops-panel-overview section').first().getAttribute('aria-labelledby'),'attention-title','actionable problems come first in DOM and reading order');
  assert.equal(await page.locator('#attention-summary').innerText(),'','no redundant prompt when issues are listed');
  assert.equal(await page.locator('#operations-status').getAttribute('role'),'status');
  assert.equal(await page.locator('#operations-status').evaluate(el=>getComputedStyle(el).position),'absolute','success announcement stays available without taking visual space');
  await page.locator('#ops-tab-collection').click();
+ assert.match(await page.locator('#youtube-values').innerText(),/저장 영상\s*2건/);
+ assert.match(await page.locator('#youtube-values').innerText(),/오늘 검색\s*0 \/ 12회/);
  assert.match(await page.locator('#x-values').innerText(),/수집 오류·지연\s*0개 계정/);
  assert.match(await page.locator('#x-values').innerText(),/과거 범위 미확인\s*1개 계정/);
  await page.locator('#x-details-title').click();
@@ -100,6 +110,9 @@ try{
  assert.match(await page.locator('#attention-summary').innerText(),/확인이 필요한 항목은 없어요/);
  sqlite.exec("UPDATE manual_media_jobs SET state='failed' WHERE post_id='manual:x:123'");
  await refresh();assert.equal(await page.locator('#operations-issues li').count(),1);
+ assert.match(await page.locator('#total-values').innerText(),/유튜브 저장 영상\s*2건/);
+ assert.match(await page.locator('#growth-values').innerText(),/유튜브 저장 영상\s*2건 · 전일 대비 \+1건/);
+ assert.match(await page.locator('#alerts-rows').innerText(),/YouTube 수집/);
  const initialReads=reads;
  assert.match(await page.locator('#total-values').innerText(),/직접 등록 자료\s*1건/);
  await page.locator('#ops-tab-overview').focus();

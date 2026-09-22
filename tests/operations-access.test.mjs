@@ -23,7 +23,7 @@ test('operations API and every asset require owner; owner alias and API are read
    assert.equal(response.status,200);assert.equal(assetPath,'/operations.html');assert.equal(response.headers.get('cache-control'),'private, no-store');
   }
   const result=await worker.fetch(new Request('https://test.local/api/admin/operations',{headers}),env);
-  assert.equal(result.status,200);assert.equal(result.headers.get('cache-control'),'private, no-store');assert.deepEqual((await result.json()).totals,{x:0,instagram:0,manual:0});
+  assert.equal(result.status,200);assert.equal(result.headers.get('cache-control'),'private, no-store');assert.deepEqual((await result.json()).totals,{x:0,instagram:0,manual:0,youtube:0});
   assert.equal((await worker.fetch(new Request('https://test.local/api/admin/operations',{method:'POST',headers}),env)).status,405);
  }finally{sqlite.close();}
 });

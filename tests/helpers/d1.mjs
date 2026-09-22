@@ -9,6 +9,7 @@ export function testDatabase({beforeYouTubeCategories=false}={}) {
     sqlite.exec(readFileSync(new URL('../../migrations/'+name,import.meta.url),'utf8'));
   if(!beforeYouTubeCategories){sqlite.exec('BEGIN');sqlite.exec(readFileSync(new URL('../../migrations/0025_youtube_categories.sql',import.meta.url),'utf8'));sqlite.exec('COMMIT');sqlite.exec(readFileSync(new URL('../../migrations/0026_youtube_search_scope.sql',import.meta.url),'utf8'));}
   sqlite.exec(readFileSync(new URL('../../migrations/0027_youtube_backfill.sql',import.meta.url),'utf8'));
+  sqlite.exec(readFileSync(new URL('../../migrations/0028_youtube_operations_history.sql',import.meta.url),'utf8'));
   const DB={
     prepare(sql) {
       return {sql,args:[],bind(...args){this.args=args;return this;},

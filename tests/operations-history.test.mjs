@@ -36,7 +36,7 @@ test('snapshot records KST day and raw counts, then cheaply keeps first successf
  await history.recordOperationsSnapshot({DB},time);
  const result=await history.readOperationsHistory(DB,time);
  assert.equal(result.items.length,1);
- assert.deepEqual(result.items[0],{day:'2026-09-15',capturedAt:'2026-09-14T15:00:00.000Z',totals:{x:1,instagram:1,manual:1},databaseBytes:8192,query:{version:'x-review-v1',status:'ok',sqlMs:1.75,rowsRead:42,resultBytes:result.items[0].query.resultBytes},delta:null});
+ assert.deepEqual(result.items[0],{day:'2026-09-15',capturedAt:'2026-09-14T15:00:00.000Z',totals:{x:1,instagram:1,manual:1,youtube:0},databaseBytes:8192,query:{version:'x-review-v1',status:'ok',sqlMs:1.75,rowsRead:42,resultBytes:result.items[0].query.resultBytes},delta:null});
  assert.ok(result.items[0].query.resultBytes>0);
  sqlite.exec("INSERT INTO posts VALUES('2','{}')");sql.length=0;
  await history.recordOperationsSnapshot({DB},time+1000);
@@ -50,7 +50,7 @@ test('query failure retains counts, missing metadata stays null, and duration fa
   const {DB}=database(options);
   await history.recordOperationsSnapshot({DB},at('2026-09-15'));
   const row=(await history.readOperationsHistory(DB,at('2026-09-15'))).items[0];
-  assert.deepEqual(row.totals,{x:0,instagram:0,manual:0});
+  assert.deepEqual(row.totals,{x:0,instagram:0,manual:0,youtube:0});
   assert.equal(row.query.status,options.queryError?'failed':'ok');
   assert.equal(row.query.sqlMs,options.meta?.duration??null);
   assert.equal(row.query.rowsRead,options.queryError?null:options.meta?.rows_read??null);
@@ -82,6 +82,6 @@ test('history reads only, bounds 30 KST calendar days and computes only consecut
  const {items}=await history.readOperationsHistory(DB,Date.parse('2026-09-14T15:00:00Z'));
  assert.deepEqual(items.map(row=>row.day),['2026-09-15','2026-09-13','2026-08-17']);
  assert.equal(items[0].delta,null);assert.equal(items[1].delta,null);
- assert.deepEqual(items[2].delta,{x:1,instagram:0,manual:0,databaseBytes:0});
+ assert.deepEqual(items[2].delta,{x:1,instagram:0,manual:0,youtube:0,databaseBytes:0});
  assert.ok(sql.every(query=>/^SELECT\b/.test(query)));
 });

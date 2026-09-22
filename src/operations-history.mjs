@@ -9,7 +9,7 @@ export async function recordOperationsSnapshot(env,now=Date.now()){
  const {DB}=env,day=kstDay(now);
  if(await DB.prepare('SELECT day FROM operations_history WHERE day=?').bind(day).first())return {status:'skipped',day};
  // all() retains the D1 size metadata that first() would discard.
- const counts=await DB.prepare('SELECT (SELECT COUNT(*) FROM posts) AS x,(SELECT COUNT(*) FROM instagram_review) AS instagram,(SELECT COUNT(*) FROM manual_posts) AS manual').all();
+ const counts=await DB.prepare('SELECT (SELECT COUNT(*) FROM posts) AS x,(SELECT COUNT(*) FROM instagram_review) AS instagram,(SELECT COUNT(*) FROM manual_posts) AS manual,(SELECT COUNT(*) FROM youtube_videos) AS youtube').all();
  const totals=counts.results[0];
  let query={status:'failed',sqlMs:null,rowsRead:null,resultBytes:null};
  try{
@@ -18,22 +18,22 @@ export async function recordOperationsSnapshot(env,now=Date.now()){
   });
  }catch{ /* A failed representative read must not erase the day's stored counts. */ }
  const result=await DB.prepare(`INSERT INTO operations_history
-  (day,captured_at,x_total,instagram_total,manual_total,database_bytes,query_version,query_status,query_sql_ms,query_rows_read,query_result_bytes)
-  VALUES(?,?,?,?,?,?,'x-review-v1',?,?,?,?) ON CONFLICT(day) DO NOTHING`)
-  .bind(day,new Date(now).toISOString(),totals.x,totals.instagram,totals.manual,metric(counts.meta?.size_after),query.status,query.sqlMs,query.rowsRead,query.resultBytes).run();
+  (day,captured_at,x_total,instagram_total,manual_total,youtube_total,database_bytes,query_version,query_status,query_sql_ms,query_rows_read,query_result_bytes)
+  VALUES(?,?,?,?,?,?,?,'x-review-v1',?,?,?,?) ON CONFLICT(day) DO NOTHING`)
+  .bind(day,new Date(now).toISOString(),totals.x,totals.instagram,totals.manual,totals.youtube,metric(counts.meta?.size_after),query.status,query.sqlMs,query.rowsRead,query.resultBytes).run();
  return {status:result.meta?.changes===0?'skipped':'recorded',day};
 }
 
 export async function readOperationsHistory(DB,now=Date.now()){
  const today=kstDay(now),first=shiftDay(today,-29);
  // Include one earlier day only to calculate the oldest displayed day's delta.
- const {results}=await DB.prepare('SELECT day,captured_at,x_total,instagram_total,manual_total,database_bytes,query_version,query_status,query_sql_ms,query_rows_read,query_result_bytes FROM operations_history WHERE day>=? AND day<=? ORDER BY day DESC').bind(shiftDay(first,-1),today).all();
+ const {results}=await DB.prepare('SELECT day,captured_at,x_total,instagram_total,manual_total,youtube_total,database_bytes,query_version,query_status,query_sql_ms,query_rows_read,query_result_bytes FROM operations_history WHERE day>=? AND day<=? ORDER BY day DESC').bind(shiftDay(first,-1),today).all();
  const byDay=new Map(results.map(row=>[row.day,row]));
  const difference=(a,b)=>a===null||a===undefined||b===null||b===undefined?null:a-b;
  return {items:results.filter(row=>row.day>=first).map(row=>{
   const prior=byDay.get(shiftDay(row.day,-1));
-  return {day:row.day,capturedAt:row.captured_at,totals:{x:row.x_total,instagram:row.instagram_total,manual:row.manual_total},databaseBytes:row.database_bytes,
+  return {day:row.day,capturedAt:row.captured_at,totals:{x:row.x_total,instagram:row.instagram_total,manual:row.manual_total,youtube:row.youtube_total},databaseBytes:row.database_bytes,
    query:{version:row.query_version,status:row.query_status,sqlMs:row.query_sql_ms,rowsRead:row.query_rows_read,resultBytes:row.query_result_bytes},
-   delta:prior?{x:difference(row.x_total,prior.x_total),instagram:difference(row.instagram_total,prior.instagram_total),manual:difference(row.manual_total,prior.manual_total),databaseBytes:difference(row.database_bytes,prior.database_bytes)}:null};
+   delta:prior?{x:difference(row.x_total,prior.x_total),instagram:difference(row.instagram_total,prior.instagram_total),manual:difference(row.manual_total,prior.manual_total),youtube:difference(row.youtube_total,prior.youtube_total),databaseBytes:difference(row.database_bytes,prior.database_bytes)}:null};
  })};
 }

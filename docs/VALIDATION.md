@@ -1178,3 +1178,10 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - npm test238/238; 테마6화면320/390/768/1280px·저장/system, iPhone/Samsung-UA 날짜·화살표, X/IG/YT검토초점, 피드CLS(모바일0/데스크톱0.000221) 및 preload중복요청 방지 통과. 리뷰에서 발견한 Instagram 입력/primary색상 우선순위와 화면밖lazy타임아웃 문제 수정 후 재검토 APPROVED. Instagram import-dialog dark 실제 계산색 회귀 추가/통과. 실기기Safari·VoiceOver 미확인.
 - 배포 후 확인: 9844976 Cloudflare check-run completed/success. 같은 운영390px 다음 사진 검사에서 2/2, complete=true, busy없음, loading=eager, HTTP200 및 재시도 안내 숨김 확인. 운영 테마·새로고침·390/768/1280px 검증 PASS(48카드, 테마 전환 추가 API0, 페이지 오류0, 비인증 관리자 API401). 실제 iPhone Safari 검증은 아니며 원격 CDN 지연 자체의 해소를 보장하지 않는다.
 - 2026-09-22 모바일 설정 버튼: check-theme.mjs 여섯 화면320/390/768/1280px·테마·저장·초점·reduced-motion 통과. 운영 피드에 로컬 CSS를 적용한 Chrome390px에서 두 테마 모두52×52px·오른쪽20px·아래32px, soft 배경/그림자 계산값 및 캡처 확인. 실제 iPhone/Galaxy 안전 영역 검증은 미확인. web-design-guidelines 원본2026-09-22 조회(https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md), 변경 범위 이름/초점/안전 여백 유지 확인. CSS와 문서만 변경, 새 자원 요청 없음.
+
+## 2026-09-22 유튜브 운영현황 통합 검증
+- 전체 테스트245/245 통과. 이후 전역 quota 차단과 channel 실패 결합 사례 추가 보완 후 유튜브 운영7/7 통과. 별도 코드 리뷰 최종 APPROVED.
+- 실제 로컬 API 기반 운영현황 브라우저:4개 탭, 유튜브2건/전일+1/알림 이력, 키보드·해시·부분 실패·인증 만료,320/390/768/1280px 통과. 읽기 외 요청0, 페이지 오류0. 모바일 요약844px.
+- 이전날 workerd/D1:일별 스냅샷·알림 cron·lease/fence·중복 방지·대표 조회 통과. 이번 재개에서 소스별/전체 quota 상태 구분 수정.
+- 0028은 nullable 집계 열만 추가하며 기존 스냅샷은 다시 쓰지 않음. 원격0028 추가 성공, 코드 배포 전이며 기존 영상 판정은 변경하지 않음.
+- 최종 Wrangler dry-run:276.42KiB/gzip68.16KiB 성공.

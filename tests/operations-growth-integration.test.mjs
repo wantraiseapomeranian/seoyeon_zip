@@ -24,7 +24,7 @@ test('missing history storage leaves current operations available',async()=>{
   const data=await result.json();
   assert.equal(result.status,200);
   assert.deepEqual(data.history,{status:'unavailable',items:[]});
-  assert.deepEqual(data.totals,{x:0,instagram:0,manual:0});
+  assert.deepEqual(data.totals,{x:0,instagram:0,manual:0,youtube:0});
  }finally{sqlite.close();}
 });
 
