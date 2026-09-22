@@ -5,7 +5,7 @@ import {chromium} from 'playwright';
 import {createReviewFixtures} from './fixtures/review.mjs';
 
 // Local mock API only: this check never writes real review decisions.
-const files=new Set(['x-review.html','x-review.js','instagram.html','instagram.js','review-gallery.js','review-focus.js','review-decision.js','review-history.html','review-history.js','review-history.css','instagram.css','feed.css']);
+const files=new Set(['x-review.html','x-review.js','instagram.html','instagram.js','review-gallery.js','review-filters.js','review-focus.js','review-decision.js','review-history.html','review-history.js','review-history.css','instagram.css','feed.css']);
 const server=createServer((req,res)=>{const path=new URL(req.url,'http://localhost').pathname;const file=({'/admin/x':'x-review.html','/admin/instagram':'instagram.html','/admin/review-history':'review-history.html'})[path]||path.slice(1);if(!files.has(file)){res.writeHead(404).end();return;}res.writeHead(200,{'Content-Type':file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html'});res.end(readFileSync('validation/'+file));});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const base='http://127.0.0.1:'+server.address().port;

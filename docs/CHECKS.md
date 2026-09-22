@@ -23,6 +23,7 @@ Windows의 runtime 검사에는 OS가 로컬 `workerd.exe` 실행을 허용해�
 
 모든 검사 파일을 일괄 실행하지 않는다. 추가 검사는 변경 범위와 아래 실행 조건을 확인해 선택한다.
 
+- `node scripts/check-review-filters.mjs`: X·Instagram 검토 화면의 필터 요청·페이지 초기화·선택 계정 보존·초기화·펼치기·너비를 로컬 Chrome과 모의 응답으로 확인한다. 임의 포트의 서버를 직접 시작·종료하며 운영 데이터는 변경하지 않는다.
 - `node scripts/check-youtube.mjs`: 등록·판정·감사 내역을 로컬 API/메모리 DB로 확인한다. 고정 포트 4198을 사용하므로 같은 포트의 `check-operations-tabs.mjs`와 동시에 실행하지 않는다. 일부 요청은 실제 `fetch`로 전달할 수 있어 외부 요청 차단을 보장하는 runtime 프로필과 구분한다.
 - `check-public-runtime.mjs`, `check-public-limit-runtime.mjs`: 별도로 시작한 로컬 Worker가 필요하다. 후자는 요청 제한 상태를 소진하므로 같은 서버에서 다른 검사와 함께 실행할 때 상태 영향을 고려한다.
 - `check-x-quality.mjs`: `.local/x-quality-posts.json`과 `.local/x-quality-backfill.sql` 입력이 필요해 기본 프로필에 포함하지 않는다.

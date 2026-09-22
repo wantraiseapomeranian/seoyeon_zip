@@ -30,7 +30,7 @@ test('owner context is created only after token verification and canonicalizes c
 });
 
 test('audit routes and all static history aliases remain private in public mode',async()=>{
-  for(const path of ['/api/admin/review-audit','/api/admin/review-audit/event','/admin/review-history','/admin/review-history/','/review-history','/review-history.html','/review-history.js','/review-history.css','/review-decision.js','/review-focus.js']) {
+  for(const path of ['/api/admin/review-audit','/api/admin/review-audit/event','/admin/review-history','/admin/review-history/','/review-history','/review-history.html','/review-history.js','/review-history.css','/review-decision.js','/review-focus.js','/review-filters.js']) {
     const {env,counts}=spies();
     assert.equal((await worker.fetch(new Request(`https://example.test${path}`),env)).status,401,path);
     assert.equal((await worker.fetch(new Request(`https://example.test${path}`,{headers:{'cf-access-jwt-assertion':'forged'}}),env)).status,403,path);

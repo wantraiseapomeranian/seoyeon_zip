@@ -1,17 +1,6 @@
 const $=s=>document.querySelector(s);
-function hasFilters(){return ['date','media','author','kind'].some(key=>{const el=$('#review-'+key);return el&&el.value&&el.value!=='all';});}
-function sizeFilterSelects(){
- const context=document.createElement('canvas').getContext('2d');if(!context)return;
- for(const select of document.querySelectorAll('.review-filters select')){
-  const style=getComputedStyle(select);context.font=style.font||style.fontSize+' '+style.fontFamily;
-  select.style.width=Math.ceil(context.measureText(select.selectedOptions[0]?.textContent||'').width+parseFloat(style.paddingLeft)+parseFloat(style.paddingRight)+28)+'px';
- }
-}
-function syncFilterLabel(){sizeFilterSelects();const count=['author','kind'].filter(key=>{const field=$('#review-'+key);return field&&field.value&&field.value!=='all';}).length;$('#review-more').textContent=count?'필터 · '+count:'필터';}
-function filterQuery(){syncFilterLabel();const q=new URLSearchParams();for(const key of ['date','media','author','kind']){const el=$('#review-'+key);if(el)q.set(key,el.value);}return '&'+q;}
-function updateAuthors(authors=[]){const el=$('#review-author'),value=el.value;el.replaceChildren(new Option('모든 계정',''),...[...new Set([...authors,...(value?[value]:[])])].sort().map(a=>new Option('@'+a,a)));el.value=value;sizeFilterSelects();}
-
 let status='pending',offset=0,busy=false;
+const filters=window.reviewFilters(()=>{offset=0;reload();});
 const labels={pending:'미검토',kept:'표시 중',held:'보류',excluded:'제외'};
 const errors={review_conflict:'다른 화면에서 수정된 글이에요. 새로고침 후 다시 확인해 주세요.',invalid_import:'JSON 배열 형식과 게시물 정보를 확인해 주세요. 한 번에 100개, 2MB까지 가져올 수 있어요.'};
 async function api(path='',body){
@@ -43,11 +32,11 @@ function card(p){
 let generation=0;
 async function load(){
   const current=++generation;$('#items').setAttribute('aria-busy','true');
-  try{const data=await api(`?status=${status}&offset=${offset}${filterQuery()}`);if(current!==generation)return;
-    updateAuthors(data.authors);const total=Object.values(data.counts).reduce((a,b)=>a+b,0),count=status==='all'?total:(data.counts[status]??0);
+  try{const data=await api(`?status=${status}&offset=${offset}${filters.query()}`);if(current!==generation)return;
+    filters.updateAuthors(data.authors);const total=Object.values(data.counts).reduce((a,b)=>a+b,0),count=status==='all'?total:(data.counts[status]??0);
     if(offset&&offset>=count){offset=Math.max(0,offset-25);return load();}
     $('#items').replaceChildren(...data.items.map(card));
-    $('#empty').hidden=data.items.length>0;$('#empty h2').textContent={pending:'지금 검토할 글이 없어요.',kept:'표시 중인 글이 없어요.',held:'보류한 글이 없어요.',excluded:'제외한 글이 없어요.',all:'아직 가져온 게시물이 없어요.'}[status];if(hasFilters())$('#empty h2').textContent='조건에 맞는 게시물이 없어요.';$('#empty p').hidden=total>0||hasFilters();$('#empty p').textContent='상단의 결과 가져오기로 게시물을 추가할 수 있어요.';$('.pagination').hidden=count<=25;
+    $('#empty').hidden=data.items.length>0;$('#empty h2').textContent={pending:'지금 검토할 글이 없어요.',kept:'표시 중인 글이 없어요.',held:'보류한 글이 없어요.',excluded:'제외한 글이 없어요.',all:'아직 가져온 게시물이 없어요.'}[status];if(filters.hasFilters())$('#empty h2').textContent='조건에 맞는 게시물이 없어요.';$('#empty p').hidden=total>0||filters.hasFilters();$('#empty p').textContent='상단의 결과 가져오기로 게시물을 추가할 수 있어요.';$('.pagination').hidden=count<=25;
     $('#tabs').querySelectorAll('button').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.status===status));b.querySelector('span').textContent=b.dataset.status==='all'?total:(data.counts[b.dataset.status]??0);});
     $('#previous').disabled=offset===0;$('#next').disabled=offset+25>=count;$('#page').textContent=`${Math.floor(offset/25)+1}페이지`;
   }finally{if(current===generation)$('#items').setAttribute('aria-busy','false');}
@@ -66,11 +55,7 @@ $('#import-form').addEventListener('submit',async e=>{e.preventDefault();const b
   let rows;try{rows=JSON.parse($('#json').value);}catch{$('#json').setAttribute('aria-invalid','true');throw new Error('올바른 JSON 내용을 입력해 주세요.');}
   const result=await api('/import',rows);$('#import-dialog').close();$('#json').value='';$('#file').value='';offset=0;await load();$('#message').textContent=`${result.imported}개 게시물 정보를 가져왔어요. 기존 판단은 유지했어요.`;
 }catch(error){$('#import-error').textContent=error.message;if($('#json').getAttribute('aria-invalid')==='true')$('#json').focus();}finally{button.disabled=false;}});
-for(const el of document.querySelectorAll('.review-filters input,.review-filters select'))el.addEventListener('change',()=>{offset=0;reload();});
-$('#review-reset').onclick=()=>{for(const key of ['date','media','author','kind']){const el=$('#review-'+key);if(el)el.value=['media','kind'].includes(key)?'all':'';}offset=0;reload();};
 reload();
-
-$('#review-more').onclick=()=>{const button=$('#review-more'),open=button.getAttribute('aria-expanded')!=='true';button.setAttribute('aria-expanded',String(open));$('#review-extra').hidden=!open;};
 
 async function loadSyncStatus(){try{const sync=await api('/sync');const text={unconfigured:'자동 가져오기 설정 대기',disabled:'자동 가져오기 중지됨',waiting:'새 수집 결과를 기다리고 있어요.',retry:'자동 가져오기에 실패했어요. 잠시 후 다시 시도해요.',connected:sync.syncedAt?'마지막 자동 가져오기 · '+new Date(sync.syncedAt).toLocaleString('ko-KR'):'자동 가져오기 연결됨'};$('#sync-status').textContent=text[sync.status]||'';}catch{$('#sync-status').textContent='자동 가져오기 상태를 확인하지 못했어요.';}}
 loadSyncStatus();$('#refresh').addEventListener('click',loadSyncStatus);

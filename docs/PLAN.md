@@ -593,3 +593,10 @@ X·Instagram·검토 내역의 새로고침 버튼 전체를 오른쪽으로 이
 - [x] `scripts/fixtures/review.mjs`의 `createReviewFixtures()`로 X·Instagram·검토 이력 표본을 추출하고 두 브라우저 검사에서 직접 import한다. 검사 파일의 소스 문자열 추출과 `new Function` 실행을 제거한다.
 - [x] 기존 표본 전체 값과 일치하고 호출 간 중첩 상태가 독립적임을 확인한다. 관련 브라우저 검사 3개와 독립 코드 리뷰를 통과했다.
 - [x] 변경 diff·비밀값 점검 후 a5b20bf 커밋·main 푸시 완료. 동일 커밋의 Cloudflare 자동 배포 completed/success 확인.
+
+## 2026-09-22 X·Instagram 검토 필터 공통화
+
+- 사용자 승인: 다음 모듈화로 X·Instagram 검토 필터를 공통화한다. 기존 화면·조회 조건·저장 동작은 유지한다.
+- [x] 날짜·미디어·계정·X 종류의 query/적용 여부, 선택 계정 보존, 선택 너비, 추가 필터 개수와 펼치기/초기화를 `review-filters.js`로 추출한다. 각 화면의 조회 함수·offset 상태는 콜백으로 연결한다.
+- [x] 기존 동작을 브라우저 검사로 기록한 뒤 공통화 후 동일 검사와 날짜·판정/초점 회귀를 확인한다. 새 정적 모듈의 비인증 접근 차단을 기존 Access 검사에 포함한다. 관련 Node22개·브라우저4개 검사 통과, 독립 리뷰 APPROVED.
+- [ ] 독립 코드 리뷰·diff/비밀값 점검, 커밋·main 푸시·Cloudflare 자동 배포 확인 및 검증 기록을 완료한다.

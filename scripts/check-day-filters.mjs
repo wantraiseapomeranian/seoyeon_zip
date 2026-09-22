@@ -8,7 +8,7 @@ const {sqlite,DB}=testDatabase();
 const server=createServer(async(req,res)=>{try{
  const url=new URL(req.url,'http://127.0.0.1:4193');
  if(url.pathname.startsWith('/api/')){const r=await handleApi(new Request(url),{DB});res.writeHead(r.status,{'Content-Type':'application/json'});res.end(await r.text());return;}
- const file=url.pathname.slice(1);if(!/^[a-z-]+\.(html|js|css)$/.test(file)){res.writeHead(404).end();return;}
+ const file=url.pathname==='/'?'feed.html':url.pathname.slice(1);if(!/^[a-z-]+\.(html|js|css)$/.test(file)){res.writeHead(404).end();return;}
  res.writeHead(200,{'Content-Type':file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html'});res.end(readFileSync('validation/'+file));
  }catch(e){res.writeHead(500).end(e.message);}});
 await new Promise(r=>server.listen(4193,'127.0.0.1',r));let browser;

@@ -1209,3 +1209,12 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - `node scripts/check-ui-audit-fixes.mjs text` 통과: YouTube 320/390px에서 글자200% 확대 시 버튼·문서 가로 넘침 없음.
 - 독립 읽기 전용 코드 리뷰 APPROVED. 제품 코드·DB·배포 설정 변경 없이 검사 표본만 분리했으며, 이번 작업은 관련 브라우저 검사만 실행했다. `git diff --check` 통과. 표본의 이메일·계정·URL은 기존 검사에서 쓰던 가상값이며 실제 수집 데이터나 비밀값을 추가하지 않았다.
 - a5b20bf main 푸시 성공. 연결된 `Workers Builds: seoyeon-zip`이 동일 SHA에서 completed/success(2026-09-22 08:20:39 UTC). 기존 미커밋 Instagram 조사 기록과 `.impeccable/`은 포함하지 않았다.
+
+## 2026-09-22 X·Instagram 검토 필터 공통화
+
+- `review-filters.js`가 공통 필터의 query/적용 여부·선택 너비·계정 목록 갱신·추가 필터 개수·펼치기·초기화를 담당한다. 각 화면은 offset 초기화와 기존 load/reload 콜백을 제공한다. HTML의 defer 순서로 공통 모듈을 먼저 읽고, Instagram에 없는 kind 조건은 요청에 추가하지 않는다.
+- `node scripts/check-review-filters.mjs`: 공통화 전 기존 UI와 공통화 후 모두 통과. X·Instagram×320/390/1280px6조합에서 날짜/미디어/계정/X종류 요청, 각 조건 변경·초기화 후 offset0, 계정 정렬/중복 제거/선택 보존, 추가 필터 개수, 펼치기 aria/hidden, 선택 글자 길이별 너비와 넘침 없음 확인. 로컬 모의 GET 응답만 사용하며 외부 요청·저장 요청 없음, 실제 스크립트/CSS 로드 오류·페이지 오류0.
+- `node --test tests/access.test.mjs tests/x-review-pagination.test.mjs tests/instagram-media.test.mjs`:22/22 통과. 새 `/review-filters.js`의 비인증401·위조 토큰403과 자산/DB 접근0 확인. 공개 자산 허용 목록은 변경하지 않았다.
+- `node scripts/check-day-filters.mjs`: 최초 실행은 피드의 루트 URL 새로고침에서 HTTP 오류. 기존 검사 서버가 `/`를404로 처리했으므로 실제 Worker와 같이 `feed.html`로 연결하는1줄 수정 후 통과. feed/X/Instagram×320/390/1280px 날짜 요청·초기화·피드 URL 복원·넘침/페이지 오류 없음 확인.
+- `node scripts/check-review-audit.mjs` 통과: 검토 저장·네트워크/503 동일 요청 재시도·409 복구·이력·안전한 텍스트/링크·사진 대체·키보드/터치·320/390/768/1280px. `node scripts/check-ui-audit-fixes.mjs`의 X/Instagram/YouTube 판정 후 초점14시나리오 통과.
+- 기존 검사 서버5곳에 공통 JS 허용 항목 추가, docs/CHECKS.md에 새 필터 검사 명령 기록. 독립 읽기 전용 리뷰 APPROVED(날짜 검사 서버 보완 포함). 실제 모바일 엔진 검증은 아니며, 커밋·배포 결과는 후속 기록한다.

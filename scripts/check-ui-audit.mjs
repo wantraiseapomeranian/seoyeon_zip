@@ -13,7 +13,7 @@ const server=createServer((req,res)=>{
   return res.end(JSON.stringify(data));
  }
  const file=({'/':'feed.html','/admin/x':'x-review.html','/admin/instagram':'instagram.html'})[path]??path.slice(1);
- if(!['feed.html','feed.js','feed.css','instagram.html','instagram.js','instagram.css','x-review.html','x-review.js','review-gallery.js'].includes(file)){res.writeHead(404).end();return;}
+ if(!['feed.html','feed.js','feed.css','instagram.html','instagram.js','instagram.css','x-review.html','x-review.js','review-gallery.js','review-filters.js'].includes(file)){res.writeHead(404).end();return;}
  res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(readFileSync(new URL(file,assets)));
 });
 await new Promise(r=>server.listen(0,'127.0.0.1',r));

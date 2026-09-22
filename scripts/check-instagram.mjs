@@ -15,7 +15,7 @@ const server=createServer(async(req,res)=>{
   try{
     if(path.startsWith('/api/')){const chunks=[];for await(const chunk of req)chunks.push(chunk);const response=await handleApi(new Request('http://127.0.0.1:4178'+req.url,{method:req.method,headers:req.headers,...(req.method==='POST'?{body:Buffer.concat(chunks)}:{})}),{DB},{actor:{id:'owner@example.test'}});res.writeHead(response.status,Object.fromEntries(response.headers));res.end(await response.text());return;}
     const file=path==='/admin/instagram'?'instagram.html':path.slice(1);
-    if(!['instagram.html','instagram.js','instagram.css','feed.css','review-gallery.js','review-decision.js','review-focus.js','review-history.css','feed.html','feed.js'].includes(file)){res.writeHead(404).end();return;}
+    if(!['instagram.html','instagram.js','instagram.css','feed.css','review-gallery.js','review-filters.js','review-decision.js','review-focus.js','review-history.css','feed.html','feed.js'].includes(file)){res.writeHead(404).end();return;}
     res.writeHead(200,{'Content-Type':file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html'});res.end(readFileSync('validation/'+file));
   }catch(error){res.writeHead(500).end(error.message);}
 });
