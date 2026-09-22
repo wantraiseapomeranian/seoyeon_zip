@@ -1185,3 +1185,6 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 이전날 workerd/D1:일별 스냅샷·알림 cron·lease/fence·중복 방지·대표 조회 통과. 이번 재개에서 소스별/전체 quota 상태 구분 수정.
 - 0028은 nullable 집계 열만 추가하며 기존 스냅샷은 다시 쓰지 않음. 원격0028 추가 성공, 코드 배포 전이며 기존 영상 판정은 변경하지 않음.
 - 최종 Wrangler dry-run:276.42KiB/gzip68.16KiB 성공.
+
+- 운영 ccd5c5a Cloudflare 자동 배포 completed/success. 실제 Chrome4탭에서 저장208/표시85/제외123/미검토0, 검색0/12 및4개 보충 채널의 예정 대기·다음 시각 표시 확인. 과거 일별 youtube_total은 NULL이며 화면 기록 없음으로 표시.
+- 2026-09-22 16:14 KST 예약 알림 점검에서 youtube 상태 행 생성, opened_at=NULL, monitor last_failure_at=NULL 확인. 일별 첫 유튜브 수치와 증감은 다음 예약일부터 쌓이며 과거 날짜를 소급 생성하지 않음.
