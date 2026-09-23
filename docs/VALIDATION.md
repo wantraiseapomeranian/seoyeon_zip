@@ -1226,4 +1226,7 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - tests/scheduler-not-found.test.mjs 신규3개가 기존 코드에서 needs_attention!=retry로 실패한 뒤 수정 후 통과. HTTP/JSON404의30분/1시간 백오프·세번째 중단·체크포인트 보존·성공 시 예산 초기화·401/403 즉시 중단 확인. 성공 사이 다른 오류도 failures 예산을 소비하므로404만 별도3회를 보장하지는 않는다.
 - 수집 관련19개 통과. 복구 SQL 테스트의 최초 비교 실패는 SQLite 반환 객체의 null prototype과 spread 객체의 prototype 차이였다. 비교용 행을 동일한 일반 객체로 변환한 뒤 전체 npm test와 동일한 tests/*.test.mjs를 Node dot reporter로 실행해 모두 통과.
 - scripts/sql/resume-2026-09-23-not-found.sql은 확인된 source/revision·단발HTTP404·needs_attention·활성·lease NULL·전역 활성 조건에서만 retry/next_due_at0/revision+1을 변경한다. failures·cursor·수집 경계·원본 데이터는 유지하며 중복 실행0건,변경revision/lease/비활성/다른오류는 거부하는 로컬 검증 통과. next_due_at0은 다음 예약에서 우선 선택되도록 하는 값이다.
-- 독립 리뷰 APPROVED, git diff --check 통과. Wrangler deploy --dry-run 성공276.57KiB/gzip68.19KiB. 실제 workerd 로컬 실행은 기존 OS정책 차단으로 이번에도 주장하지 않는다. 운영 복구·배포 결과는 후속 기록한다.
+- 독립 리뷰 APPROVED, git diff --check 통과. Wrangler deploy --dry-run 성공276.57KiB/gzip68.19KiB. 실제 workerd 로컬 실행은 기존 OS정책 차단으로 이번에도 주장하지 않는다.
+
+- f2a93bd main 푸시 및 동일 SHA Workers Builds completed/success(2026-09-23 00:54:47 UTC). 배포 후 검증된 복구 SQL1문장 적용, 사후 세 행 전체를 사전 값과 비교해 catchup_status/next_due_at/revision만 변경됐음을 확인했다. D1엔진 보고 changes4/rows_written6과 논리적 출처3행을 구분한다. 진행 위치·failures·오류 기록·원본은 직접 변경하지 않았다.
+- 실제 Cron 저장 완료: First0806_ 09:57:16, sogeumdwarf 10:00:34, triplescosmos 10:03:13 KST. 세 출처 모두 enabled1/failures0/공개 상태ok. 응답19/20/20건에서 저장 대상19/12/1건 확인(신규 증가 건수와는 다름). 404는 해제됐고 history_window_unverified·limited/gap은 기존 과거 탐색 범위 안내로 남는다. 최종 조회 rows_written0/changed_db=false.
