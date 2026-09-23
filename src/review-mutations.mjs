@@ -17,7 +17,7 @@ export async function decideXPost(DB,input,actor){
  const post=JSON.parse(row.data);
  const nearSql=`SELECT EXISTS(SELECT 1 FROM posts a,json_each(a.data,'$.media') am JOIN x_fingerprints af ON af.url=json_extract(am.value,'$.previewUrl'),posts b,json_each(b.data,'$.media') bm JOIN x_fingerprints bf ON bf.url=json_extract(bm.value,'$.previewUrl') WHERE a.id=? AND b.id!=a.id AND af.hash IS NOT NULL AND bf.hash IS NOT NULL AND COALESCE(af.confirmed_hash,af.hash)!=COALESCE(bf.confirmed_hash,bf.hash) AND (af.near_url=bf.url OR bf.near_url=af.url) AND NOT EXISTS(SELECT 1 FROM x_photo_differences d WHERE d.left_url=min(af.url,bf.url) AND d.right_url=max(af.url,bf.url))) AS found`;
  const near=(await DB.prepare(nearSql).bind(input.id).first()).found;
- const reviewReasons=[post.moderationReason,row.availability==='missing'?'원문 확인 불가':null,near?'유사 사진 후보':null].filter(Boolean);
+ const reviewReasons=[post.moderationReason,near?'유사 사진 후보':null].filter(Boolean);
  const displayState=old.decision==='auto'&&reviewReasons.length?'pending':row.visible?'visible':'hidden';
  const displayGuard=auditGuard(DB,`(${nearSql})=? AND EXISTS(SELECT 1 FROM x_feed_posts WHERE id=?)=?`,[input.id,near,input.id,row.visible]);
  const guard=auditGuard(DB,"EXISTS(SELECT 1 FROM posts p LEFT JOIN x_quality q ON q.post_id=p.id WHERE p.id=? AND p.data=? AND COALESCE(q.revision,0)=? AND q.decision IS ? AND q.availability IS ?)",[input.id,row.data,input.revision,row.decision,row.availability]);

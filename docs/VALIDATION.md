@@ -1230,3 +1230,10 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 
 - f2a93bd main 푸시 및 동일 SHA Workers Builds completed/success(2026-09-23 00:54:47 UTC). 배포 후 검증된 복구 SQL1문장 적용, 사후 세 행 전체를 사전 값과 비교해 catchup_status/next_due_at/revision만 변경됐음을 확인했다. D1엔진 보고 changes4/rows_written6과 논리적 출처3행을 구분한다. 진행 위치·failures·오류 기록·원본은 직접 변경하지 않았다.
 - 실제 Cron 저장 완료: First0806_ 09:57:16, sogeumdwarf 10:00:34, triplescosmos 10:03:13 KST. 세 출처 모두 enabled1/failures0/공개 상태ok. 응답19/20/20건에서 저장 대상19/12/1건 확인(신규 증가 건수와는 다름). 404는 해제됐고 history_window_unverified·limited/gap은 기존 과거 탐색 범위 안내로 남는다. 최종 조회 rows_written0/changed_db=false.
+
+## 2026-09-23 X 사진 검토 완료 분류
+- 재현: missing 글의 사진 판단 후 pending에 잔류하는 회귀 테스트 2개 실패를 확인한 뒤 수정했다.
+- 전체 Node 테스트 254개 통과. 실제 SQLite API 테스트에서 merge/different 완료, 남은 후보, moderation, unmerge 복원, auto 결정·availability·revision 보존 및 감사 displayState를 확인했다.
+- Chrome check-photo-comparison 통과: missing 글도 추가 숨기기 없이 pending에서 사라지고 숨김 탭에서 원문 상태를 확인한다. 기존 비교·확대·저장 및 1440/390/320px 점검 통과.
+- 운영 DB 쓰기나 마이그레이션 없음. GitHub 자동 배포 결과는 푸시 후 확인한다.
+- Wrangler dry-run 통과(276.47 KiB). 독립 읽기 전용 리뷰 APPROVED.

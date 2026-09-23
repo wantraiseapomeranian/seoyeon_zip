@@ -1,7 +1,7 @@
 import {indexReviewPhotos} from '../../src/x-review-photos.mjs';
 import {reviewFilters} from '../../src/review-filters.mjs';
 const reply=(data,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'private, no-store'}});
-// Frozen pre-pagination GET implementation: independent compatibility oracle.
+// Pre-pagination GET oracle; missing availability alone no longer requires review (2026-09-23).
 export async function legacyXReview(DB,params){
   const status=params.get('status')??'pending';if(!['pending','visible','hidden','all'].includes(status))return reply({error:'invalid_query'},400);
   const offset=Number(params.get('offset')??0);if(!Number.isSafeInteger(offset)||offset<0||offset>100000)return reply({error:'invalid_query'},400);
@@ -13,7 +13,7 @@ export async function legacyXReview(DB,params){
   const photoIndex=indexReviewPhotos(photos.results,rejected.results);
   const items=results.map(r=>({...JSON.parse(r.data),decision:r.decision??'auto',revision:r.revision??0,availability:r.availability??'unknown',visible:!!r.visible,checkedAt:r.checked_at,missingCount:r.missing_count??0}));
   const scoped=items.filter(filters.matches),counts={pending:0,visible:0,hidden:0,all:scoped.length};
-  for(const p of scoped){p.reviewState=p.decision==='auto'&&(p.moderationReason||p.availability==='missing'||photoIndex.pending.has(p.id))?'pending':p.visible?'visible':'hidden';counts[p.reviewState]++;}
+  for(const p of scoped){p.reviewState=p.decision==='auto'&&(p.moderationReason||photoIndex.pending.has(p.id))?'pending':p.visible?'visible':'hidden';counts[p.reviewState]++;}
   const filtered=status==='all'?scoped:scoped.filter(p=>p.reviewState===status);
   const metadata=new Map(items.map(p=>[p.id,{author:p.authorHandle,publishedAt:p.publishedAt,visible:p.visible,decision:p.decision,revision:p.revision}]));
   const page=filtered.slice(offset,offset+25).map(p=>({...p,comparisons:photoIndex.pairsFor(p.id).map(([a,b])=>({postId:b.id,url:b.url,image:b.image,ownImage:a.image,exact:a.hash===b.hash,...metadata.get(b.id)}))}));

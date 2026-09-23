@@ -35,7 +35,7 @@ const classification=`WITH
   SELECT p.*,COALESCE(q.decision,'auto') AS decision,COALESCE(q.revision,0) AS revision,
    COALESCE(q.availability,'unknown') AS availability,q.checked_at,q.missing_count,
    v.id IS NOT NULL AS visible,
-   CASE WHEN COALESCE(q.decision,'auto')='auto' AND (p.moderated=1 OR q.availability='missing' OR n.id IS NOT NULL) THEN 'pending'
+   CASE WHEN COALESCE(q.decision,'auto')='auto' AND (p.moderated=1 OR n.id IS NOT NULL) THEN 'pending'
     WHEN v.id IS NOT NULL THEN 'visible' ELSE 'hidden' END AS review_state,
    (COALESCE(q.availability,'')='missing' OR COALESCE(q.decision,'auto')='hidden' OR p.moderation_present=1) AS priority
   FROM x_review_posts p LEFT JOIN x_quality q ON q.post_id=p.id LEFT JOIN visible v ON v.id=p.id LEFT JOIN pending n ON n.id=p.id
