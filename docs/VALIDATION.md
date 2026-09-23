@@ -1219,3 +1219,11 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - `node scripts/check-review-audit.mjs` 통과: 검토 저장·네트워크/503 동일 요청 재시도·409 복구·이력·안전한 텍스트/링크·사진 대체·키보드/터치·320/390/768/1280px. `node scripts/check-ui-audit-fixes.mjs`의 X/Instagram/YouTube 판정 후 초점14시나리오 통과.
 - 기존 검사 서버5곳에 공통 JS 허용 항목 추가, docs/CHECKS.md에 새 필터 검사 명령 기록. 독립 읽기 전용 리뷰 APPROVED(날짜 검사 서버 보완 포함). `git diff --check` 통과, HTML은 순서가 보장된 공통 스크립트 태그 추가만 있음을 대조했다. 변경 diff의 비밀값·개인정보 확인 완료. 실제 모바일 엔진 검증은 아니다.
 - 38a973c main 푸시 성공. 연결된 `Workers Builds: seoyeon-zip`이 동일 SHA에서 completed/success(2026-09-22 08:38:02 UTC). 배포 후 비인증 GET `/review-filters.js`·`/api/admin/x`·`/api/admin/instagram`은401, `/feed`는200 확인. 운영의 인증된 관리자 화면 동작은 별도로 실행하지 않았으며 위 UI 검증은 로컬 결과다.
+
+## 2026-09-23 출처 404 제한 재시도·복구
+
+- 운영9/23 09:47 KST: 세 출처 enabled1/failures1/provider_http_error:404/needs_attention, revision870/866/868, lease없음 확인. 모듈화 배포 후 정상 수집6/9/11회. 해당 중단 규칙은9/9 코드부터 존재하며 모듈화에서 src·예약 설정은 변경되지 않았다.9/23 09:44 KST 공급자 직접 읽기는 세곳200,응답 변환 성공. 이 조사는 DB쓰기0.
+- tests/scheduler-not-found.test.mjs 신규3개가 기존 코드에서 needs_attention!=retry로 실패한 뒤 수정 후 통과. HTTP/JSON404의30분/1시간 백오프·세번째 중단·체크포인트 보존·성공 시 예산 초기화·401/403 즉시 중단 확인. 성공 사이 다른 오류도 failures 예산을 소비하므로404만 별도3회를 보장하지는 않는다.
+- 수집 관련19개 통과. 복구 SQL 테스트의 최초 비교 실패는 SQLite 반환 객체의 null prototype과 spread 객체의 prototype 차이였다. 비교용 행을 동일한 일반 객체로 변환한 뒤 전체 npm test와 동일한 tests/*.test.mjs를 Node dot reporter로 실행해 모두 통과.
+- scripts/sql/resume-2026-09-23-not-found.sql은 확인된 source/revision·단발HTTP404·needs_attention·활성·lease NULL·전역 활성 조건에서만 retry/next_due_at0/revision+1을 변경한다. failures·cursor·수집 경계·원본 데이터는 유지하며 중복 실행0건,변경revision/lease/비활성/다른오류는 거부하는 로컬 검증 통과. next_due_at0은 다음 예약에서 우선 선택되도록 하는 값이다.
+- 독립 리뷰 APPROVED, git diff --check 통과. Wrangler deploy --dry-run 성공276.57KiB/gzip68.19KiB. 실제 workerd 로컬 실행은 기존 OS정책 차단으로 이번에도 주장하지 않는다. 운영 복구·배포 결과는 후속 기록한다.

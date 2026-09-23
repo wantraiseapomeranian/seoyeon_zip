@@ -18,7 +18,10 @@ export async function runDueSource(env) {
     catch { throw new ProviderError(null,'provider_schema'); }
   } catch(error) {
     if(!(error instanceof ProviderError)) throw error;
-    const retry=error.status===429 || (error.status>=500 && error.status<=599) ||
+    // A transient missing profile may recover; stop after three failed attempts.
+    const retryNotFound=error.status===404 && state.failures<2 &&
+      ['provider_http_error','provider_json_error'].includes(error.code);
+    const retry=retryNotFound || error.status===429 || (error.status>=500 && error.status<=599) ||
       ['provider_timeout','provider_network'].includes(error.code);
     const status=retry?'retry':'needs_attention';
     const now=(await env.DB.prepare('SELECT unixepoch() AS now').first()).now;
