@@ -1237,3 +1237,4 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - Chrome check-photo-comparison 통과: missing 글도 추가 숨기기 없이 pending에서 사라지고 숨김 탭에서 원문 상태를 확인한다. 기존 비교·확대·저장 및 1440/390/320px 점검 통과.
 - 운영 DB 쓰기나 마이그레이션 없음. GitHub 자동 배포 결과는 푸시 후 확인한다.
 - Wrangler dry-run 통과(276.47 KiB). 독립 읽기 전용 리뷰 APPROVED.
+- 배포 a96de535f260df07c540aac17a32db38562cf74c Cloudflare success (2026-09-23T01:22:38Z). 운영 DB 읽기 전용 신규 조회 결과 all 3079 / pending 0 / visible 2951 / hidden 128로 기존 잔류 3건 정리 확인. 배포 후 /feed 200, /api/admin/x 401.
