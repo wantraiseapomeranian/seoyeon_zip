@@ -19,7 +19,7 @@ export function testDatabase({beforeYouTubeCategories=false}={}) {
     },
     async batch(statements) {
       sqlite.exec('BEGIN IMMEDIATE');
-      try {const results=[];for(const s of statements) results.push(await (/^\s*SELECT\b/i.test(s.sql)?s.all():s.run()));sqlite.exec('COMMIT');return results;}
+      try {const results=[];for(const s of statements) results.push(await (sqlite.prepare(s.sql).columns().length?s.all():s.run()));sqlite.exec('COMMIT');return results;}
       catch(e){sqlite.exec('ROLLBACK');throw e;}
     }
   };

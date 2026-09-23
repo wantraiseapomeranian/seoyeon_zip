@@ -30,22 +30,33 @@ export async function readFeed(db, params) {
     try{cursor=JSON.parse(atob(params.get('cursor')));}catch{invalid();}
     if(!cursor||cursor.scope!==scope||typeof cursor.id!=='string'||!/^(?:(?:x:)?\d{1,30}|ig:[A-Za-z0-9_-]{5,64}|yt:[A-Za-z0-9_-]{11}|manual:(?:x:\d{1,30}|ig:[A-Za-z0-9_-]{5,64}))$/.test(cursor.id)||typeof cursor.date!=='string'||!Number.isFinite(Date.parse(cursor.date)))invalid();
   }
-  const countQuery=db.prepare('SELECT COUNT(*) AS count FROM managed_feed_posts p'+condition()).bind(...args);
-  if(cursor){where.push(`(${dateSql}${sort==='oldest'?'>':'<'}? OR (${dateSql}=? AND p.id>?))`);args.push(cursor.date,cursor.date,cursor.id);}
-  const [countResult,{results},stateResult]=await db.batch([
-    countQuery,
-    db.prepare(`SELECT p.id,p.data FROM managed_feed_posts p${condition()} ORDER BY ${dateSql} ${sort==='oldest'?'ASC':'DESC'},p.id ASC LIMIT 49`).bind(...args),
+  const direction=sort==='oldest'?'ASC':'DESC';
+  const pageCondition=cursor?` WHERE (${dateSql}${sort==='oldest'?'>':'<'}? OR (${dateSql}=? AND p.id>?))`:'';
+  // Share expensive visibility/media projection within this request, without stale cached decisions.
+  const [{results:rows},stateResult]=await db.batch([
+    db.prepare(`WITH feed AS MATERIALIZED (SELECT p.id,p.data FROM managed_feed_posts p${condition()}),
+      page AS (SELECT p.id,p.data FROM feed p${pageCondition} ORDER BY ${dateSql} ${direction},p.id ASC LIMIT 49)
+      SELECT * FROM (
+       SELECT 0 AS section,NULL AS id,NULL AS data,COUNT(*) AS count FROM feed
+       UNION ALL SELECT 1,id,data,NULL FROM page
+      ) ORDER BY section,json_extract(data,'$.publishedAt') ${direction},id ASC`)
+      .bind(...args,...(cursor?[cursor.date,cursor.date,cursor.id]:[])),
     db.prepare('SELECT MAX(last_success_at) AS latest FROM collection_state')
   ]);
-  const total=countResult.results[0],state=stateResult.results[0];
+  const total=rows[0],results=rows.slice(1),state=stateResult.results[0];
   const page=results.slice(0,48), posts=page.map(r=>JSON.parse(r.data));
   if(posts.length){
     const ids=JSON.stringify(page.map(r=>r.id));
-    const [related,instagramRelated]=await db.batch([
-      db.prepare("SELECT DISTINCT a.id,json_extract(p.data,'$.canonicalUrl') AS url,json_extract(p.data,'$.authorHandle') AS author FROM x_photo_rows a JOIN x_photo_rows b ON a.hash=b.hash AND a.id!=b.id JOIN posts p ON p.id=b.id WHERE a.rank=1 AND a.id IN (SELECT value FROM json_each(?))").bind(ids),
-      db.prepare("SELECT DISTINCT x.id,json_extract(i.data,'$.url') AS url,json_extract(i.data,'$.author') AS author FROM x_photo_rows x JOIN instagram_photo_rows i ON i.hash=x.hash WHERE x.rank=1 AND x.id IN (SELECT value FROM json_each(?))").bind(ids)
+    const [related]=await db.batch([
+      db.prepare(`WITH photos AS MATERIALIZED (SELECT * FROM x_photo_rows)
+       SELECT DISTINCT a.id,json_extract(p.data,'$.canonicalUrl') AS url,json_extract(p.data,'$.authorHandle') AS author
+        FROM photos a JOIN photos b ON a.hash=b.hash AND a.id!=b.id JOIN posts p ON p.id=b.id
+        WHERE a.rank=1 AND a.id IN (SELECT value FROM json_each(?))
+       UNION ALL
+       SELECT DISTINCT x.id,json_extract(i.data,'$.url') AS url,json_extract(i.data,'$.author') AS author
+        FROM photos x JOIN instagram_photo_rows i ON i.hash=x.hash
+        WHERE x.rank=1 AND x.id IN (SELECT value FROM json_each(?))`).bind(ids,ids)
     ]);
-    related.results.push(...instagramRelated.results);
     for(const post of posts)post.duplicateSources=related.results.filter(r=>r.id===post.id).map(r=>({url:r.url,author:r.author}));
   }
   const last=posts.at(-1);

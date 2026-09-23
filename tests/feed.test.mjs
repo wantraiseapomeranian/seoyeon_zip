@@ -90,3 +90,16 @@ test('duplicate source links exclude hidden, pending and missing posts but keep 
   assert.deepEqual(result.posts[0].duplicateSources.map(s=>s.author).sort(),['kept1','source2','source6']);
  }finally{sqlite.close();}
 });
+
+
+test('feed reuses filtered bodies for count and page instead of recomputing both',async()=>{
+ const {sqlite,DB}=testDatabase();try{
+  for(let i=100;i<151;i++)add(sqlite,i,'2026-09-22T00:00:00Z');
+  let reads=0;
+  sqlite.function('measure_feed_body',value=>{reads++;return value;});
+  sqlite.exec('CREATE TEMP VIEW managed_feed_posts AS SELECT id,measure_feed_body(data) AS data FROM main.managed_feed_posts');
+  const result=await readFeed(DB,new URLSearchParams({media:'image'}));
+  assert.equal(result.total,51);assert.equal(result.posts.length,48);
+  assert.ok(reads<=102,'each body may be read for filtering and projection, not repeated for count/page: '+reads);
+ }finally{sqlite.close();}
+});
