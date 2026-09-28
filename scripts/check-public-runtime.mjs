@@ -6,7 +6,7 @@ for(const path of ['/','/feed.html','/feed']) {
 }
 const session=await fetch(new URL('/api/session',origin));assert.equal(session.status,200);assert.deepEqual(await session.json(),{role:'visitor'});assert.equal(session.headers.get('cache-control'),'private, no-store');
 const feed=await fetch(new URL('/api/feed',origin));assert.equal(feed.status,200);assert.ok(Array.isArray((await feed.json()).posts));
-const status=await fetch(new URL('/api/collection-status',origin));assert.equal(status.status,200);const {sources}=await status.json();assert.ok(sources.length>0);for(const source of sources)assert.deepEqual(Object.keys(source).sort(),['lastSuccessAt','source','state']);
+const status=await fetch(new URL('/api/collection-status',origin));assert.equal(status.status,200);const {sources}=await status.json();assert.ok(sources.length>0);for(const source of sources)assert.deepEqual(Object.keys(source).sort(),['lastSuccessAt','reason','source','state']);
 for(const path of ['/api/sources','/api/export','/api/samples','/api/admin/x','/api/admin/instagram','/admin','/admin/x','/instagram','/instagram.html','/x-review','/x-review.html','/index.html','/cards.js']) {
  const response=await fetch(new URL(path,origin),{redirect:'manual'});assert.equal(response.status,401,path);
 }

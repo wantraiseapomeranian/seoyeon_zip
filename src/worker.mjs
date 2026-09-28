@@ -43,7 +43,7 @@ export async function handleApi(request,env,context,ctx) {
     return reply({collectedAt:state?.latest==null?null:new Date(state.latest*1000).toISOString(),posts:results.map(r=>JSON.parse(r.data))});
   }
   if(url.pathname==='/api/collection-status' && request.method==='GET') return reply({sources:(await listSources(env.DB)).map(s=>publicSource({...s,collection_enabled:env.COLLECTION_ENABLED==='true'&&s.collection_enabled===1}))});
-  if(url.pathname==='/api/sources' && request.method==='GET') return reply({sources:(await listSources(env.DB)).map(s=>({...s,collection_enabled:env.COLLECTION_ENABLED==='true'&&s.collection_enabled===1}))});
+  if(url.pathname==='/api/sources' && request.method==='GET') return reply({sources:(await listSources(env.DB)).map(s=>{const source={...s,collection_enabled:env.COLLECTION_ENABLED==='true'&&s.collection_enabled===1};return {...source,collectionStatus:publicSource(source)};})});
   const retry=url.pathname.match(/^\/api\/sources\/([A-Za-z0-9_]{1,15})\/retry$/);
   if(retry && request.method==='POST') {
     if(request.headers.get('origin')!==url.origin || request.headers.get('x-validation-action')!=='collect') return reply({error:'invalid_origin'},403);

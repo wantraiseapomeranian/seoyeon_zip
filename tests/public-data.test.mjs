@@ -4,13 +4,36 @@ import {publicSource,publicPost} from '../src/public-data.mjs';
 
 test('public source status has only allowed fields and respects stop/error priority',()=>{
  const base={source:'WEV86_',enabled:1,collection_enabled:true,last_success_at:0,revision:91,cursor:'private',last_error_code:null};
- assert.deepEqual(publicSource({...base,enabled:0,last_error_code:'storage_error'}),{source:'WEV86_',state:'paused',lastSuccessAt:'1970-01-01T00:00:00.000Z'});
+ assert.deepEqual(publicSource({...base,enabled:0,last_error_code:'storage_error'}),{source:'WEV86_',state:'paused',reason:null,lastSuccessAt:'1970-01-01T00:00:00.000Z'});
  for(const collection_enabled of [false,0])assert.equal(publicSource({...base,collection_enabled}).state,'paused');
  assert.equal(publicSource({...base,last_error_code:'storage_error'}).state,'attention');
  assert.equal(publicSource({...base,catchup_status:'needs_attention'}).state,'attention');
  for(const last_error_code of ['history_window_unverified','unverified_exhaustion','repeated_cursor'])assert.equal(publicSource({...base,last_error_code}).state,'ok');
- assert.deepEqual(publicSource({...base,last_success_at:null}),{source:'WEV86_',state:'waiting',lastSuccessAt:null});
+ assert.deepEqual(publicSource({...base,last_success_at:null}),{source:'WEV86_',state:'waiting',reason:null,lastSuccessAt:null});
  assert.equal(publicSource(base).state,'ok');
+});
+
+test('retry and stopped states expose only safe error categories and clear on recovery',()=>{
+ const base={source:'WEV86_',enabled:1,last_success_at:10,catchup_status:'retry'};
+ for(const [last_error_code,reason] of [
+  ['provider_http_error:404','not_found'],['provider_json_error:404','not_found'],
+  ['provider_http_error:429','rate_limit'],['provider_json_error:429','rate_limit'],
+  ['provider_timeout','timeout'],['provider_network','network'],
+  ['provider_http_error:503','provider_unavailable'],['provider_http_error:401','access_denied'],
+  ['provider_http_error:403','access_denied'],['storage_error','storage'],
+  ['invalid_json:200','invalid_response'],['provider_schema','invalid_response'],
+  ['unknown private https://secret/429','unknown']
+ ]){
+  const result=publicSource({...base,last_error_code});
+  assert.equal(result.state,'retry',last_error_code);assert.equal(result.reason,reason,last_error_code);
+  assert.deepEqual(Object.keys(result).sort(),['lastSuccessAt','reason','source','state']);
+  assert.equal(publicSource({...base,last_error_code,catchup_status:'needs_attention'}).state,'attention');
+  assert.equal(publicSource({...base,last_error_code,enabled:0}).reason,null);
+ }
+ for(const last_error_code of [null,'history_window_unverified','unverified_exhaustion','repeated_cursor']){
+  const recovered=publicSource({...base,catchup_status:'current',last_error_code});
+  assert.equal(recovered.state,'ok');assert.equal(recovered.reason,null);
+ }
 });
 
 test('public post projection strips internal data at every object level',()=>{
@@ -34,7 +57,7 @@ test('anonymous worker reads only public projected data and rejects every manage
   const result=await feed.json();assert.equal(result.posts.length,1);assert.ok(!JSON.stringify(result).includes('private'));
   const status=await worker.fetch(new Request('https://test.local/api/collection-status'),env);assert.equal(status.status,200);
   const data=await status.json();assert.ok(data.sources.length>0);
-  for(const source of data.sources)assert.deepEqual(Object.keys(source).sort(),['lastSuccessAt','source','state']);
+  for(const source of data.sources)assert.deepEqual(Object.keys(source).sort(),['lastSuccessAt','reason','source','state']);
   const before=sqlite.prepare('SELECT * FROM collection_state ORDER BY source').all();
   for(const [path,method] of [['/api/sources/Seowoo_0501','PATCH'],['/api/sources/Seowoo_0501/retry','POST'],['/api/manual-posts','POST'],['/api/admin/x','POST'],['/api/admin/instagram','POST']]){
    const response=await worker.fetch(new Request('https://test.local'+path,{method,headers:{origin:'https://test.local','content-type':'application/json','x-management-action':'manage','x-validation-action':'collect','x-review-action':'review'},body:'{}'}),env);

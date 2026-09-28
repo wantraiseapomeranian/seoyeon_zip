@@ -151,23 +151,31 @@ async function loadLive(append=false){
 }
 function changeFilters(){if(live){posts=[];loaded=false;render();loadLive();}else{render();syncUrl();}}
 const historyNotes=new Set(['history_window_unverified','unverified_exhaustion','repeated_cursor']);
-const sourceHasError=s=>s.state==='attention'||s.catchup_status==='needs_attention'||!!s.last_error_code&&!historyNotes.has(s.last_error_code);
+const sourceHasError=s=>['attention','retry'].includes(s.state)||['needs_attention','retry'].includes(s.catchup_status)||!!s.last_error_code&&!historyNotes.has(s.last_error_code);
+const sourceLabels={paused:'일시 중지',waiting:'첫 수집 대기',ok:'수집 정상',retry:'재시도 대기',attention:'수집 중단'};
+const sourceReasons={not_found:'게시물 목록을 가져오지 못했어요.',rate_limit:'외부 서비스의 요청 한도에 도달했어요.',timeout:'외부 서비스의 응답이 늦어 조회를 마치지 못했어요.',network:'외부 서비스에 연결하지 못했어요.',provider_unavailable:'외부 서비스에서 서버 오류가 발생했어요.',access_denied:'외부 서비스가 접근을 거부했어요.',storage:'가져온 게시물을 저장하지 못했어요.',invalid_response:'가져온 데이터의 형식을 확인하지 못했어요.',unknown:'수집 중 오류가 발생했어요.'};
+function sourceMessage(status){
+ if(!['retry','attention'].includes(status?.state))return '';
+ return (sourceReasons[status.reason]||sourceReasons.unknown)+(status.state==='retry'?' 자동으로 다시 시도해요.':' 자동 재시도가 멈췄어요. 운영자 확인이 필요해요.');
+}
 function renderSources(){
  const host=$('#source-status');const focused=document.activeElement?.dataset.source;const expanded=new Set([...host.querySelectorAll('details[open]')].map(d=>d.dataset.source));host.replaceChildren();
  if(!states.length){host.append(node('p','muted','수집 상태를 확인하지 못했어요. 상태 새로고침으로 다시 시도해 주세요.'));return;}
  for(const s of states){
   if(role!=='owner'){
-   const labels={paused:'수집 중지',waiting:'첫 수집 대기',ok:'수집 성공',attention:'확인 필요'};const row=node('section','source-row'),heading=node('div','source-heading');
-   heading.append(node('strong',null,`@${s.source}`),node('span',s.state==='attention'?'source-state warning':'source-state',labels[s.state]||'상태 확인'));row.append(heading,node('p','source-last',s.lastSuccessAt?'마지막 성공 · '+stamp(s.lastSuccessAt):'아직 수집 기록 없음'));host.append(row);continue;
+   const row=node('section','source-row'),heading=node('div','source-heading');
+   heading.append(node('strong',null,`@${s.source}`),node('span',['attention','retry'].includes(s.state)?'source-state warning':'source-state',sourceLabels[s.state]||'상태 확인'));row.append(heading,node('p','source-last',s.lastSuccessAt?'마지막 성공 · '+stamp(s.lastSuccessAt):'아직 수집 기록 없음'));const message=sourceMessage(s);if(message)row.append(node('p','source-error',message));host.append(row);continue;
   }
   const paused=!s.enabled||s.collection_enabled===false||s.collection_enabled===0;
   const attention=s.catchup_status==='needs_attention';
   const historyNote=historyNotes.has(s.last_error_code)||['gap','limited'].includes(s.catchup_status),error=sourceHasError(s);
-  const text=paused?'수집 중지':attention?'확인 필요':error?'재시도 대기':!s.last_success_at?'첫 수집 대기':historyNote?'최신 수집 정상':'수집 성공';
+  const status=s.collectionStatus||{state:paused?'paused':attention?'attention':error?'retry':s.last_success_at==null?'waiting':'ok',reason:'unknown'};
+  const text=status.state==='ok'&&historyNote?'최신 수집 정상':sourceLabels[status.state]||'상태 확인';
   const row=node('section','source-row'),heading=node('div','source-heading');
   heading.append(node('strong',null,`@${s.source}`),node('span',!paused&&error?'source-state warning':'source-state',text));row.append(heading);
   const toggle=node('button','source-toggle',s.enabled?'중지':'켜기');toggle.dataset.source=s.source;toggle.setAttribute('aria-label',s.source+' '+(s.enabled?'수집 중지':'수집 켜기'));toggle.disabled=!live||(!s.enabled&&!s.collection_enabled);heading.append(toggle);
   const feedback=node('p','source-feedback');feedback.setAttribute('role','status');
+  const message=sourceMessage(status);if(message)row.append(node('p','source-error',message));
   toggle.onclick=async()=>{const hadFocus=document.activeElement===toggle;toggle.disabled=true;let message;try{await management('/api/sources/'+s.source,{enabled:!s.enabled,revision:s.revision},'PATCH');message=s.enabled?'수집 중지 · 저장된 글은 유지됩니다.':'수집 재개 · 기존 대기 순서로 진행합니다.';}catch(e){message=e.message;}finally{toggle.disabled=false;}const restore=hadFocus&&(document.activeElement===toggle||document.activeElement===document.body);await refreshSources();const current=[...host.querySelectorAll('.source-toggle')].find(b=>b.dataset.source===s.source);if(current){current.closest('.source-row').querySelector('.source-feedback').textContent=message;if(restore&&(document.activeElement===document.body||document.activeElement===toggle))current.focus({preventScroll:true});}};
   const detail=node('details','source-detail');detail.dataset.source=s.source;detail.open=expanded.has(s.source);detail.append(node('summary',null,'상세'));row.append(node('p','source-last',s.last_success_at?'마지막 성공 · '+stamp(s.last_success_at*1000):'아직 수집 기록 없음'),feedback,detail);
   if(s.last_success_at){
@@ -183,8 +191,6 @@ function renderSources(){
    detail.append(node('p',null,'과거 자료를 모두 가져왔는지 확인되지 않아 과거 조회를 멈췄어요.'+(paused?'':' 최신 글은 계속 확인해요.')));
   }else if(s.last_error_code){
    const code=s.last_error_code;
-   const reason=code.includes('429')?'요청 한도에 도달했어요.':code.includes('timeout')?'응답 대기 시간이 초과됐어요.':code.includes('network')?'수집 서버에 연결하지 못했어요.':/401|403/.test(code)?'수집 서버가 접근을 거부했어요.':'수집 중 오류가 발생했어요.';
-   row.append(node('p','source-error',reason+(paused?' 수집이 중지되어 있어요.':attention?' 설정 확인이 필요해요.':' 자동으로 다시 시도해요.')));
    const details=node('details');details.append(node('summary',null,'오류 상세'),node('code',null,code));detail.append(details);
   }
   if(!paused&&!attention&&s.next_due_at)detail.append(node('p',null,(s.next_due_at*1000<=Date.now()?'실행 순서 대기 · ':'다음 조회 가능 · ')+stamp(s.next_due_at*1000)));

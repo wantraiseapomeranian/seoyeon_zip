@@ -2,12 +2,12 @@ import {createServer} from 'node:http';
 import {readFileSync, mkdirSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
+import {publicSource as projectSource} from '../src/public-data.mjs';
 
 const root=new URL('../',import.meta.url);
 const requests=[];
 let scenario='visitor',releaseSession;const sourceResolvers=[];
 const source={source:'Seowoo_0501',enabled:1,collection_enabled:1,revision:1,last_success_at:1_700_000_000,last_received_count:2,last_matched_count:1,last_review_count:0,last_error_code:null,catchup_status:'current',next_due_at:null};
-const publicSource={source:'Seowoo_0501',state:'ok',lastSuccessAt:'2023-11-14T22:13:20.000Z'};
 const json=(res,status,value)=>{res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(value));};
 const server=createServer(async(req,res)=>{try{
  const path=new URL(req.url,'http://127.0.0.1:4191').pathname;requests.push(path);
@@ -17,11 +17,11 @@ const server=createServer(async(req,res)=>{try{
   if(scenario==='session-failure'){json(res,503,{error:'unavailable'});return;}
   json(res,200,{role:scenario==='visitor'?'visitor':'owner'});return;
  }
- if(path==='/api/collection-status'){json(res,200,{sources:[publicSource]});return;}
+ if(path==='/api/collection-status'){json(res,200,{sources:[projectSource(source)]});return;}
  if(path==='/api/sources'){
   if(scenario==='expiring-owner')await new Promise(r=>sourceResolvers.push(r));
   if(scenario==='expired'){json(res,403,{error:'forbidden'});return;}
-  json(res,200,{sources:[source]});return;
+  json(res,200,{sources:[{...source,collectionStatus:projectSource(source)}]});return;
  }
  const file=path.slice(1)||'feed.html';if(!['feed.html','feed.js','feed.css','review-gallery.js'].includes(file)){res.writeHead(404).end();return;}
  res.writeHead(200,{'Content-Type':file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html'});res.end(readFileSync(new URL('validation/'+file,root)));
@@ -75,6 +75,36 @@ try{
  await page.screenshot({path:'.local/public-owner-1280.png'});
  await page.setViewportSize({width:390,height:850});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:'.local/public-owner-390.png'});
 
+ console.log('CHECK: collection failure, stop, pause and recovery for both roles');
+ const savedSource={...source};
+ for(const viewer of ['visitor','owner']){
+  await page.setViewportSize({width:320,height:850});
+  for(const [code,state,enabled,label,reason] of [
+   ['provider_http_error:404','retry',1,'재시도 대기','게시물 목록'],
+   ['provider_json_error:429','retry',1,'재시도 대기','요청 한도'],
+   ['provider_timeout','retry',1,'재시도 대기','응답이 늦어'],
+   ['provider_network','retry',1,'재시도 대기','연결하지 못'],
+   ['provider_http_error:503','retry',1,'재시도 대기','서버 오류'],
+   ['storage_error','retry',1,'재시도 대기','저장하지 못'],
+   ['provider_http_error:404','needs_attention',1,'수집 중단','게시물 목록'],
+   ['provider_http_error:403','needs_attention',1,'수집 중단','접근을 거부'],
+   ['provider_schema','needs_attention',1,'수집 중단','데이터의 형식'],
+   ['private https://secret/429','needs_attention',1,'수집 중단','수집 중 오류'],
+   ['provider_http_error:429','retry',0,'일시 중지',null],
+   [null,'current',1,'수집 정상',null]
+  ]){
+   Object.assign(source,savedSource,{enabled,catchup_status:state,last_error_code:code});
+   await goto(page,viewer);if(viewer==='owner')await page.locator('.review-entry').waitFor({state:'visible'});
+   await page.locator('#open-status').click();await page.locator('.source-state').filter({hasText:label}).waitFor();
+   const row=page.locator('#source-status .source-row');
+   if(reason){const message=await row.locator('.source-error').innerText();assert.ok(message.includes(reason),message);assert.equal(message.includes('자동으로 다시 시도해요.'),state==='retry');assert.equal(message.includes('자동 재시도가 멈췄어요.'),state==='needs_attention');}
+   else assert.equal(await row.locator('.source-error').count(),0);
+   if(viewer==='visitor')assert.equal((await row.innerText()).includes('https://secret'),false);
+   assert.equal(await page.locator('#source-dialog').evaluate(el=>el.scrollWidth>el.clientWidth),false);
+   if(code==='provider_json_error:429')await page.screenshot({path:`.local/collection-retry-${viewer}-320.png`});
+  }
+ }
+ Object.assign(source,savedSource);
  console.log('CHECK: session failure');await goto(page,'session-failure');await page.locator('#count').filter({hasText:'0개 게시물'}).waitFor();assert.equal(await page.locator('#tools-tab').isVisible(),false);assert.equal(requests.includes('/api/sources'),false);
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.setViewportSize({width:1280,height:800});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
 
