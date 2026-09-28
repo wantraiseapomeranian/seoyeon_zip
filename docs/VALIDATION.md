@@ -1331,3 +1331,6 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - check-youtube.mjs: 실제 API/SQLite fixture로 Shorts 직접 등록과 일반 영상·Shorts 형식 선택, 피드 분리, 개별 검토/일괄 게시·제외·충돌·미공개 영상 거부, 중복 등록·감사·320/390/768/1280px 검사 통과. 일반 영상/Shorts 분류는 관리자 확인이며 길이로 자동 판정하지 않는다. 실제 모바일 엔진 검증은 별도다.
 - Wrangler dry-run277.78 KiB/gzip68.56 KiB 성공. 독립 읽기 전용 리뷰 APPROVED. 운영 대기 마이그레이션은0029 하나임을 확인했다. 0029 적용 후 새 코드를 배포해 구 DB의 Shorts CHECK 실패 구간을 피한다.
 - 참고 문서: YouTube video 리소스 https://developers.google.com/youtube/v3/docs/videos , D1 외래 키/변경 처리 https://developers.cloudflare.com/d1/sql-api/foreign-keys/ . 운영 마이그레이션·배포·실수집 결과는 아래에 별도 기록한다.
+- 운영 적용: 0029 마이그레이션14개 명령 성공 후 a09fbb5 main 푸시. Workers Builds completed/success(2026-09-28T05:31:55Z). 기존 영상230개 판정/분류/형식/수동 여부/revision/생성·검토 시각, 발견 경로295개, 감사 기록230개가 적용 전후 동일하고 피드107개 유지. foreign_key_check 결과0건. 기존4개 완료 보충 소스 상태 유지 및 최신 검색3개 query/lease/cursor 변경 확인.
+- 배포 HTTP 확인: 실제 feed.js가 a09fbb5 커밋 원문과 전체 일치. 유튜브 공개 피드200·107개, 비인증 유튜브 상태/검토 API401. 운영 영상에 임의 판정을 추가하지 않았다. Shorts 게시·직접 등록은 로컬 실제 API/SQLite fixture로 검증했다.
+- 실제 예약 수집: 배포 후14:34:51 KST search:appearance가 새30일 검색 창의 첫 페이지를 성공 처리했고 후속 cursor를 보존했다.14:34:53에 새 후보11개 pending 저장, 기존 kept107/excluded123 유지. 새 후보에는 월간윤서연(332초), 게스트 출연(374초), Shorts 명시 영상과60초 미만7개가 포함된다. 이것은 새 범위의 첫 실제 저장 성공이며 전체 검색 완료·출연 확정·전체 유튜브 누락 없음의 증거는 아니다. 한국어/영어 두 검색 소스는 기존 한도 내 후속 예약 실행 대상이다.
