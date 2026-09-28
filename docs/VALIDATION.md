@@ -1269,3 +1269,10 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 근거: Samsung의 자체 테마 지원 선언 설명(https://developer.samsung.com/browser/blog/en/2020/12/15/dark-mode-in-samsung-internet), Chrome의 only light 자동 변환 제외 설명(https://developer.chrome.com/blog/auto-dark-theme).
 - 커밋·푸시·자동 배포 결과는 아래에 별도로 기록한다.
 - 배포: 47138d072f5667ef32e22b209db0e91e816174f5 Workers Builds completed/success(2026-09-28T01:01:22Z). 실제 /feed.css200 및 로컬 전체 내용 일치, /feed200 및 color-scheme 메타 반영, 비인증 /api/admin/x401 확인. 삼성 인터넷 실기기 확인은 사용자 대기.
+
+## 2026-09-28 삼성 브라우저 테마 도움말
+
+- 사용자 후속 확인: 삼성 브라우저 30.0.0.67에서 ‘폰 설정 따름’ 및 ‘웹 콘텐츠에 어두운 화면 모드 강제 적용’ ON. 이전 CSS 보완으로 실기기 증상은 해결되지 않았다. 강제 적용을 끄자 밝게 표시된다고 확인했으며, 모든 기기의 기본값이 ON이라고 검증한 것은 아니다.
+- 승인한 도움말을 공통 화면 설정에 추가했다. SamsungBrowser UA일 때만 접힌 details/summary로 제공하고 강제 적용 끄기·새로고침·폰 설정 따름 유지 가능을 안내한다. private 설정 상태 감지·자동 변경은 하지 않는다.
+- 일회성 Playwright 확인 통과: 삼성 UA에서만 도움말 표시, iPhone/Chrome UA에는 없음. 터치와 Enter/Space 펼침·접힘, 밝게/어둡게 전환, 320/390/768/1280px 화면·200% 도움말 글자 가로 넘침 없음, Escape 후 진입 버튼 초점 복귀. 밝은 모바일·어두운 데스크톱 스크린샷 확인. 모두 Chrome에서 UA를 바꾼 검사이며 삼성 렌더러 검증은 아니다.
+- node scripts/check-theme.mjs 통과: 여섯 화면 테마·날짜·반응형·저장·기기 설정·다른 탭·저장 차단·모션 감소 회귀. JS 구문 및 git diff --check 통과. 도움말의 실제 삼성 브라우저 최종 표시는 사용자 확인 전이다.

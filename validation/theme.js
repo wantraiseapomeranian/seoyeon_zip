@@ -39,6 +39,11 @@
     launcher.innerHTML=icons.settings+'<span class="icon-tooltip" aria-hidden="true">화면 설정</span>';
     dialog=document.createElement('dialog');dialog.id='theme-dialog';dialog.setAttribute('aria-labelledby','theme-title');
     dialog.innerHTML=`<div class="theme-heading"><h2 id="theme-title">화면 설정</h2><button type="button" class="theme-close" aria-label="화면 설정 닫기">닫기</button></div><fieldset><legend>화면 스타일</legend><div class="theme-options">${[['light','밝게'],['dark','어둡게'],['system','기기 설정']].map(([value,label])=>`<label class="theme-choice"><input type="radio" name="site-theme" value="${value}">${icons[value]}<span>${label}</span></label>`).join('')}</div></fieldset><p class="theme-status" role="status"></p>`;
+    if(/SamsungBrowser\//i.test(navigator.userAgent)){
+      const help=document.createElement('details');help.className='theme-help';
+      help.innerHTML='<summary>밝게 선택해도 어둡게 보이나요?</summary><p>삼성 브라우저의 강제 다크 설정이 켜져 있으면 밝게 선택해도 어둡게 보일 수 있어요.</p><ol><li>삼성 브라우저 설정에서 <strong>어두운 화면 모드</strong>를 열어주세요.</li><li><strong>웹 콘텐츠에 어두운 화면 모드 강제 적용</strong>을 꺼주세요.</li><li>이 페이지를 새로고침해 주세요.</li></ol><p>폰 설정 따름은 그대로 두셔도 돼요.</p>';
+      dialog.append(help);
+    }
     document.body.append(launcher,dialog);root.classList.add('has-theme-control');apply();
     launcher.addEventListener('click',()=>{dialog.showModal();launcher.setAttribute('aria-expanded','true');dialog.querySelector('input:checked').focus();});
     dialog.querySelector('.theme-close').addEventListener('click',()=>dialog.close());
