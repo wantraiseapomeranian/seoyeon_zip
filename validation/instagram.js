@@ -22,7 +22,7 @@ function card(p){
   if(p.newlyPublished===true)tags.append(el('span','시험 시작 후 게시'));
   const reasons=el('ul',null,'review-reasons');p.reasons.filter(r=>r!=='그룹·인물 문맥 일치 · 사진은 직접 확인').forEach(r=>reasons.append(el('li',r)));reasons.hidden=!reasons.childElementCount;
   if(images.length<p.mediaCount)tags.append(el('span','저장된 미리보기 '+images.length+'장 · 전체는 원문에서 확인'));
-  body.append(meta,tags,reasons,el('p',p.caption||'본문이 없는 게시물이에요.','review-caption'),link(p.url,'원문에서 보기 ↗','review-link'));
+  body.append(meta,tags,reasons,el('p',p.caption||'본문이 없는 게시물이에요.','review-caption'),link(p.url,'원문 보기','review-link'));
   const actions=el('div',null,'review-buttons');
   for(const value of ['kept','excluded','held','pending']){const button=el('button',value==='pending'?'판단 취소':value==='kept'?'피드에 표시':labels[value]);button.setAttribute('aria-pressed',String(p.status===value));button.disabled=p.status===value;button.addEventListener('click',async()=>{
     if(busy)return;const focus=window.reviewFocus(button);busy=true;actions.querySelectorAll('button').forEach(b=>b.disabled=true);
