@@ -1347,4 +1347,5 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - youtube.css의 판정 버튼 flex-grow를0으로 바꾸고700px 이하에2열 grid를 적용했다. 공통 CSS와 일괄 적용 버튼은 변경하지 않았다.
 - check-youtube.mjs 통과: 실제 API/SQLite fixture의 등록·검토·일괄 처리·충돌·감사 기록과320/390/768/1280px 화면 검사.
 - 별도 Chrome 화면 측정320/390/700/701/768/1280px: 모든 판정 버튼 높이44px, 가로 넘침 없음.700px 이하2열, PC 버튼 폭76~103px.390/1280px 카드 캡처로 배치 확인. 실제 iPhone/Samsung 기기 검증은 미수행.
-- Impeccable 대상 HTML 정적 검사0건, git diff --check 통과. 운영 배포는 아직 미확인.
+- Impeccable 대상 HTML 정적 검사0건, git diff --check 통과. 독립 읽기 전용 리뷰 APPROVED.
+- 운영: 1f3e3bf main 푸시 후 Workers Builds completed/success(2026-09-28T07:15:50Z). 로그인된 실제 검토함을 새로고침해 버튼 flex=0 1 auto, 폭102.92/76/76/88.92px·높이44px 반영을 확인했다. 비인증 검토 API401 유지. 운영 CSS의 비인증 직접 조회는401이므로 파일 전체 일치 검증으로 보고하지 않는다.
