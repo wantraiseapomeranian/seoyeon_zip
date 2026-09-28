@@ -1257,3 +1257,14 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 실제 iPhone Safari·Galaxy·VoiceOver 검증은 미실행이며 사용자가 확인할 예정이다. 이전 조사에서 WebKit은 Windows 필수 DLL 누락으로 실행하지 못했으므로 Safari 재현/해결로 단정하지 않는다.
 - 커밋·푸시 및 Cloudflare 자동 배포 결과는 아래에 별도로 기록한다.
 - 배포 확인: b62b924e3e1b6e6385ce1fb3ce03037bc9155144의 Workers Builds completed/success(2026-09-28T00:27:37Z). 실제 /theme.js200 및 로컬 수정 파일과 전체 내용 일치, /feed200, 비인증 /api/admin/x401 확인. 실제 iPhone 확인은 사용자 대기.
+
+## 2026-09-28 삼성 인터넷 테마 색상 보완
+
+- 사용자가 사진 터치 문제 해결 및 iPhone의 기기 다크모드에서도 사이트 테마 선택 정상임을 확인했다. 남은 보고 환경은 갤럭시 삼성 인터넷이다.
+- 재현: 배포된 theme.js/feed.css와 로컬 일치를 확인한 뒤 OS 다크+Chrome Auto Dark에서 light의 CSS 계산값은 밝지만 화면은 어둡게 그려짐을 확인했다. 새 스크린샷 비교 검사는 기존 코드에서 실제 픽셀 차이로 RED였다.
+- 여섯 HTML의 meta color-scheme=light dark는 자체 테마 지원을 알린다. CSS의 root·날짜·폼·사진 화살표에 only light/only dark를 적용해 지원 브라우저의 자동 변환을 제한한다. HTML diff는 해당 메타 추가뿐이며 기존 초기화 JS·CSP 해시가 동일함을 확인했다.
+- check-forced-dark.mjs GREEN: OS dark에서 light→dark→system→light 선택 중 강제 다크 ON/OFF 스크린샷이 일치한다. 배경·글자·날짜 입력·사진 화살표·샘플 사진을 포함하며 저장 선택으로 새로고침한 화면도 일치한다. 테마 dialog의 지연 close 이벤트가 초점을 다시 돌리는 검사 시점 문제는 이벤트 완료 후 캡처하도록 바로잡았다.
+- npm run check:ui 전체 통과. check-dark-controls.mjs의 iPhone/Samsung-UA 각각 네 화면의 빈/선택/초기화 날짜·터치 대상·두 테마·화살표 검사 통과. 접근 제어15개·diff 검사 통과, 독립 리뷰 APPROVED.
+- 검증 한계: 실제 Samsung Internet/iPhone 엔진은 이번에 실행하지 않았다. OS light에 CDP Auto Dark만 강제한 별도 조합은 프로젝트와 무관한 only-light 최소 페이지에서도 변환 금지를 무시했으며 해결됐다고 주장하지 않는다. 회귀의 강제 다크 범위는 사용자 보고와 같은 OS dark이다. 제조사 강제 설정이 웹 선언을 무시하는 경우까지 보장하지 않는다.
+- 근거: Samsung의 자체 테마 지원 선언 설명(https://developer.samsung.com/browser/blog/en/2020/12/15/dark-mode-in-samsung-internet), Chrome의 only light 자동 변환 제외 설명(https://developer.chrome.com/blog/auto-dark-theme).
+- 커밋·푸시·자동 배포 결과는 아래에 별도로 기록한다.

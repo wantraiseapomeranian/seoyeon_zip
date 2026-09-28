@@ -16,7 +16,8 @@ Windows의 runtime 검사에는 OS가 로컬 `workerd.exe` 실행을 허용해�
 
 - runtime: `check-operations-runtime.mjs --local`, `validate-feed-batch.mjs --local`. 두 검사 모두 외부 요청을 차단하고 임시 D1을 생성·정리한다. 결과는 터미널에 출력한다.
 - UI: `check-theme.mjs`, `check-photo-touch-scroll.mjs`, `check-photo-loading.mjs`, `check-ui-audit-fixes.mjs`, `check-ui-audit-fixes.mjs text`. 테마·초점 검사는 임의 포트의 로컬 서버를 직접 시작·종료하고 사진 검사는 서버 없이 실행한다. 터치 스크롤 검사는 화면 설정 버튼과 사진 영역이 겹칠 때 터치·마우스의 사진 이동·확대·닫기 및 키보드 초점 가시성을 확인한다.
-- UI 캡처는 `.local/theme/`와 `.local/ui-fixes/`에 저장되며 다음 실행에서 같은 파일을 덮어쓸 수 있다. 사진 오류 검사는 터미널 결과만 남긴다. `.local` 결과물을 Git에 추가하지 않는다.
+- `check-forced-dark.mjs`도 UI 명령에 포함한다. OS 다크 선호에서 Chrome Auto Dark를 켜고 끈 실제 스크린샷을 비교해 사이트의 밝게·어둡게·기기 설정 및 새로고침 후 색상이 유지되는지 검사한다. 삼성 인터넷 실기기 검증은 별도다.
+- UI 캡처는 `.local/theme/`, `.local/forced-dark/`, `.local/ui-fixes/`에 저장되며 다음 실행에서 같은 파일을 덮어쓸 수 있다. 사진 오류 검사는 터미널 결과만 남긴다. `.local` 결과물을 Git에 추가하지 않는다.
 - 테마 검사의 axe 검증은 기본 명령에 포함하지 않는다. 필요한 경우 `node scripts/check-theme.mjs --axe <로컬-axe-파일>`로 별도 실행한다.
 
 ## 변경에 따라 추가할 기존 검사

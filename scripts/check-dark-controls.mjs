@@ -19,7 +19,7 @@ try{
    assert.equal(await date.evaluate(e=>{const r=e.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===e;}),true,'native input receives taps');
    await date.evaluate(e=>{const button=document.createElement('button');button.id='test-date-reset';button.onclick=()=>{e.value='';};document.body.append(button);});await page.locator('#test-date-reset').click();assert.equal(await date.evaluate(e=>e.parentElement.querySelector('.date-value').textContent),'날짜 선택');await page.locator('#test-date-reset').evaluate(e=>e.remove());await date.fill('2026-09-18');
    const expected=theme==='dark'?{bg:'rgb(25, 33, 39)',color:'rgb(230, 237, 242)'}:{bg:'rgb(241, 245, 247)',color:'rgb(32, 37, 43)'};
-   assert.equal(colors.value,'2026-09-18');assert.equal(colors.scheme,theme);assert.equal(colors.bg,expected.bg);assert.equal(colors.color,expected.color);assert.equal(colors.fill,colors.color);
+   assert.equal(colors.value,'2026-09-18');assert.deepEqual(colors.scheme.split(/\s+/).filter(value=>value!=='only'),[theme]);assert.equal(colors.bg,expected.bg);assert.equal(colors.color,expected.color);assert.equal(colors.fill,colors.color);
    const visible=await date.evaluate(e=>{const s=getComputedStyle(e.parentElement.querySelector('.date-value'));return {bg:s.backgroundColor,color:s.color};});assert.deepEqual(visible,expected);
   }
   const next=page.getByRole('button',{name:'검증 사진 다음',exact:true});await next.click();assert.equal(await page.locator('.photo-count').last().textContent(),'2 / 2');await page.getByRole('button',{name:'검증 사진 이전',exact:true}).press('ArrowLeft');assert.equal(await page.locator('.photo-count').last().textContent(),'1 / 2');

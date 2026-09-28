@@ -82,7 +82,7 @@ header .actions .icon-button svg{pointer-events:none}
 /* Keep native date fields and photo controls on one explicit color scheme.
    Samsung Internet forced dark is also checked separately on the device. */
 :root{--control-surface:#fff;--control-text:#20252b;--control-border:#dde3e8;--control-scheme:light}
-:root input[type=date],:root .photo-arrow{color-scheme:var(--control-scheme);color:var(--control-text);background-color:var(--control-surface);border-color:var(--control-border)}
+:root input[type=date],:root .photo-arrow{color-scheme:only var(--control-scheme);color:var(--control-text);background-color:var(--control-surface);border-color:var(--control-border)}
 :root input[type=date]{-webkit-text-fill-color:currentColor}
 :root input[type=date]::-webkit-datetime-edit{color:inherit;-webkit-text-fill-color:currentColor}
 .photo-arrow svg{display:block;width:18px;height:18px;flex:none;pointer-events:none}
@@ -106,11 +106,11 @@ header .actions .icon-button svg{pointer-events:none}
 #youtube-collection summary{font-size:14px;min-height:44px;display:flex;align-items:center;cursor:pointer}#youtube-channel-form{margin-block:16px}#youtube-channel-form label{font-size:13px;display:block;margin-bottom:8px}#youtube-channel{min-width:0;width:100%}#youtube-retry{margin-top:12px}
 
 /* Semantic colors shared by all six screens. Light remains the first-visit default. */
-:root{--bg:#f1f5f7;--surface:#fff;--text:#20252b;--muted:#5c6670;--soft:#eaf7ff;--ink:#086ba8;--border:#dde3e8;--warning:#8a4b0f;--danger:#b42318;--field-border:#74818b;--selection:#bce7ff;--placeholder:#eef0ef;--skeleton:#edf0ee;--backdrop:rgb(32 37 43 / .35);--scheme:light;color-scheme:light}
-:root[data-theme=dark]{--bg:#192127;--surface:#242e36;--text:#e6edf2;--muted:#adbcc7;--soft:#233e50;--ink:#7bcaff;--border:#394952;--warning:#ffc680;--danger:#ffaca4;--field-border:#718491;--selection:#30556e;--placeholder:#242e36;--skeleton:#28343d;--backdrop:rgb(0 0 0 / .55);--scheme:dark;color-scheme:dark}
+:root{--bg:#f1f5f7;--surface:#fff;--text:#20252b;--muted:#5c6670;--soft:#eaf7ff;--ink:#086ba8;--border:#dde3e8;--warning:#8a4b0f;--danger:#b42318;--field-border:#74818b;--selection:#bce7ff;--placeholder:#eef0ef;--skeleton:#edf0ee;--backdrop:rgb(32 37 43 / .35);--scheme:light;color-scheme:only light}
+:root[data-theme=dark]{--bg:#192127;--surface:#242e36;--text:#e6edf2;--muted:#adbcc7;--soft:#233e50;--ink:#7bcaff;--border:#394952;--warning:#ffc680;--danger:#ffaca4;--field-border:#718491;--selection:#30556e;--placeholder:#242e36;--skeleton:#28343d;--backdrop:rgb(0 0 0 / .55);--scheme:dark;color-scheme:only dark}
 :root body[data-background=mist]{--bg:inherit;background:var(--bg)}
 :root{--control-surface:var(--surface);--control-text:var(--text);--control-border:var(--field-border);--control-scheme:var(--scheme)}
-:root input[type=date],:root .date-display{--control-surface:var(--bg);--control-text:var(--text);--control-border:var(--field-border);--control-scheme:var(--scheme);color-scheme:var(--scheme)}
+:root input[type=date],:root .date-display{--control-surface:var(--bg);--control-text:var(--text);--control-border:var(--field-border);--control-scheme:var(--scheme);color-scheme:only var(--scheme)}
 ::selection{background:var(--selection);color:var(--text)}
 .preview{background:var(--placeholder)}.skeleton{background:var(--skeleton)}
 .review-image{background:var(--placeholder)}
@@ -118,7 +118,7 @@ header .actions .icon-button svg{pointer-events:none}
 .primary,.primary:hover{color:var(--bg)}
 .icon-tooltip{background:var(--text);color:var(--bg)}
 dialog::backdrop{background:var(--backdrop)}
-input,textarea,select{color-scheme:var(--scheme);accent-color:var(--ink);caret-color:var(--text)}
+input,textarea,select{color-scheme:only var(--scheme);accent-color:var(--ink);caret-color:var(--text)}
 input:not([type=checkbox]):not([type=radio]),textarea{background-color:var(--surface);color:var(--text)}
 input::placeholder,textarea::placeholder{color:var(--muted);opacity:1}
 :root input[type=date]{background-color:var(--bg)}
