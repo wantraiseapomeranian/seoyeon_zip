@@ -1268,3 +1268,4 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 검증 한계: 실제 Samsung Internet/iPhone 엔진은 이번에 실행하지 않았다. OS light에 CDP Auto Dark만 강제한 별도 조합은 프로젝트와 무관한 only-light 최소 페이지에서도 변환 금지를 무시했으며 해결됐다고 주장하지 않는다. 회귀의 강제 다크 범위는 사용자 보고와 같은 OS dark이다. 제조사 강제 설정이 웹 선언을 무시하는 경우까지 보장하지 않는다.
 - 근거: Samsung의 자체 테마 지원 선언 설명(https://developer.samsung.com/browser/blog/en/2020/12/15/dark-mode-in-samsung-internet), Chrome의 only light 자동 변환 제외 설명(https://developer.chrome.com/blog/auto-dark-theme).
 - 커밋·푸시·자동 배포 결과는 아래에 별도로 기록한다.
+- 배포: 47138d072f5667ef32e22b209db0e91e816174f5 Workers Builds completed/success(2026-09-28T01:01:22Z). 실제 /feed.css200 및 로컬 전체 내용 일치, /feed200 및 color-scheme 메타 반영, 비인증 /api/admin/x401 확인. 삼성 인터넷 실기기 확인은 사용자 대기.
