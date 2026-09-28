@@ -1355,3 +1355,4 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 
 - X 원문/유사 게시물·Instagram·YouTube 검토함 링크 문구를 “원문 보기”로 통일하고, YouTube 링크를 정보 영역의 판정 버튼 바로 위로 이동했다. URL·target·rel 속성 변경 없음.
 - 세 JS 구문 검사 및 git diff --check 통과. 기존 check-youtube.mjs의 등록·개별 검토·일괄 처리·감사·320/390/768/1280px 검사 통과. 데스크톱 캡처에서 원문 링크가 정보 영역의 판정 버튼 위에 표시됨을 확인했다.
+- 독립 리뷰 APPROVED.295d756 main 푸시 후 Workers Builds completed/success(2026-09-28T07:21:48Z). 로그인된 운영 화면에서 세 검토함의 “원문 보기” 표시를 확인했다. 유튜브 링크의 부모 review-body·다음 요소 review-buttons 및 새 탭/noopener noreferrer 속성을 확인했다. 운영 게시물의 판정은 변경하지 않았다.
