@@ -90,9 +90,10 @@ function card(post,priority=false){
  const caption=post.platform==='youtube'?post.title:displayCaption(post.caption);if(caption)article.append(node('p','caption',caption));
  if(!post.manual&&post.platform!=='youtube'&&post.platform!=='instagram'&&post.authorHandle.toLowerCase()!==post.observedViaSource.toLowerCase())article.append(node('span','via',`발견 출처 @${post.observedViaSource}`));for(const source of post.duplicateSources||[]){const a=node('a','via','같은 사진 출처 @'+source.author);a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';article.append(a);}return article;
 }
-function render(){
+function render(addedPosts=null){
+ const append=addedPosts!==null;
  $('#kind').disabled=media==='youtube';$('#source').disabled=media==='youtube';
- clearViewers();
+ if(!append)clearViewers();
  const activeFilters=Number($('#kind').value!=='all')+Number($('#source').value!=='all');
  $('#filter-toggle').textContent=activeFilters?`필터 · ${activeFilters}`:'필터';
  document.querySelectorAll('[data-sort]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.sort===$('#sort').value)));
@@ -103,20 +104,22 @@ function render(){
  $('#month-trigger').setAttribute('aria-label',`게시일 선택 · ${monthDescription}`);
  $('#month-trigger').dataset.active=String(Boolean(month));
  $('#month-trigger .icon-tooltip').textContent=`게시일 선택 · ${monthDescription}`;
- const selected=live?[...posts]:posts.filter(p=>(!month||new Date(p.publishedAt).toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'})===month)&&(media==='all'||p.media.some(m=>media==='video'?['video','gif'].includes(m.kind):m.kind==='image'))&&($('#kind').value==='all'||p.contentKind===$('#kind').value)&&($('#source').value==='all'||p.observedViaSource===$('#source').value));
+ const selected=live?[...(addedPosts??posts)]:posts.filter(p=>(!month||new Date(p.publishedAt).toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'})===month)&&(media==='all'||p.media.some(m=>media==='video'?['video','gif'].includes(m.kind):m.kind==='image'))&&($('#kind').value==='all'||p.contentKind===$('#kind').value)&&($('#source').value==='all'||p.observedViaSource===$('#source').value));
  const direction=$('#sort').value==='oldest'?1:-1;
  selected.sort((a,b)=>direction*(Date.parse(a.publishedAt)-Date.parse(b.publishedAt))||a.id.localeCompare(b.id));
- const elements=[];let previousDay=null;
+ const elements=[];const previousDate=append?$('#gallery').lastElementChild?.dataset.date:null;
+ let previousDay=previousDate?new Date(previousDate).toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'}):null;
  for(const [index,post] of selected.entries()){
   const day=new Date(post.publishedAt).toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'});
   if(mood==='zine'&&day!==previousDay){const heading=node('h2','day-heading');heading.append(node('span',null,day.replaceAll('-','.')),node('span','day-note','게시일'));elements.push(heading);previousDay=day;}
-  const item=card(post,index<(matchMedia('(max-width:600px)').matches?2:3));
+  const item=card(post,!append&&index<(matchMedia('(max-width:600px)').matches?2:3));
   if(mood==='album'||mood==='archive'){
    const time=item.querySelector('time');time.textContent=new Date(post.publishedAt).toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'});
   }
   elements.push(item);
  }
- $('#gallery').replaceChildren(...elements);$('#empty').hidden=selected.length>0||!loaded;$('#count').textContent=`${selected.length}개 게시물`;
+ if(append)$('#gallery').append(...elements);else $('#gallery').replaceChildren(...elements);
+ $('#empty').hidden=(live?posts.length:selected.length)>0||!loaded;$('#count').textContent=`${selected.length}개 게시물`;
  $('#empty h2').textContent=posts.length?'이 조건에 맞는 게시물이 없어요.':'아직 모인 게시물이 없어요.';$('#empty p').textContent=posts.length?'다른 종류나 출처를 골라보세요.':'수집 상태에서 연결된 출처를 확인해 주세요.';
  $('#updated').textContent=`마지막 갱신 · ${stamp(collectedAt)}`;
  $('#gallery').setAttribute('aria-label',$('#sort').value==='oldest'?'오래된순 게시물':'최신순 게시물');
@@ -132,7 +135,7 @@ async function loadLive(append=false){
   const data=await response.json();if(!Array.isArray(data.posts))throw Error('shape');if(version!==requestVersion)return;
   const known=new Set(posts.map(p=>p.id)),added=data.posts.filter(p=>!known.has(p.id));
   const continueFromMore=append&&document.activeElement===more;
-  posts.push(...added);total=data.total;nextCursor=data.nextCursor;collectedAt=data.collectedAt;loaded=true;render();
+  posts.push(...added);total=data.total;nextCursor=data.nextCursor;collectedAt=data.collectedAt;loaded=true;render(append?added:null);
   if(append){
    appendStatus.textContent=`게시물 ${added.length}개를 추가로 불러왔어요.${nextCursor?'':' 마지막 게시물이에요.'}`;
    if(continueFromMore){
