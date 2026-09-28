@@ -1321,3 +1321,13 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - feed.js 구문 및 diff 검사 통과. Wrangler dry-run은 샌드박스의 상위 디렉터리 접근 제한으로 첫 실패했으나 권한이 허용된 동일 명령으로 성공(277.66 KiB/gzip68.51 KiB). 독립 읽기 전용 리뷰 APPROVED(Critical/Major 없음).
 - 운영 배포 확인은 아래에 별도 기록한다.
 - 배포: ccba834 Workers Builds completed/success(2026-09-28T02:34:00Z). 실제 feed.js와 커밋 원문 전체 일치, 공개 collection-status200 및 reason 포함 허용 필드 확인(정상15·일시중지1), 피드200·비인증 관리자 API401 확인. 운영 오류 상태를 인위적으로 만들지 않았으며 오류 문구의 분기 검증은 로컬 fixture로 수행했다.
+
+## 2026-09-28 수집 현황과 유튜브 범위 확대 검증
+
+- 14:17:58 KST 운영 D1 읽기 조회: X 최근24시간 저장 성공414회, 활성15개 중14개 최근 성공/1개(S2O806)404 재시도. 유튜브 최신 검색3개 모두 오늘 성공·오류 없음, 정보 갱신14:14:59, 전체230개/표시107개/미검토0개. 최근 추가25개는 모두 과거 공식 직캠. 공식4채널 보충은 기간 완료로 비활성화된 상태. Instagram 마지막 확인14:17:50/저장10:17:54. 각 SQL rows_written=0이며 전체 누락 없음의 증거로 해석하지 않는다.
+- 확인된 범위 제한: 일반 출연 영상은 활성 등록 채널 필요, 현재 등록 채널0개. Shorts·60초 미만 제외와 DB/API의 regular 전용 게시 조건이 있었다. 사용자 선택에 따라 최신 검색 범위와 검토/등록/게시를 확장했다.
+- RED: 일반 짧은 출연 영상 제외, Shorts URL 거절, 신규 Shorts 미저장, 직접 등록 거절4개 재현. GREEN: 유튜브44개 및 전체 npm test261개 통과. 기존 정책 테스트는 승인된 새 범위에 맞게 수정했고 미확정 형식·권한·lease·트랜잭션·기존 판정 보존 검사는 유지한다.
+- 마이그레이션 로컬 검증: 영상 전체 행·발견 경로·감사 기록 동일, foreign_key_check0, 현재 검색의 옛 cursor/lease 무효화·enabled 유지·과거 보충 보존, Shorts만 허용 확장·unknown 게시 거부. 운영 보존 비교 원자료는 Git 제외 .local/collection-investigation/youtube-before.json에 둔다.
+- check-youtube.mjs: 실제 API/SQLite fixture로 Shorts 직접 등록과 일반 영상·Shorts 형식 선택, 피드 분리, 개별 검토/일괄 게시·제외·충돌·미공개 영상 거부, 중복 등록·감사·320/390/768/1280px 검사 통과. 일반 영상/Shorts 분류는 관리자 확인이며 길이로 자동 판정하지 않는다. 실제 모바일 엔진 검증은 별도다.
+- Wrangler dry-run277.78 KiB/gzip68.56 KiB 성공. 독립 읽기 전용 리뷰 APPROVED. 운영 대기 마이그레이션은0029 하나임을 확인했다. 0029 적용 후 새 코드를 배포해 구 DB의 Shorts CHECK 실패 구간을 피한다.
+- 참고 문서: YouTube video 리소스 https://developers.google.com/youtube/v3/docs/videos , D1 외래 키/변경 처리 https://developers.cloudflare.com/d1/sql-api/foreign-keys/ . 운영 마이그레이션·배포·실수집 결과는 아래에 별도 기록한다.

@@ -5,14 +5,14 @@ test('JiYeon solo fancams do not match SeoYeon, including Ji SeoYeon aliases',()
 });
 
 import * as relevance from '../src/youtube-relevance.mjs';
-test('automatic candidates require a named subject, full clip and source for general content',()=>{
+test('automatic candidates require a named subject but allow short and general appearances',()=>{
  assert.equal(typeof relevance.youtubeExclusionReason,'function');
  const reason=(title,durationSeconds=180,registeredChannel=false)=>relevance.youtubeExclusionReason({title,durationSeconds},{registeredChannel});
  for(const title of ['윤서연 개인 직캠','[얼빡직캠 4K] 트리플에스 서연 Rising','tripleS SEOYEON fancam','서연직캠'])assert.equal(reason(title),null,title);
- assert.equal(reason('서연 직캠',59),'SHORT_CLIP');assert.equal(reason('서연 직캠',60),null);
- assert.equal(reason('서연 직캠 #Shorts',180),'SHORTS');assert.equal(reason('윤서연 쇼츠',240,true),'SHORTS');
+ assert.equal(reason('서연 직캠',59),null);assert.equal(reason('서연 직캠',60),null);
+ assert.equal(reason('서연 직캠 #Shorts',180),null);assert.equal(reason('윤서연 쇼츠',240,true),null);
  for(const title of ['린 직캠 #윤서연','카에데 직캠 #서연','지서연 직캠','tripleS Ji SeoYeon fancam','트리플에스 멘트'])assert.equal(reason(title),'SUBJECT_UNCLEAR',title);
- assert.equal(reason('윤서연 COSMO 라이브',1200),'SOURCE_UNREGISTERED');assert.equal(reason('윤서연 COSMO 라이브',1200,true),null);
+ assert.equal(reason('윤서연 COSMO 라이브',1200),null);assert.equal(reason('윤서연 COSMO 라이브',1200,true),null);
  assert.equal(reason('성수기 채연 서연',1085,true),null);assert.equal(reason('트리플에스 단체 콘텐츠',1000,true),'SUBJECT_UNCLEAR');
  assert.equal(reason('윤서연 직캠 모음 팬편집',180),'FAN_EDIT');
 });

@@ -3,7 +3,8 @@ export const youtubeError=(code,status=503)=>Object.assign(new Error(code),{stat
 export function parseYouTubeUrl(input){
  let u;try{if(typeof input!=='string'||input.length>2048)throw Error();u=new URL(input.trim());}catch{throw youtubeError('invalid_url',400);}
  if(u.protocol!=='https:'||u.username||u.password||u.port)throw youtubeError('invalid_url',400);
- if(['youtube.com','www.youtube.com','m.youtube.com'].includes(u.hostname)&&u.pathname.startsWith('/shorts/'))throw youtubeError('shorts_not_supported',400);
+ const shorts=['youtube.com','www.youtube.com','m.youtube.com'].includes(u.hostname)&&/^\/shorts\/[A-Za-z0-9_-]{11}\/?$/.test(u.pathname);
+ if(shorts){const videoId=u.pathname.split('/')[2];return {videoId,canonicalUrl:`https://www.youtube.com/watch?v=${videoId}`};}
  const id=u.hostname==='youtu.be'&&/^\/[A-Za-z0-9_-]{11}$/.test(u.pathname)?u.pathname.slice(1):['youtube.com','www.youtube.com','m.youtube.com'].includes(u.hostname)&&u.pathname==='/watch'&&u.searchParams.getAll('v').length===1?u.searchParams.get('v'):null;
  if(!youtubeId(id))throw youtubeError('invalid_url',400);
  return {videoId:id,canonicalUrl:`https://www.youtube.com/watch?v=${id}`};

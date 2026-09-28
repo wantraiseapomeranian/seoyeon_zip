@@ -33,6 +33,6 @@ test('additional categories register and review without weakening format checks'
  assert.equal(sqlite.prepare('SELECT category FROM youtube_videos').get().category,category);
  await reviewYouTube(env,id,{revision:1,decision:'kept',category,format:'regular',reasonCode:'SEOYEON_CONFIRMED',requestId:crypto.randomUUID()},actor);
  assert.equal(sqlite.prepare('SELECT count(*) n FROM youtube_feed_posts').get().n,1);
- await assert.rejects(reviewYouTube(env,id,{revision:2,decision:'kept',category,format:'shorts',reasonCode:'SEOYEON_CONFIRMED',requestId:crypto.randomUUID()},actor),/invalid_input/);
+ await assert.rejects(reviewYouTube(env,id,{revision:2,decision:'kept',category,format:'unknown',reasonCode:'SEOYEON_CONFIRMED',requestId:crypto.randomUUID()},actor),/invalid_input/);
  }finally{sqlite.close();}}
 });

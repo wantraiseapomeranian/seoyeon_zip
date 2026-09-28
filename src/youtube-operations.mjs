@@ -2,7 +2,7 @@ const iso=at=>at>0?new Date(at*1000).toISOString():null;
 const errors=new Set(['not_configured','provider_access','quota_exceeded','rate_limited','provider_network','invalid_response','response_too_large','provider_failure','repeated_cursor','save_failed']);
 const safeError=value=>!value?null:errors.has(value)?value:'unknown_error';
 const bad=new Set(['retry','attention','delayed']);
-const names={'search:ko-fancam':'한국어 직캠 검색','search:en-fancam':'영어 직캠 검색','search:appearance':'출연 영상 검색'};
+const names={'search:ko-fancam':'한국어 출연 영상 검색','search:en-fancam':'영어 출연 영상 검색','search:appearance':'출연 영상 검색'};
 export async function readYouTubeOperations(env,now){
  const DB=env.DB,day=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(now*1000));
  const [rows,control,counts,budget]=await Promise.all([

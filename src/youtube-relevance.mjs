@@ -9,14 +9,15 @@ export function isClearlyOtherMemberFancam(title){
 }
 
 // Eligibility for automatic discovery only. Manual registration and human decisions remain authoritative.
-export function youtubeExclusionReason(video,{registeredChannel=false}={}){
+export function youtubeExclusionReason(video,{historicalFancam=false}={}){
  const title=typeof video?.title==='string'?video.title.normalize('NFKC').toLowerCase():'';
- if(/(?:^|[^a-z])shorts?(?:$|[^a-z])|쇼츠/u.test(title))return 'SHORTS';
- if(!Number.isFinite(video?.durationSeconds)||video.durationSeconds<60)return 'SHORT_CLIP';
+ if(!Number.isFinite(video?.durationSeconds)||video.durationSeconds<=0)return 'METADATA_UNAVAILABLE';
+ if(historicalFancam&&/(?:^|[^a-z])shorts?(?:$|[^a-z])|쇼츠/u.test(title))return 'SHORTS';
+ if(historicalFancam&&video.durationSeconds<60)return 'SHORT_CLIP';
  // Hashtags can name every member, even when the camera follows somebody else.
  const subject=title.replace(/#[^\s#]+/gu,' ').replace(/지서연|\bji[\s_-]*seo[\s_-]*yeon\b/gu,' ');
  if(!/윤서연|(?<![가-힣])서연(?=$|[^가-힣]|직캠|포커스)|\b(?:yoon[\s_-]*)?seo[\s_-]*yeon\b/u.test(subject))return 'SUBJECT_UNCLEAR';
  if(/팬\s*편집|편집본|직캠\s*모음|\b(?:fan\s*edit|compilation)\b/u.test(subject))return 'FAN_EDIT';
- if(/직캠|팬캠|포커스|\b(?:fan\s*cam|face\s*cam|focus)\b/u.test(subject))return null;
- return registeredChannel?null:'SOURCE_UNREGISTERED';
+ if(historicalFancam&&!/직캠|팬캠|포커스|\b(?:fan\s*cam|face\s*cam|focus)\b/u.test(subject))return 'NOT_FANCAM';
+ return null;
 }

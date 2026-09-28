@@ -30,13 +30,13 @@ test('narrowed query invalidates old cursor and lease without changing other sou
  const other=sqlite.prepare("SELECT * FROM youtube_sources WHERE source_key!='search:appearance'").all();const sql=readFileSync(new URL('../migrations/0026_youtube_search_scope.sql',import.meta.url),'utf8');sqlite.exec(sql);const row=sqlite.prepare("SELECT * FROM youtube_sources WHERE source_key='search:appearance'").get();assert.equal(row.query,'트리플에스 윤서연');assert.equal(row.page_token,null);assert.equal(row.lease_token,null);assert.equal(row.window_start,null);assert.equal(row.revision,1);assert.equal(row.enabled,0);assert.deepEqual(sqlite.prepare("SELECT * FROM youtube_sources WHERE source_key!='search:appearance'").all(),other);sqlite.exec(sql);assert.deepEqual(sqlite.prepare("SELECT * FROM youtube_sources WHERE source_key='search:appearance'").get(),row);
  }finally{sqlite.close();}});
 
-test('collector rejects short and unrelated candidates, allows registered general content, preserves known rows',async()=>{const {DB,sqlite}=testDatabase();try{
+test('collector saves short and general appearances without channel registration, rejects unrelated titles',async()=>{const {DB,sqlite}=testDatabase();try{
  const env={DB,YOUTUBE_ENABLED:'true',YOUTUBE_COLLECTION_ENABLED:'true',YOUTUBE_API_KEY:'test'};
  const videos=[{id:'Short123456',title:'윤서연 직캠',duration:'PT10S'},{id:'Tags1234567',title:'린 직캠 #윤서연',duration:'PT3M'},{id:'Show1234567',title:'윤서연 COSMO 라이브',duration:'PT20M'}];
  const fetcher=async url=>Response.json(new URL(url).pathname.endsWith('/search')?{items:videos.map(v=>({id:{videoId:v.id}})),nextPageToken:'next-page'}:{items:videos.map(v=>({...metadata,id:v.id,snippet:{...metadata.snippet,title:v.title},contentDetails:{duration:v.duration}}))});
- const first=await collectYouTube(env,{fetcher});assert.equal(first.filtered,3);assert.equal(sqlite.prepare('SELECT count(*) n FROM youtube_videos').get().n,0);assert.equal(sqlite.prepare('SELECT count(*) n FROM youtube_discoveries').get().n,0);
+ const first=await collectYouTube(env,{fetcher});assert.equal(first.filtered,1);assert.equal(sqlite.prepare('SELECT count(*) n FROM youtube_videos').get().n,2);assert.equal(sqlite.prepare('SELECT count(*) n FROM youtube_discoveries').get().n,2);
  sqlite.exec("INSERT INTO youtube_sources(source_key,kind,query) VALUES('channel:UC123','channel','UC123'); UPDATE youtube_sources SET enabled=0 WHERE kind='channel'; UPDATE youtube_sources SET next_due_at=0,page_token=NULL WHERE kind='search'");
- assert.equal((await collectYouTube(env,{fetcher})).filtered,3);
+ assert.equal((await collectYouTube(env,{fetcher})).filtered,1);
  sqlite.exec("UPDATE youtube_sources SET enabled=1,next_due_at=9999999999 WHERE kind='channel'; UPDATE youtube_sources SET next_due_at=0,page_token=NULL WHERE kind='search'");
- assert.equal((await collectYouTube(env,{fetcher})).filtered,2);assert.equal(sqlite.prepare('SELECT video_id FROM youtube_videos').get().video_id,'Show1234567');
+ assert.equal((await collectYouTube(env,{fetcher})).filtered,1);assert.deepEqual(sqlite.prepare('SELECT video_id FROM youtube_videos ORDER BY video_id').all().map(r=>r.video_id),['Short123456','Show1234567']);assert.equal(sqlite.prepare("SELECT count(*) n FROM youtube_videos WHERE decision='pending'").get().n,2);
  }finally{sqlite.close();}});
