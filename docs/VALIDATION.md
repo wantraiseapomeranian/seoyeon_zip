@@ -1256,3 +1256,4 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - npm run check:ui 전체 통과: 여섯 화면 테마·320/390/768/1280px·저장/기기설정·신규 사진 터치·사진 지연/오류/재시도·X/Instagram/YouTube 판정 후 초점·YouTube200% 글자. JS 구문 검사와 git diff --check 통과. 독립 읽기 전용 리뷰 APPROVED.
 - 실제 iPhone Safari·Galaxy·VoiceOver 검증은 미실행이며 사용자가 확인할 예정이다. 이전 조사에서 WebKit은 Windows 필수 DLL 누락으로 실행하지 못했으므로 Safari 재현/해결로 단정하지 않는다.
 - 커밋·푸시 및 Cloudflare 자동 배포 결과는 아래에 별도로 기록한다.
+- 배포 확인: b62b924e3e1b6e6385ce1fb3ce03037bc9155144의 Workers Builds completed/success(2026-09-28T00:27:37Z). 실제 /theme.js200 및 로컬 수정 파일과 전체 내용 일치, /feed200, 비인증 /api/admin/x401 확인. 실제 iPhone 확인은 사용자 대기.
