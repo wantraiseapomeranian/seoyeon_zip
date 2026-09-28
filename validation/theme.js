@@ -51,8 +51,12 @@
       apply();if(!stored)dialog.querySelector('.theme-status').textContent='현재 화면에 적용했어요. 이 브라우저에서는 선택을 저장할 수 없어요.';
     });
     // A floating control must not obscure a keyboard-focused action underneath it.
+    // Pointer focus must not move the target before its click is dispatched.
+    let keyboardFocus=false;
+    document.addEventListener('keydown',()=>{keyboardFocus=true;},true);
+    document.addEventListener('pointerdown',()=>{keyboardFocus=false;},true);
     document.addEventListener('focusin',event=>{
-      if(event.target===launcher||event.target.closest('dialog'))return;
+      if(!keyboardFocus||event.target===launcher||event.target.closest('dialog'))return;
       const r=event.target.getBoundingClientRect(),b=launcher.getBoundingClientRect();
       if(r.bottom>b.top&&r.top<b.bottom&&r.right>b.left&&r.left<b.right)event.target.scrollIntoView({block:'center'});
     });

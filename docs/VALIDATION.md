@@ -1247,3 +1247,12 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 로컬 D1 어댑터가 SELECT 접두사만 인식해 WITH 결과를 버리는 제한을 결과 컬럼 유무 판정으로 수정했다. Windows 정책으로 workerd 로컬 실행이 차단된 기존 제한은 유지되며 새 로컬 런타임 통과 주장은 하지 않는다. 운영 읽기 전용 D1 SQL 실행으로 실제 엔진 쿼리를 확인했다.
 - Wrangler dry-run 통과276.70KiB/gzip68.26KiB. 독립 읽기 전용 리뷰 APPROVED. DB 변경 없음. 배포 전 실제 HTTP3회2378/1496/2668ms(중앙값2378ms), 모두200/48건/total1672; 네트워크 변동을 포함하는 소표본이다.
 - 코드1e62a5d6ee93f8f52762e5e59f5ac69a18264aa5 Cloudflare 자동 배포 success(2026-09-23T02:03:22Z). 배포 후 실제 HTTP3회1909/1272/1372ms, 중앙값2378→1372ms. 모두200/48건/total1672; 다음48건과 첫48건 중복0·총건수일치, 관리자API401 유지. 위 HTTP 측정은 소표본이며 사용자 전체 지연·이미지 로딩 개선율을 뜻하지 않는다.
+
+## 2026-09-28 사진 터치 강제 스크롤 수정
+
+- 재현: Chrome 390×844 터치 환경에서 사진/다음 버튼 영역이 화면 설정 버튼과 일부 겹치면 theme.js의 focusin 처리로 scrollY1081→1461이 되고 합성 click 대상이 바뀌어 사진 이동·확대가 실행되지 않았다. 배포된 theme.js와 로컬 코드 일치도 읽기 전용으로 확인했다.
+- 변경: capture 단계 keydown/pointerdown으로 마지막 입력을 기록하고 키보드 입력 뒤에만 겹친 초점을 화면 안으로 이동한다. 사진 뷰어·레이아웃·Access 설정은 변경하지 않았다.
+- 새 check-photo-touch-scroll.mjs는 수정 전 touch next의1461!=1081로 RED, 수정 후 touch/mouse 각각 사진 이동·확대·닫기 스크롤 유지와 키보드 초점 가시성/사진 이동5개 시나리오 GREEN. 키보드 사용 후 포인터로 바꾸는 경우도 포함한다.
+- npm run check:ui 전체 통과: 여섯 화면 테마·320/390/768/1280px·저장/기기설정·신규 사진 터치·사진 지연/오류/재시도·X/Instagram/YouTube 판정 후 초점·YouTube200% 글자. JS 구문 검사와 git diff --check 통과. 독립 읽기 전용 리뷰 APPROVED.
+- 실제 iPhone Safari·Galaxy·VoiceOver 검증은 미실행이며 사용자가 확인할 예정이다. 이전 조사에서 WebKit은 Windows 필수 DLL 누락으로 실행하지 못했으므로 Safari 재현/해결로 단정하지 않는다.
+- 커밋·푸시 및 Cloudflare 자동 배포 결과는 아래에 별도로 기록한다.
