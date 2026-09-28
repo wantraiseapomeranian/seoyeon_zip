@@ -1320,3 +1320,4 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - check-public-admin.mjs 통과: 실제 공개 요약 함수를 통과한 오류9종·일시 중지·복구를 방문자/관리자로 확인. 자동 재시도 안내의 상태별 표시, 중지·복구 시 오류 제거, 공개 원시 오류 미노출,320px dialog 가로 넘침 없음, 기존 로그인 지연·실패·만료 처리 확인. Chrome 캡처로 두 역할의429 안내 확인. 실제 iPhone/Samsung 엔진 검증은 수행하지 않았다.
 - feed.js 구문 및 diff 검사 통과. Wrangler dry-run은 샌드박스의 상위 디렉터리 접근 제한으로 첫 실패했으나 권한이 허용된 동일 명령으로 성공(277.66 KiB/gzip68.51 KiB). 독립 읽기 전용 리뷰 APPROVED(Critical/Major 없음).
 - 운영 배포 확인은 아래에 별도 기록한다.
+- 배포: ccba834 Workers Builds completed/success(2026-09-28T02:34:00Z). 실제 feed.js와 커밋 원문 전체 일치, 공개 collection-status200 및 reason 포함 허용 필드 확인(정상15·일시중지1), 피드200·비인증 관리자 API401 확인. 운영 오류 상태를 인위적으로 만들지 않았으며 오류 문구의 분기 검증은 로컬 fixture로 수행했다.
