@@ -37,6 +37,15 @@ try {
   await page.waitForSelector('.photo-dialog[open]');
   assert.ok(requests.some(x=>x.includes('test'+Number(rows[0].id.slice(2))+'-2.jpg?name=orig')));
   await page.getByRole('button',{name:'닫기',exact:true}).click();
+  const photoBottom=await first.locator('.photo-gallery').evaluate(e=>e.getBoundingClientRect().bottom+scrollY);
+  await page.evaluate(y=>scrollTo(0,y),photoBottom+900);
+  await page.waitForTimeout(150);
+  assert.ok(await first.locator('.photo-frame img').getAttribute('src'),'Nearby image stays loaded after scrolling 900px past it');
+  await page.evaluate(y=>scrollTo(0,y),photoBottom+1600);
+  await page.waitForFunction(()=>!document.querySelector('.card .photo-frame img').hasAttribute('src'));
+  await first.scrollIntoViewIfNeeded();
+  await page.waitForFunction(()=>document.querySelector('.card .photo-frame img').naturalWidth>0);
+
   await page.evaluate(()=>{window.savedCards=[...document.querySelectorAll('#gallery .card')];window.removedGalleryNodes=0;window.galleryObserver=new MutationObserver(records=>{window.removedGalleryNodes+=records.reduce((n,r)=>n+r.removedNodes.length,0);});window.galleryObserver.observe(document.querySelector('#gallery'),{childList:true});});
   await page.locator('#load-more').click();
   await page.waitForFunction(()=>document.querySelector('#notice').textContent.includes('목록을 불러오지 못했어요'));
