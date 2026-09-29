@@ -95,10 +95,11 @@ function card(post,priority=false){
 function renderFilterControls(){
  const youtube=media==='youtube';
  $('#kind').disabled=$('#source').disabled=youtube;
- $('#aux-filters').hidden=$('#filter-toggle').hidden=youtube;
+ $('#aux-filters').hidden=youtube;
+ $('#filter-toggle').setAttribute('aria-controls',youtube?'youtube-formats':'aux-filters');
  $('#youtube-formats').hidden=!youtube;
  $('#youtube-feed-format').value=youtubeFormat;$('#youtube-feed-category').value=youtubeCategory;
- const activeFilters=Number($('#kind').value!=='all')+Number($('#source').value!=='all');
+ const activeFilters=youtube?Number(youtubeFormat!=='all')+Number(youtubeCategory!=='all'):Number($('#kind').value!=='all')+Number($('#source').value!=='all');
  $('#filter-toggle').textContent=activeFilters?`필터 · ${activeFilters}`:'필터';
  document.querySelectorAll('[data-sort]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.sort===$('#sort').value)));
  document.querySelectorAll('[data-media]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.media===media)));

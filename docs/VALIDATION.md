@@ -1417,3 +1417,8 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 독립 리뷰에서 이전 형식 드롭다운과 수동 등록의 youtube-format ID 충돌 발견. 수동 등록 POST 실제400·DB 미저장 RED를 재현하고 피드 ID를 youtube-feed-format으로 분리. 수동 등록 분류 ID와 피드 분류 ID도 별도 유지.
 - 수정 후 check-youtube 전체 통과(미리보기·실제 수동등록·검토/제외·중복 방지·감사 내역·채널·반응형), check-youtube-format320/390/1280 재통과. 최종 독립 리뷰 APPROVED. 테스트가 의도한 review_conflict409와 unavailable422 로그는 예상 오류 경로다.
 - 운영:08a51d4 Workers Builds success(2026-09-29 15:29:20 KST). 조회시 전체148=직캠98+출연7+COSMO 라이브16+공식23+기타4. 전체·각 분류의 모든 페이지 고유ID수=전체건수 확인. 일반+COSMO 라이브16개·잘못된분류400, 실제 Chrome두select선택/목록/날짜별빈칸 확인. .local/youtube-format/live-category.png 화면 증거는 커밋 제외.
+
+## 2026-09-29 모바일 유튜브 필터 통일
+
+- RED:모바일 초기 접힘 기대에 상시 표시 확인. 공통 selects 규칙 적용 후 check-youtube-format320/390/1280 통과:접기/펼치기·aria-controls·재로딩 접힘·선택2개 뱃지·사진 탭의 기존 필터 복원·형식/분류 조합과 페이지 이동 유지. 접힘/펼침/PC 스크린샷 직접 확인.
+- check-youtube 수동 등록·검토 전체 통과. JS문법·Wrangler dry-run280.21KiB 통과. 독립 리뷰 APPROVED. 기존 사진/영상과 같은 드롭다운 배경·간격·너비 규칙을 공유한다.
