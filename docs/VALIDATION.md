@@ -1422,3 +1422,4 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 
 - RED:모바일 초기 접힘 기대에 상시 표시 확인. 공통 selects 규칙 적용 후 check-youtube-format320/390/1280 통과:접기/펼치기·aria-controls·재로딩 접힘·선택2개 뱃지·사진 탭의 기존 필터 복원·형식/분류 조합과 페이지 이동 유지. 접힘/펼침/PC 스크린샷 직접 확인.
 - check-youtube 수동 등록·검토 전체 통과. JS문법·Wrangler dry-run280.21KiB 통과. 독립 리뷰 APPROVED. 기존 사진/영상과 같은 드롭다운 배경·간격·너비 규칙을 공유한다.
+- 운영:e0cd7cf Workers Builds success(2026-09-29 16:46:30 KST). Chrome390×844에서 초기 드롭다운 숨김·필터 버튼 표시, 클릭 후 aria-expanded=true·두 select 표시 확인. DOM 필터행 left12/width351/height50으로 공통 모바일 행 배치 확인. 캡처 도구의 모바일 이미지 축소 표시 때문에 외형 판단은 로컬390px 원본 스크린샷으로 확인했다. 검증 후 viewport 원복.
