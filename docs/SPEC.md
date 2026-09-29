@@ -364,3 +364,7 @@ triplescosmos 발견소스의 직접 작성+미디어+정확한 멤버태그 글
 ## 2026-09-29 유튜브 형식 필터
 
 /api/feed의 media=youtube에서 youtubeFormat=all|shorts|regular를 지원한다. 생략은 all이며 검토자가 저장한 youtube_videos.format을 기준으로 목록·전체 건수·페이지 이동에 동일하게 적용한다. 영상 길이나 제목으로 추정하지 않는다. 잘못된 형식 또는 다른 미디어의 구체적 형식 요청은400. 커서는 형식 간 재사용을 거부한다. URL에 선택을 반영하고 사진/영상에서는 형식 쿼리를 제거한다. 유튜브의 빈 결과에서 초기화하면 유튜브 전체로 돌아온다. DB·기존 판정은 변경하지 않는다.
+
+## 2026-09-29 유튜브 분류 조회
+
+media=youtube에서 youtubeCategory=all|fancam|appearance|cosmo_live|official|other를 지원하며 생략은 all이다. 저장된 category를 사용하고 youtubeFormat과 AND로 적용한다. 건수·페이지 조회에 같은 조건을 적용하고 분류가 다른 커서는400으로 거부한다. 잘못된 분류 또는 다른 미디어에 구체적인 분류를 지정해도400이다. URL에 두 선택을 저장하고 사진/영상에서는 두 조건을 제거한다. 유튜브 초기화는 형식·분류를 모두 전체로 되돌린다. 신규 분류 자동 추정·기존 판정 변경·DB마이그레이션은 없다.

@@ -5,9 +5,9 @@ test('YouTube tab excludes regular video tab and pages identical dates without d
  assert.equal((await readFeed(DB,new URLSearchParams('media=video'))).total,0);
  }finally{sqlite.close();}});
 
-function video(sqlite,n,format,{decision='kept',date='2026-09-20T00:00:00.000Z',fresh=true}={}){
+function video(sqlite,n,format,{decision='kept',date='2026-09-20T00:00:00.000Z',fresh=true,category='appearance'}={}){
  const id=String(n).padStart(11,'0');
- sqlite.prepare("INSERT INTO youtube_videos(video_id,metadata_json,metadata_fetched_at,decision,category,format) VALUES(?,?,?,?,'appearance',?)").run(id,JSON.stringify({title:'fixture',channelTitle:'fixture',publishedAt:date,durationSeconds:format==='shorts'?200:30}),fresh?Math.floor(Date.now()/1000):0,decision,format);
+ sqlite.prepare("INSERT INTO youtube_videos(video_id,metadata_json,metadata_fetched_at,decision,category,format) VALUES(?,?,?,?,?,?)").run(id,JSON.stringify({title:'fixture',channelTitle:'fixture',publishedAt:date,durationSeconds:format==='shorts'?200:30}),fresh?Math.floor(Date.now()/1000):0,decision,category,format);
  return 'yt:'+id;
 }
 test('YouTube format filters use reviewed classification, keep visibility and count all pages',async()=>{
@@ -35,5 +35,23 @@ test('YouTube format filters use reviewed classification, keep visibility and co
 test('YouTube format rejects invalid values and use outside YouTube',async()=>{
  const {DB,sqlite}=testDatabase();try{
   for(const query of ['media=youtube&youtubeFormat=bad','media=image&youtubeFormat=shorts','youtubeFormat=regular'])await assert.rejects(readFeed(DB,new URLSearchParams(query)),{message:'invalid_feed_query',status:400});
+ }finally{sqlite.close();}
+});
+
+test('YouTube categories combine with format, visibility, totals and cursor scope',async()=>{
+ const {DB,sqlite}=testDatabase();try{
+  for(let n=0;n<49;n++)video(sqlite,n,'shorts',{category:'fancam'});
+  video(sqlite,100,'regular',{category:'fancam'});
+  const appearance=video(sqlite,101,'shorts'),cosmo=video(sqlite,102,'regular',{category:'cosmo_live'}),official=video(sqlite,103,'shorts',{category:'official'}),other=video(sqlite,104,'regular',{category:'other'});
+  video(sqlite,105,'shorts',{category:'fancam',decision:'held'});video(sqlite,106,'shorts',{category:'fancam',fresh:false});
+  const query=new URLSearchParams({media:'youtube',youtubeCategory:'fancam',youtubeFormat:'shorts'}),page=await readFeed(DB,query);
+  assert.equal(page.total,49);assert.equal(page.posts.length,48);assert.ok(page.nextCursor);
+  query.set('cursor',page.nextCursor);const next=await readFeed(DB,query);assert.equal(next.total,49);assert.equal(next.posts.length,1);assert.equal(new Set([...page.posts,...next.posts].map(p=>p.id)).size,49);
+  for(const category of ['all','appearance']){query.set('youtubeCategory',category);await assert.rejects(readFeed(DB,query),{message:'invalid_feed_query',status:400});}
+  assert.equal((await readFeed(DB,new URLSearchParams('media=youtube&youtubeCategory=fancam'))).total,50);
+  for(const [category,id] of [['appearance',appearance],['cosmo_live',cosmo],['official',official],['other',other]])assert.deepEqual((await readFeed(DB,new URLSearchParams({media:'youtube',youtubeCategory:category}))).posts.map(p=>p.id),[id]);
+  assert.equal((await readFeed(DB,new URLSearchParams('media=youtube&youtubeCategory=cosmo_live&youtubeFormat=shorts'))).total,0);
+  assert.equal((await readFeed(DB,new URLSearchParams('media=youtube&youtubeCategory=all'))).total,54);
+  for(const q of ['media=youtube&youtubeCategory=bad','media=image&youtubeCategory=fancam','youtubeCategory=official'])await assert.rejects(readFeed(DB,new URLSearchParams(q)),{message:'invalid_feed_query',status:400});
  }finally{sqlite.close();}
 });

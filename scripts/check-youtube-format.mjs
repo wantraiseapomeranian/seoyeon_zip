@@ -7,7 +7,7 @@ import {readFeed} from '../src/feed.mjs';
 const {DB,sqlite}=testDatabase();
 for(let n=0;n<53;n++){
  const format=n<3?'shorts':'regular',id=String(n).padStart(11,'0');
- sqlite.prepare("INSERT INTO youtube_videos(video_id,metadata_json,metadata_fetched_at,decision,category,format) VALUES(?,?,unixepoch(),'kept','appearance',?)").run(id,JSON.stringify({title:(format==='shorts'?'짧게 보는 무대':'무대 전체 영상')+' '+n,channelTitle:'검증용 채널',publishedAt:'2026-09-20T00:00:00.000Z',durationSeconds:format==='shorts'?200:30,thumbnailUrl:'https://i.ytimg.com/fixture.jpg'}),format);
+ sqlite.prepare("INSERT INTO youtube_videos(video_id,metadata_json,metadata_fetched_at,decision,category,format) VALUES(?,?,unixepoch(),'kept',?,?)").run(id,JSON.stringify({title:(format==='shorts'?'짧게 보는 무대':'무대 전체 영상')+' '+n,channelTitle:'검증용 채널',publishedAt:'2026-09-20T00:00:00.000Z',durationSeconds:format==='shorts'?200:30,thumbnailUrl:'https://i.ytimg.com/fixture.jpg'}),n===0?'fancam':n===1?'official':n===2?'other':n===52?'cosmo_live':'appearance',format);
 }
 let failShorts=false,delayShorts=false;
 const server=createServer(async(req,res)=>{
@@ -31,17 +31,29 @@ try{for(const width of [320,390,1280]){
  const page=await browser.newPage({viewport:{width,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('https://i.ytimg.com/**',r=>r.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#bcdde9"/></svg>'}));
  const count=async n=>{await page.waitForFunction(n=>document.querySelector('#count').textContent===n+'개 게시물'&&document.querySelector('#gallery').getAttribute('aria-busy')==='false',n);};
- const format=page.getByRole('combobox',{name:'유튜브 영상 형식',exact:true});
+ const format=page.getByRole('combobox',{name:'유튜브 영상 형식',exact:true}),category=page.getByRole('combobox',{name:'유튜브 분류',exact:true});
  await page.goto('http://127.0.0.1:'+server.address().port+'/?data=live');await count(0);
  assert.equal(await page.locator('#youtube-formats').isVisible(),false);
  await page.getByRole('button',{name:'유튜브',exact:true}).click();await count(53);
  assert.equal(await page.locator('#youtube-formats').isVisible(),true,'YouTube shows format controls');
- assert.equal(await format.count(),1,'format uses a native select');assert.equal(await format.inputValue(),'all');
+ assert.equal(await category.count(),1,'category uses a native select');assert.equal(await format.count(),1,'format uses a native select');assert.equal(await format.inputValue(),'all');
  await format.selectOption('shorts');await count(3);assert.equal(await page.locator('.card').count(),3);assert.ok(new URL(page.url()).searchParams.get('youtubeFormat')==='shorts');
  assert.equal(await page.locator('#load-more').isVisible(),false);
  assert.equal(await page.locator('#aux-filters').isVisible(),false);
- await page.screenshot({path:'.local/youtube-format/'+width+'.png',fullPage:true});
+
  await page.reload();await count(3);assert.equal(await format.inputValue(),'shorts');
+ await category.selectOption('fancam');await count(1);assert.equal(await format.inputValue(),'shorts');
+ assert.equal(new URL(page.url()).searchParams.get('youtubeCategory'),'fancam');
+ await page.reload();await count(1);assert.equal(await category.inputValue(),'fancam');
+ await page.screenshot({path:'.local/youtube-format/category-'+width+'.png',fullPage:true});
+ await format.selectOption('regular');await count(0);assert.equal(await page.locator('#empty').isVisible(),true);
+ await page.getByRole('button',{name:'필터 초기화',exact:true}).click();await count(53);assert.equal(await category.inputValue(),'all');
+ await category.selectOption('appearance');await count(49);assert.equal(await page.locator('.card').count(),48);
+ await page.getByRole('button',{name:'더 보기',exact:true}).click();await count(49);assert.equal(await page.locator('.card').count(),49);
+ await page.getByRole('button',{name:'사진',exact:true}).click();await count(0);assert.equal(new URL(page.url()).searchParams.has('youtubeCategory'),false);
+ await page.getByRole('button',{name:'유튜브',exact:true}).click();await count(49);assert.equal(await category.inputValue(),'appearance');
+ for(const value of ['cosmo_live','official','other']){await category.selectOption(value);await count(1);}
+ await category.selectOption('all');await count(53);await format.selectOption('shorts');await count(3);
  await format.focus();
  await format.press('End');await count(50);assert.equal(await page.locator('.card').count(),48);
  await page.getByRole('button',{name:'더 보기',exact:true}).click();await count(50);assert.equal(await page.locator('.card').count(),50);
