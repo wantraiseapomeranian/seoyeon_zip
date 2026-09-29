@@ -1399,3 +1399,4 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 
 - 혼합 사진·영상 카드와 YouTube 카드가 기존 프레임을 유지하는 추가 회귀를 RED→GREEN으로 확인. 자동 비율은 사진 전용 게시물에 한정한다. JS 문법 검사와 Wrangler dry-run 통과(279.35KiB).
 - 최종 독립 코드 리뷰 APPROVED(Critical/Major 없음).
+- 운영 배포:92464a2 Workers Builds success(2026-09-29 14:56:52 KST). 새로고침 후 실제9/27 가로 사진1080×717의 프레임384×254.92, object-fit contain 확인(변경 전384×512).3열·날짜별 독립 행과 오른쪽 빈칸 유지. 실제 운영 스크린샷 직접 확인, .local/photo-ratio/live-desktop.png에 보관(커밋 제외).
