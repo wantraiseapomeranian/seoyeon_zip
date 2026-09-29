@@ -1389,3 +1389,13 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 배포 후 조건부 해제 SQL 성공(rows_written1). 13:44:04 KST blocked_until0/error NULL, 기존275개 판정과 검색3개 pages1/2/2·후속 페이지 유지 확인.
 - 실제 Cron 복구:13:44:36 정보 갱신,13:44:38 한국어 검색 저장 성공.13:45:08 조회에서 source 오류NULL/pages2, 신규 pending15개, kept128/excluded147 유지, 총290개. LA9/28 예산 search1/detail2. 사후 SELECT rows_written0. 아직 나머지 두 검색의 다음 실행이나 하루50회 소진을 운영에서 강제로 시험하지 않았다.
 - 배포 HTTP 확인: 비인증 /api/youtube/status 및 /api/youtube/review401, 공개 /api/feed?media=youtube200·표시128개. 기존 관리자 보호와 공개 범위 유지.
+
+
+## 2026-09-29 피드 사진의 원본 비율 적용
+
+- check-feed-photo-ratio RED:390px에서 가로2:1 사진의 프레임178×237.33으로 세로 빈 공간 재현. GREEN:390/1280px 실제 이미지 비율·가로/세로 전환·캐시된 이전 사진·날짜별 독립행·2/3열·가로 넘침0·기존 검토함 크기 유지 통과. 검증용 도형 스크린샷 두 크기 직접 확인.
+- check-photo-loading, check-photo-touch-scroll 통과(로드 지연/실패/재시도·모바일 터치/마우스·키보드). check-feed-render 통과:크기 정보가 제공된 기존 표본 CLS 모바일0/데스크톱0.000221. 크기 정보가 없는 사진은 로드 후 프레임이 바뀌므로 이 CLS 수치를 일반화하지 않는다.
+- 변경은 피드의 image 미디어에만 선택적으로 적용. CSS·날짜 그룹·빈칸·컬럼 수·영상/유튜브 프레임·수집/판정 데이터 변경 없음.
+
+- 혼합 사진·영상 카드와 YouTube 카드가 기존 프레임을 유지하는 추가 회귀를 RED→GREEN으로 확인. 자동 비율은 사진 전용 게시물에 한정한다. JS 문법 검사와 Wrangler dry-run 통과(279.35KiB).
+- 최종 독립 코드 리뷰 APPROVED(Critical/Major 없음).
