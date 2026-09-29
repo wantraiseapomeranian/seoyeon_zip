@@ -2,17 +2,20 @@ import {publishedDayRange} from './published-day.mjs';
 const dateSql="json_extract(p.data,'$.publishedAt')";
 export async function readFeed(db, params) {
   const sort=params.get('sort')||'newest', media=params.get('media')||'all';
+  const youtubeFormat=params.get('youtubeFormat')||'all';
   const kind=params.get('kind')||'all', source=params.get('source')||'all', month=params.get('month')||'';
   const invalid=()=>{throw Object.assign(new Error('invalid_feed_query'),{status:400});};
   const day=params.get('date')||'';let dayRange;
   if(day){try{dayRange=publishedDayRange(day);}catch{invalid();}}
   if(!['newest','oldest'].includes(sort)||!['all','image','video','youtube'].includes(media)||!['all','cosmo','fansite','official','other'].includes(kind))invalid();
+  if(!['all','shorts','regular'].includes(youtubeFormat)||(youtubeFormat!=='all'&&media!=='youtube'))invalid();
   if(source!=='all'&&!/^[A-Za-z0-9_]{1,15}$/.test(source))invalid();
   if(month&&!/^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(month))invalid();
   const where=[],args=[];
   if(kind!=='all'){where.push("json_extract(p.data,'$.contentKind')=?");args.push(kind);}
   if(source==='youtube'){where.push("json_extract(p.data,'$.platform')='youtube'");}else if(source==='manual'){where.push("json_extract(p.data,'$.manual')=1");}else if(source==='instagram'){where.push("json_extract(p.data,'$.platform')='instagram'");}else if(source!=='all'){where.push('EXISTS (SELECT 1 FROM discoveries d WHERE d.post_id=p.id AND d.source=?)');args.push(source);}
   if(media==='youtube')where.push("json_extract(p.data,'$.platform')='youtube'");
+  if(youtubeFormat!=='all'){where.push("EXISTS (SELECT 1 FROM youtube_videos y WHERE y.video_id=substr(p.id,4) AND y.format=?)");args.push(youtubeFormat);}
   if(media==='video')where.push("COALESCE(json_extract(p.data,'$.platform'),'x')!='youtube'");
   if(media!=='all'&&media!=='youtube')where.push(`EXISTS (SELECT 1 FROM json_each(p.data,'$.media') m WHERE json_extract(m.value,'$.kind') ${media==='image'?"= 'image'":"IN ('video','gif')"})`);
   if(dayRange){where.push(`${dateSql}>=? AND ${dateSql}<?`);args.push(...dayRange);}
@@ -23,7 +26,7 @@ export async function readFeed(db, params) {
     where.push(`${dateSql}>=? AND ${dateSql}<?`);args.push(start.toISOString(),next.toISOString());
   }
   const condition=()=>where.length?' WHERE '+where.join(' AND '):'';
-  const scope=JSON.stringify([sort,media,kind,source,month,...(day?[day]:[])]);
+  const scope=JSON.stringify([sort,media,kind,source,month,...(day?[day]:[]),...(youtubeFormat==='all'?[]:[youtubeFormat])]);
   let cursor;
   if(params.has('cursor')){
     if(params.get('cursor').length>2048)invalid();

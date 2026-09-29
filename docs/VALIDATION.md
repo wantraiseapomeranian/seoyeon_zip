@@ -1400,3 +1400,9 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 혼합 사진·영상 카드와 YouTube 카드가 기존 프레임을 유지하는 추가 회귀를 RED→GREEN으로 확인. 자동 비율은 사진 전용 게시물에 한정한다. JS 문법 검사와 Wrangler dry-run 통과(279.35KiB).
 - 최종 독립 코드 리뷰 APPROVED(Critical/Major 없음).
 - 운영 배포:92464a2 Workers Builds success(2026-09-29 14:56:52 KST). 새로고침 후 실제9/27 가로 사진1080×717의 프레임384×254.92, object-fit contain 확인(변경 전384×512).3열·날짜별 독립 행과 오른쪽 빈칸 유지. 실제 운영 스크린샷 직접 확인, .local/photo-ratio/live-desktop.png에 보관(커밋 제외).
+
+## 2026-09-29 유튜브 형식 필터
+
+- 실제 SQLite 피드 테스트: RED에서 쇼츠49개 기대에50개 반환 및 잘못된 형식 허용 확인. 필터 구현 후 기존7개+유튜브3개 총10개 통과. 검토 판정·만료 제외, KST날짜, 양방향48+1페이지, 형식 변경 커서 거부 확인.
+- 실제 readFeed/SQLite를 쓰는 check-youtube-format: RED에서 하위 필터 없음 확인.390/1280px GREEN:전체53·쇼츠3·일반50, 더 보기48+2, 새로고침 복원, 다른 탭의 쿼리 제거, 오래된 응답 무시, 오류 후 새로고침, 빈 결과 초기화 검증. 사진/영상·원본 비율과 기존 날짜 배치 유지.
+- 최종 관련 SQL18개·check-feed-photo-ratio·check-feed-render 통과.390/1280px 스크린샷 직접 확인, 44px 조작과 가로 넘침0. Wrangler dry-run279.75KiB 통과. 디자인 검사 기존 management-header 패딩 경고1건(이번 변경 밖), 새 경고 없음. 독립 리뷰 APPROVED.

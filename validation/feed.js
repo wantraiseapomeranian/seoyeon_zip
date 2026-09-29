@@ -25,6 +25,7 @@ const kinds={cosmo:'COSMO',fansite:'직찍',official:'공식',other:'기타'};
 const params=new URLSearchParams(location.search);
 const mood='zine';
 let media=['image','video','youtube'].includes(params.get('media'))?params.get('media'):'image';
+let youtubeFormat=media==='youtube'&&['shorts','regular'].includes(params.get('youtubeFormat'))?params.get('youtubeFormat'):'all';
 let posts=[],states=[],collectedAt=null,loaded=false,role='visitor',roleGeneration=0;
 const live=!['127.0.0.1','localhost'].includes(location.hostname)||params.get('data')==='live';
 let nextCursor=null,total=0,requestVersion=0;
@@ -54,7 +55,7 @@ async function fetchSourceState(){
  if(!response.ok)throw Error('status');const data=await response.json();if(!Array.isArray(data.sources))throw Error('shape');
  if(generation!==roleGeneration||endpoint!==sourceEndpoint())throw Error('stale');return data.sources;
 }
-function syncUrl(){const q=new URLSearchParams();if(['127.0.0.1','localhost'].includes(location.hostname)&&params.get('data')==='live')q.set('data','live');if($("#month").value)q.set("date",$("#month").value);if($("#sort").value==="oldest")q.set("sort","oldest");if(media!=='all')q.set('media',media);if($('#kind').value!=='all')q.set('kind',$('#kind').value);if($('#source').value!=='all')q.set('source',$('#source').value);const query=q.toString();history.replaceState(null,'',`/${query?'?'+query:''}${location.hash}`);}
+function syncUrl(){const q=new URLSearchParams();if(['127.0.0.1','localhost'].includes(location.hostname)&&params.get('data')==='live')q.set('data','live');if($("#month").value)q.set("date",$("#month").value);if($("#sort").value==="oldest")q.set("sort","oldest");if(media!=='all')q.set('media',media);if(media==='youtube'&&youtubeFormat!=='all')q.set('youtubeFormat',youtubeFormat);if($('#kind').value!=='all')q.set('kind',$('#kind').value);if($('#source').value!=='all')q.set('source',$('#source').value);const query=q.toString();history.replaceState(null,'',`/${query?'?'+query:''}${location.hash}`);}
 function displayCaption(text){
  const repeated=new Set();const contextTags=new Set(['triples','트리플에스','윤서연','seoyeon','서연','ソヨン']);
  return text.replace(/(^|\s)#([\p{L}\p{N}_]+)/gu,(match,space,tag)=>{
@@ -90,21 +91,28 @@ function card(post,priority=false){
  const caption=post.platform==='youtube'?post.title:displayCaption(post.caption);if(caption)article.append(node('p','caption',caption));
  if(!post.manual&&post.platform!=='youtube'&&post.platform!=='instagram'&&post.authorHandle.toLowerCase()!==post.observedViaSource.toLowerCase())article.append(node('span','via',`발견 출처 @${post.observedViaSource}`));for(const source of post.duplicateSources||[]){const a=node('a','via','같은 사진 출처 @'+source.author);a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';article.append(a);}return article;
 }
-function render(addedPosts=null){
- const append=addedPosts!==null;
- $('#kind').disabled=media==='youtube';$('#source').disabled=media==='youtube';
- if(!append)clearViewers();
+function renderFilterControls(){
+ const youtube=media==='youtube';
+ $('#kind').disabled=$('#source').disabled=youtube;
+ $('#aux-filters').hidden=$('#filter-toggle').hidden=youtube;
+ $('#youtube-formats').hidden=!youtube;
+ document.querySelectorAll('[data-youtube-format]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.youtubeFormat===youtubeFormat)));
  const activeFilters=Number($('#kind').value!=='all')+Number($('#source').value!=='all');
  $('#filter-toggle').textContent=activeFilters?`필터 · ${activeFilters}`:'필터';
  document.querySelectorAll('[data-sort]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.sort===$('#sort').value)));
  document.querySelectorAll('[data-media]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.media===media)));
+}
+function render(addedPosts=null){
+ const append=addedPosts!==null;
+ if(!append)clearViewers();
+ renderFilterControls();
  const month=$('#month').value;
  $('#clear-month').hidden=!month;
  const monthDescription=month?`${month.slice(0,4)}년 ${Number(month.slice(5,7))}월 ${Number(month.slice(8))}일 선택됨`:'전체 기간';
  $('#month-trigger').setAttribute('aria-label',`게시일 선택 · ${monthDescription}`);
  $('#month-trigger').dataset.active=String(Boolean(month));
  $('#month-trigger .icon-tooltip').textContent=`게시일 선택 · ${monthDescription}`;
- const selected=live?[...(addedPosts??posts)]:posts.filter(p=>(!month||new Date(p.publishedAt).toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'})===month)&&(media==='all'||p.media.some(m=>media==='video'?['video','gif'].includes(m.kind):m.kind==='image'))&&($('#kind').value==='all'||p.contentKind===$('#kind').value)&&($('#source').value==='all'||p.observedViaSource===$('#source').value));
+ const selected=live?[...(addedPosts??posts)]:posts.filter(p=>(!month||new Date(p.publishedAt).toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'})===month)&&(media==='all'||(media==='youtube'?p.platform==='youtube':p.platform!=='youtube'&&p.media.some(m=>media==='video'?['video','gif'].includes(m.kind):m.kind==='image')))&&(media!=='youtube'||youtubeFormat==='all'||p.format===youtubeFormat)&&($('#kind').value==='all'||p.contentKind===$('#kind').value)&&($('#source').value==='all'||p.observedViaSource===$('#source').value));
  const direction=$('#sort').value==='oldest'?1:-1;
  selected.sort((a,b)=>direction*(Date.parse(a.publishedAt)-Date.parse(b.publishedAt))||a.id.localeCompare(b.id));
  const elements=[];const previousDate=append?$('#gallery').lastElementChild?.dataset.date:null;
@@ -126,7 +134,7 @@ function render(addedPosts=null){
  if(live){$('#count').textContent=`${total}개 게시물`;more.hidden=!nextCursor;$('#empty h2').textContent='이 조건에 맞는 게시물이 없어요.';$('#empty p').textContent='다른 조건을 선택하거나 수집 상태를 확인해 주세요.';}
 }
 async function loadLive(append=false){
- const version=++requestVersion;syncUrl();const query=new URLSearchParams(location.search);
+ const version=++requestVersion;renderFilterControls();syncUrl();const query=new URLSearchParams(location.search);
  if(append&&nextCursor)query.set('cursor',nextCursor);
  $('#refresh').disabled=true;more.setAttribute('aria-disabled','true');appendStatus.textContent='';$('#notice').textContent='';$('#gallery').setAttribute('aria-busy','true');
  if(!append){clearViewers();photoPositions.clear();posts=[];loaded=false;nextCursor=null;more.hidden=true;$('#empty').hidden=true;$('#count').textContent='불러오는 중…';$('#gallery').replaceChildren(...Array.from({length:6},()=>{const e=node('div','skeleton');e.setAttribute('aria-hidden','true');return e;}));}
@@ -231,8 +239,10 @@ $('#month-trigger').addEventListener('click',()=>{const open=$('#month-panel').h
 document.addEventListener('click',event=>{if(!event.target.closest('.month-filter'))closeMonth();});
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('#month-panel').hidden){event.preventDefault();closeMonth(true);}});
 $('.month-filter').addEventListener('focusout',event=>{if(!event.currentTarget.contains(event.relatedTarget))closeMonth();});
+if(media==='youtube'){$('#kind').value='all';$('#source').value='all';}
+document.querySelectorAll('[data-youtube-format]').forEach(b=>b.addEventListener('click',()=>{if(youtubeFormat===b.dataset.youtubeFormat)return;youtubeFormat=b.dataset.youtubeFormat;changeFilters();}));
 document.querySelectorAll('[data-media]').forEach(b=>b.addEventListener('click',()=>{media=b.dataset.media;if(media==='youtube'){$('#kind').value='all';$('#source').value='all';}changeFilters();}));
-for(const id of ['#kind','#source'])$(id).addEventListener('change',()=>{changeFilters();});$('#reset').addEventListener('click',()=>{media='image';$("#month").value='';$('#kind').value='all';$('#source').value='all';changeFilters();});$('#refresh').addEventListener('click',load);$('#open-status').addEventListener('click',()=>{$('#source-dialog').showModal();refreshSources();});$('#refresh-status').addEventListener('click',refreshSources);$('#close-status').addEventListener('click',()=>$('#source-dialog').close());
+for(const id of ['#kind','#source'])$(id).addEventListener('change',()=>{changeFilters();});$('#reset').addEventListener('click',()=>{if(media!=='youtube')media='image';youtubeFormat='all';$("#month").value='';$('#kind').value='all';$('#source').value='all';changeFilters();});$('#refresh').addEventListener('click',load);$('#open-status').addEventListener('click',()=>{$('#source-dialog').showModal();refreshSources();});$('#refresh-status').addEventListener('click',refreshSources);$('#close-status').addEventListener('click',()=>$('#source-dialog').close());
 load();
 
 async function management(path,body,method='POST'){const response=await fetch(path,{method,headers:{'Content-Type':'application/json','X-Management-Action':'manage'},body:JSON.stringify(body)});if(!response.ok){if(response.status===401||response.status===403){demote();throw Error('관리자 로그인이 필요해요.');}const messages={400:'게시물 URL과 확인 항목을 확인해 주세요.',422:'공개된 영상인지 확인해 주세요.',429:'요청이 많아요. 1분 뒤 다시 시도해 주세요.',503:'연결 설정이나 API 할당량을 확인해 주세요.',409:'수집 상태가 바뀌었거나 전체 수집이 중지돼 있어요. 상태를 확인하고 다시 시도해 주세요.'};throw Error(messages[response.status]||'저장하지 못했어요. 잠시 후 다시 시도해 주세요.');}return response.json();}
