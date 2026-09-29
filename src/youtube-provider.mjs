@@ -1,3 +1,4 @@
+import {SEARCH_DAILY_LIMIT,youtubeQuotaDay,youtubeQuotaReset} from './youtube-quota.mjs';
 export const youtubeId=value=>typeof value==='string'&&/^[A-Za-z0-9_-]{11}$/.test(value);
 export const youtubeError=(code,status=503)=>Object.assign(new Error(code),{status});
 export function parseYouTubeUrl(input){
@@ -9,14 +10,14 @@ export function parseYouTubeUrl(input){
  if(!youtubeId(id))throw youtubeError('invalid_url',400);
  return {videoId:id,canonicalUrl:`https://www.youtube.com/watch?v=${id}`};
 }
-export async function youtubeRequest(env,resource,params,{fetcher=fetch,budget='background'}={}){
+export async function youtubeRequest(env,resource,params,{fetcher=fetch,budget='background',now=Math.floor(Date.now()/1000)}={}){
  if(!env.YOUTUBE_API_KEY)throw youtubeError('not_configured');
  if(!['videos','search','channels','playlistItems'].includes(resource))throw youtubeError('invalid_input',400);
  if(env.DB){
-  const day=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-  const bucket=resource==='search'?'search':'detail',limit=bucket==='search'?12:budget==='manual'?500:400;
+  const day=youtubeQuotaDay(now);
+  const bucket=resource==='search'?'search':'detail',limit=bucket==='search'?SEARCH_DAILY_LIMIT:budget==='manual'?500:400;
   const r=await env.DB.prepare('INSERT INTO youtube_api_budget(day,bucket,calls) VALUES(?,?,1) ON CONFLICT(day,bucket) DO UPDATE SET calls=calls+1 WHERE calls<? RETURNING calls').bind(day,bucket,limit).first();
-  if(!r)throw youtubeError('quota_exceeded');
+  if(!r)throw Object.assign(youtubeError('quota_exceeded'),{budgetBucket:bucket,retryAt:youtubeQuotaReset(now)});
  }
  const url=new URL('https://www.googleapis.com/youtube/v3/'+resource);for(const [key,value]of Object.entries(params))if(value!==null&&value!==undefined)url.searchParams.set(key,String(value));
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);

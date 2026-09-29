@@ -87,7 +87,7 @@ try{
  assert.equal(await page.locator('#operations-status').evaluate(el=>getComputedStyle(el).position),'absolute','success announcement stays available without taking visual space');
  await page.locator('#ops-tab-collection').click();
  assert.match(await page.locator('#youtube-values').innerText(),/저장 영상\s*2건/);
- assert.match(await page.locator('#youtube-values').innerText(),/오늘 검색\s*0 \/ 12회/);
+ assert.match(await page.locator('#youtube-values').innerText(),/오늘 검색\s*0 \/ 50회/);
  assert.match(await page.locator('#x-values').innerText(),/수집 오류·지연\s*0개 계정/);
  assert.match(await page.locator('#x-values').innerText(),/과거 범위 미확인\s*1개 계정/);
  await page.locator('#x-details-title').click();
