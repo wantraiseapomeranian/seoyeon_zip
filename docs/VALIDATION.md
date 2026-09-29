@@ -1416,3 +1416,4 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - check-youtube-format320/390/1280px 통과:5종 분류, 쇼츠+직캠 조합, URL·새로고침·다른 탭 복귀, 출연49개48+1페이지, 빈 조합 초기화, 형식 전환·재시도 유지. 세 화면 직접 확인:두 드롭다운44px·가로 넘침0·기존 날짜별 빈칸 유지. JS문법·Wrangler dry-run280.21KiB 통과. 디자인 검사 기존 관리모달 패딩 경고1건 외 새 경고 없음.
 - 독립 리뷰에서 이전 형식 드롭다운과 수동 등록의 youtube-format ID 충돌 발견. 수동 등록 POST 실제400·DB 미저장 RED를 재현하고 피드 ID를 youtube-feed-format으로 분리. 수동 등록 분류 ID와 피드 분류 ID도 별도 유지.
 - 수정 후 check-youtube 전체 통과(미리보기·실제 수동등록·검토/제외·중복 방지·감사 내역·채널·반응형), check-youtube-format320/390/1280 재통과. 최종 독립 리뷰 APPROVED. 테스트가 의도한 review_conflict409와 unavailable422 로그는 예상 오류 경로다.
+- 운영:08a51d4 Workers Builds success(2026-09-29 15:29:20 KST). 조회시 전체148=직캠98+출연7+COSMO 라이브16+공식23+기타4. 전체·각 분류의 모든 페이지 고유ID수=전체건수 확인. 일반+COSMO 라이브16개·잘못된분류400, 실제 Chrome두select선택/목록/날짜별빈칸 확인. .local/youtube-format/live-category.png 화면 증거는 커밋 제외.
