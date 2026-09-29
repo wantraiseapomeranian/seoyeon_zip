@@ -1407,3 +1407,4 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 실제 readFeed/SQLite를 쓰는 check-youtube-format: RED에서 하위 필터 없음 확인.390/1280px GREEN:전체53·쇼츠3·일반50, 더 보기48+2, 새로고침 복원, 다른 탭의 쿼리 제거, 오래된 응답 무시, 오류 후 새로고침, 빈 결과 초기화 검증. 사진/영상·원본 비율과 기존 날짜 배치 유지.
 - 최종 관련 SQL18개·check-feed-photo-ratio·check-feed-render 통과.390/1280px 스크린샷 직접 확인, 44px 조작과 가로 넘침0. Wrangler dry-run279.75KiB 통과. 디자인 검사 기존 management-header 패딩 경고1건(이번 변경 밖), 새 경고 없음. 독립 리뷰 APPROVED.
 - 운영:8bf58af Workers Builds success(2026-09-29 15:13:41 KST). 공개 API 전체143개/3페이지·쇼츠22개/1페이지·일반121개/3페이지, 각 전체 건수=고유ID수로 중복·누락 없음. 잘못된 형식400. 실제 Chrome 쇼츠22개와 일반121개·더 보기, 날짜별 빈칸 유지 확인. .local/youtube-format/live-shorts.png 화면 증거는 커밋 제외. DB마이그레이션·기존 검토 판정 변경 없음.
+- 후속 UI 변경: 별도 형식 버튼행을 주 탭 오른쪽의 네이티브 드롭다운으로 교체. RED에서 combobox 없음 확인 후320/390/1280px 실제 SQL 브라우저 흐름 GREEN. 키보드 End 선택·URL/새로고침·더 보기·빠른 전환·오류 재시도·초기화 유지. 세 화면 스크린샷 확인,320px는 오른쪽 다음 줄·390/1280px는 탭 옆 배치. JS문법·Wrangler dry-run 통과.

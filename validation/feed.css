@@ -154,7 +154,7 @@ body:has(dialog[open]) .theme-launch{visibility:hidden}
 @media(max-width:600px){#theme-dialog{inset:auto 0 0 0;width:100%;max-width:none;max-height:85dvh;border-radius:16px 16px 0 0;padding:16px 16px calc(24px + env(safe-area-inset-bottom,0px))}#theme-dialog::backdrop{background:var(--backdrop)}.has-theme-control body{padding-bottom:calc(108px + env(safe-area-inset-bottom,0px))}.theme-launch{right:max(20px,env(safe-area-inset-right,0px));bottom:calc(32px + env(safe-area-inset-bottom,0px));width:52px;height:52px;min-height:52px;background:var(--soft);box-shadow:0 3px 12px rgb(0 0 0 / .16)}.theme-launch svg{width:24px;height:24px}}
 @media(prefers-reduced-motion:reduce){.theme-choice svg{animation:none!important}}
 
-/* Secondary choices only within the YouTube tab. */
-.youtube-formats{display:flex;align-items:center;gap:4px;padding-top:8px}
-.youtube-formats button{border:0;min-height:44px;padding:8px 12px;font-size:13px;color:var(--muted)}
-.youtube-formats button[aria-pressed=true]{background:var(--soft);color:var(--ink);font-weight:700}
+/* YouTube uses the same select treatment as the adjacent feed filters. */
+.youtube-formats{margin-left:auto}
+.youtube-formats select{background:var(--surface)}
+@media(max-width:600px){.youtube-formats select{width:106px;padding-inline:8px;font-size:13px}}

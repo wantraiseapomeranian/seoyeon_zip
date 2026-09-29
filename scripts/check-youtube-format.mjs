@@ -27,35 +27,35 @@ const server=createServer(async(req,res)=>{
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const browser=await chromium.launch({channel:'chrome',headless:true});
 mkdirSync('.local/youtube-format',{recursive:true});
-try{for(const width of [390,1280]){
+try{for(const width of [320,390,1280]){
  const page=await browser.newPage({viewport:{width,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('https://i.ytimg.com/**',r=>r.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#bcdde9"/></svg>'}));
  const count=async n=>{await page.waitForFunction(n=>document.querySelector('#count').textContent===n+'개 게시물'&&document.querySelector('#gallery').getAttribute('aria-busy')==='false',n);};
- const format=name=>page.getByRole('group',{name:'유튜브 영상 형식',exact:true}).getByRole('button',{name,exact:true});
+ const format=page.getByRole('combobox',{name:'유튜브 영상 형식',exact:true});
  await page.goto('http://127.0.0.1:'+server.address().port+'/?data=live');await count(0);
  assert.equal(await page.locator('#youtube-formats').isVisible(),false);
  await page.getByRole('button',{name:'유튜브',exact:true}).click();await count(53);
  assert.equal(await page.locator('#youtube-formats').isVisible(),true,'YouTube shows format controls');
- assert.equal(await format('전체').getAttribute('aria-pressed'),'true');
- await format('쇼츠').click();await count(3);assert.equal(await page.locator('.card').count(),3);assert.ok(new URL(page.url()).searchParams.get('youtubeFormat')==='shorts');
+ assert.equal(await format.count(),1,'format uses a native select');assert.equal(await format.inputValue(),'all');
+ await format.selectOption('shorts');await count(3);assert.equal(await page.locator('.card').count(),3);assert.ok(new URL(page.url()).searchParams.get('youtubeFormat')==='shorts');
  assert.equal(await page.locator('#load-more').isVisible(),false);
  assert.equal(await page.locator('#aux-filters').isVisible(),false);
  await page.screenshot({path:'.local/youtube-format/'+width+'.png',fullPage:true});
- await page.reload();await count(3);assert.equal(await format('쇼츠').getAttribute('aria-pressed'),'true');
- await format('일반 영상').focus();
- await format('일반 영상').press('Enter');await count(50);assert.equal(await page.locator('.card').count(),48);
+ await page.reload();await count(3);assert.equal(await format.inputValue(),'shorts');
+ await format.focus();
+ await format.press('End');await count(50);assert.equal(await page.locator('.card').count(),48);
  await page.getByRole('button',{name:'더 보기',exact:true}).click();await count(50);assert.equal(await page.locator('.card').count(),50);
  assert.equal(await page.locator('#load-more').isVisible(),false);
  await page.getByRole('button',{name:'사진',exact:true}).click();await count(0);
  assert.equal(await page.locator('#youtube-formats').isVisible(),false);assert.equal(new URL(page.url()).searchParams.has('youtubeFormat'),false);
  await page.getByRole('button',{name:'유튜브',exact:true}).click();await count(50);
- delayShorts=true;await format('쇼츠').click();await format('일반 영상').click();await count(50);await page.waitForTimeout(350);await count(50);delayShorts=false;
- failShorts=true;await format('쇼츠').click();await page.getByText('목록 조회 실패',{exact:true}).waitFor();assert.equal(await format('쇼츠').getAttribute('aria-pressed'),'true');
+ delayShorts=true;await format.selectOption('shorts');await format.selectOption('regular');await count(50);await page.waitForTimeout(350);await count(50);delayShorts=false;
+ failShorts=true;await format.selectOption('shorts');await page.getByText('목록 조회 실패',{exact:true}).waitFor();assert.equal(await format.inputValue(),'shorts');
  failShorts=false;await page.getByRole('button',{name:'목록 새로고침',exact:true}).click();await count(3);
  await page.getByRole('button',{name:/게시일 선택/}).click();await page.getByLabel('게시일 (한국시간)',{exact:true}).fill('2026-09-21');await count(0);
  assert.equal(await page.locator('#empty').isVisible(),true);
  await page.getByRole('button',{name:'필터 초기화',exact:true}).click();await count(53);
- assert.equal(await page.getByRole('button',{name:'유튜브',exact:true}).getAttribute('aria-pressed'),'true');assert.equal(await format('전체').getAttribute('aria-pressed'),'true');
+ assert.equal(await page.getByRole('button',{name:'유튜브',exact:true}).getAttribute('aria-pressed'),'true');assert.equal(await format.count(),1,'format uses a native select');assert.equal(await format.inputValue(),'all');
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  assert.deepEqual(errors,[]);console.log('PASS '+width+': actual SQL, format counts, paging, reload, tab scope, stale response, retry and reset');await page.close();
 }}finally{await browser.close();server.closeAllConnections();server.close();sqlite.close();}

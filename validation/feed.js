@@ -96,7 +96,7 @@ function renderFilterControls(){
  $('#kind').disabled=$('#source').disabled=youtube;
  $('#aux-filters').hidden=$('#filter-toggle').hidden=youtube;
  $('#youtube-formats').hidden=!youtube;
- document.querySelectorAll('[data-youtube-format]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.youtubeFormat===youtubeFormat)));
+ $('#youtube-format').value=youtubeFormat;
  const activeFilters=Number($('#kind').value!=='all')+Number($('#source').value!=='all');
  $('#filter-toggle').textContent=activeFilters?`필터 · ${activeFilters}`:'필터';
  document.querySelectorAll('[data-sort]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.sort===$('#sort').value)));
@@ -240,7 +240,7 @@ document.addEventListener('click',event=>{if(!event.target.closest('.month-filte
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('#month-panel').hidden){event.preventDefault();closeMonth(true);}});
 $('.month-filter').addEventListener('focusout',event=>{if(!event.currentTarget.contains(event.relatedTarget))closeMonth();});
 if(media==='youtube'){$('#kind').value='all';$('#source').value='all';}
-document.querySelectorAll('[data-youtube-format]').forEach(b=>b.addEventListener('click',()=>{if(youtubeFormat===b.dataset.youtubeFormat)return;youtubeFormat=b.dataset.youtubeFormat;changeFilters();}));
+$('#youtube-format').addEventListener('change',()=>{youtubeFormat=$('#youtube-format').value;changeFilters();});
 document.querySelectorAll('[data-media]').forEach(b=>b.addEventListener('click',()=>{media=b.dataset.media;if(media==='youtube'){$('#kind').value='all';$('#source').value='all';}changeFilters();}));
 for(const id of ['#kind','#source'])$(id).addEventListener('change',()=>{changeFilters();});$('#reset').addEventListener('click',()=>{if(media!=='youtube')media='image';youtubeFormat='all';$("#month").value='';$('#kind').value='all';$('#source').value='all';changeFilters();});$('#refresh').addEventListener('click',load);$('#open-status').addEventListener('click',()=>{$('#source-dialog').showModal();refreshSources();});$('#refresh-status').addEventListener('click',refreshSources);$('#close-status').addEventListener('click',()=>$('#source-dialog').close());
 load();
