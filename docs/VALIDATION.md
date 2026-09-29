@@ -1385,3 +1385,7 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 공식 근거: https://developers.google.com/youtube/v3/determine_quota_cost . 기본 검색100회/일·태평양 자정 초기화. 사이트 자체 상한50회이며 실제 Google 프로젝트 할당량이나 키 설정을 변경하지 않음.
 - 운영 차단 해제 SQL은 코드 배포 성공 후에만 실행한다. 실제 배포 및 예약 수집 재개 결과는 후속 기록한다.
 - 독립 읽기 전용 코드 리뷰 APPROVED: Critical/Major 없음. 변경 diff 및 신규 파일의 비밀값·개인정보 확인, git diff --check 통과.
+- 운영 배포: 코드6f1e825 main 일반 푸시, Workers Builds completed/success(2026-09-29T04:43:14Z), 활성 Worker a208b555-ab57-490a-ace5-96a6a1ac63a3 100% 확인.
+- 배포 후 조건부 해제 SQL 성공(rows_written1). 13:44:04 KST blocked_until0/error NULL, 기존275개 판정과 검색3개 pages1/2/2·후속 페이지 유지 확인.
+- 실제 Cron 복구:13:44:36 정보 갱신,13:44:38 한국어 검색 저장 성공.13:45:08 조회에서 source 오류NULL/pages2, 신규 pending15개, kept128/excluded147 유지, 총290개. LA9/28 예산 search1/detail2. 사후 SELECT rows_written0. 아직 나머지 두 검색의 다음 실행이나 하루50회 소진을 운영에서 강제로 시험하지 않았다.
+- 배포 HTTP 확인: 비인증 /api/youtube/status 및 /api/youtube/review401, 공개 /api/feed?media=youtube200·표시128개. 기존 관리자 보호와 공개 범위 유지.
