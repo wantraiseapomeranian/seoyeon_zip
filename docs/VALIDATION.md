@@ -1432,3 +1432,5 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 기준 유튜브23개 통과. 신규 회귀 최초5개 실패 확인 후 구현으로6개 통과, 유튜브 전체64개·전체 npm test281개 통과. 이후 기존 kept 영상의 재보류/1시간 재조회와 제목 필터 보존2개 추가해 신규 파일8개 통과. 테스트는 실제 SQL을 실행하는 SQLite 어댑터와 외부 YouTube 응답 fixture를 사용하며 실제 Cloudflare runtime 실행 결과와 구분한다. Node SQLite 실험 기능 경고 및 예상 오류경로 로그가 있었다.
 - Wrangler4.130.0 deploy --dry-run 성공280.76KiB/gzip69.32KiB. git diff --check 통과. 독립 읽기 전용 리뷰 APPROVED(Critical/Major 없음), 리뷰어는 테스트를 재실행하지 않았다. 새 의존성·비밀값·수집 원본 추가 없음.
 - 운영 배포와 실제 문제 영상 재조회는 아래 후속 기록에서 확인한다.
+- 운영:f0e47e4 main 일반 푸시 후 Workers Builds completed/success(build c5f75f66-8e0d-4190-a77e-fd2d3f11ee78) 확인. 로그인된 운영 URL 미리보기에서 문제 영상은 기존 연결/API 오류 안내 대신 '공개된 영상인지 확인해 주세요.' 표시, 일반 영상 ZrKo6cRZgjM은 제목·BlueRose·0:11 정상 표시. 신규 등록 확정 및 판정 변경 없음. 비인증 /api/youtube/review401 유지.
+- 배포 후 D1 읽기:영어 source의 기존 invalid_response·cursor/pages0 유지, 검색50/50·영상364개. 수동 미리보기는 detail 예산을 사용한다. 검색 한도 초기화10/1 16:00 KST 전이므로 자동 수집 성공·cursor 전진은 아직 미확인이다. 예산 초기화나 오류 상태 강제 삭제는 하지 않았다.
