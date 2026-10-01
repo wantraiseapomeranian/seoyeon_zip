@@ -31,13 +31,14 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  const updates=classificationUpdates(snapshot.results),summary={mode:args.includes('--apply')?'apply':'preview',proposed:updates.length,byKind:{},byTable:{}};
  for(const u of updates){summary.byKind[u.kind]=(summary.byKind[u.kind]||0)+1;summary.byTable[u.table]=(summary.byTable[u.table]||0)+1;}
  if(args.includes('--apply')&&updates.length){
-  mkdirSync('.local',{recursive:true});let changes=0;
+  mkdirSync('.local',{recursive:true});let rowsWritten=0;
   for(let i=0;i<updates.length;i+=20){
    const file=`.local/instagram-kind-${process.pid}-${i}.sql`;
-   try{writeFileSync(file,updates.slice(i,i+20).map(u=>u.sql).join('\n'));for(const result of run(['--file',file]))changes+=result.meta?.changes??result.meta?.rows_written??0;}
+   try{writeFileSync(file,updates.slice(i,i+20).map(u=>u.sql).join('\n'));for(const result of run(['--file',file]))rowsWritten+=result.meta?.rows_written??0;}
    finally{unlinkSync(file);}
   }
-  summary.changed=changes;
+  // D1 also counts Wrangler's import bookkeeping; this is not a post count.
+  summary.databaseRowsWritten=rowsWritten;
  }
  console.log(JSON.stringify(summary));
 }

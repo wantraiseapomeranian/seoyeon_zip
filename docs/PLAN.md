@@ -754,4 +754,4 @@ X·Instagram·검토 내역의 새로고침 버튼 전체를 오른쪽으로 이
 - [x] URL·페이지 커서 범위·플랫폼 변경 시 계정 초기화·빈 결과·상태 조회 실패·관리자 로그인 경합 검증.
 - [x] Instagram 명시적 COSMO/코스모·직찍·본인 Photo by 크레딧만 분류. 원본 작성자·공식 여부를 추정하지 않음. 0030 뷰 변경 및 동시 수정 보호가 있는 기존 자료 보완 준비.
 - [x] 전체292개 + 보완 스크립트1개 테스트 통과, 320/390/768/1280px 새 필터 및 기존 YouTube·페이지 이동 Chrome 회귀 통과, Wrangler dry-run 통과.
-- [ ] 독립 리뷰, 원격 DB 마이그레이션, main 푸시·자동 배포, 기존 분류 보완 및 운영 확인.
+- [x] 독립 리뷰 APPROVED·0030 원격 적용·c0bbafb main 푸시 및 Workers Builds success. Instagram27건 분류 보완·판정/revision 보존·운영 필터 확인.

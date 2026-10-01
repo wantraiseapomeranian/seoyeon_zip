@@ -1467,3 +1467,13 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 
 - 독립 코드 리뷰 APPROVED. 원격 D1 읽기 전용 비교: 사진1687건·첫48건이 기존/변경 SQL에서 동일. 새 작성 계정90개, Instagram 사진33건·플랫폼 계정57개. 주 조회 SQL 단회 기존367ms/142558행, 변경651ms/195783행; 전체 계정 목록 제공에 따른 조회 비용 증가를 확인했으며 장기 추세는 미측정. 양쪽 rows_written=0.
 - 운영0030 마이그레이션 적용 성공. 변경 전 Instagram kept97/revision합103, excluded99/revision합107, manual3건.
+
+### 운영 반영
+
+- c0bbafb main 푸시 및 해당 커밋 Workers Builds completed/success 확인.0030 뷰 적용 후 정상 API 응답.
+- 기존 Instagram27건(COSMO25·직찍2) 분류 보완 후 재실행 미리보기0건. D1 rows_written29는 Wrangler 파일 가져오기 기록을 포함하므로 게시물 변경 건수로 사용하지 않도록 스크립트 출력 이름 수정.
+- Instagram 판정·revision 합은 적용 전후 kept97/103, excluded99/107로 동일. 실제 표시 사진33건은 COSMO4·직찍2·기타27. 중복 제거 및 기존 공개 판정으로 보완 대상27건과 공개 사진 분류 건수는 다름.
+- 배포 API: X + 작성 계정 seowoo_0501 사진251건/작성 계정 일치, YouTube Shorts32건, 서로 다른 플랫폼/계정 조합400, 비인증 /api/sources401 확인.
+- 실제 Chrome에서도 세 필터 노출·Instagram COSMO4건 및 작성 계정 chelsea_dinos_sss4건 확인. 일부 기존 Instagram CDN 사진은 미리보기 로드 실패 상태이며 이번 분류 변경으로 복구된 것으로 보고하지 않음.
+
+- 운영390px 필터 펼침에서 플랫폼·종류 첫 줄/작성 계정 둘째 줄, 모든 컨트롤 높이44px·가로 넘침 없음 확인 후 임시 viewport 복원. 통계 출력명·Wrangler JSON 파싱 최종 독립 리뷰도 APPROVED.
