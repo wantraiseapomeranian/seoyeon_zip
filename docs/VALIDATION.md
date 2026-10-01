@@ -1423,3 +1423,12 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - RED:모바일 초기 접힘 기대에 상시 표시 확인. 공통 selects 규칙 적용 후 check-youtube-format320/390/1280 통과:접기/펼치기·aria-controls·재로딩 접힘·선택2개 뱃지·사진 탭의 기존 필터 복원·형식/분류 조합과 페이지 이동 유지. 접힘/펼침/PC 스크린샷 직접 확인.
 - check-youtube 수동 등록·검토 전체 통과. JS문법·Wrangler dry-run280.21KiB 통과. 독립 리뷰 APPROVED. 기존 사진/영상과 같은 드롭다운 배경·간격·너비 규칙을 공유한다.
 - 운영:e0cd7cf Workers Builds success(2026-09-29 16:46:30 KST). Chrome390×844에서 초기 드롭다운 숨김·필터 버튼 표시, 클릭 후 aria-expanded=true·두 select 표시 확인. DOM 필터행 left12/width351/height50으로 공통 모바일 행 배치 확인. 캡처 도구의 모바일 이미지 축소 표시 때문에 외형 판단은 로컬390px 원본 스크린샷으로 확인했다. 검증 후 viewport 원복.
+
+## 2026-10-01 유튜브 예약 영상과 반복 재시도 복구
+
+- 사전 조사: 영어 검색 결과의 예약 영상 fnusvIAChlw를 운영 미리보기로 단독 조회해 invalid_response503 재현, 일반 영상은 정상.9/30 16:04~21:39 KST 영어 검색50회·source cursor 미전진 확인. 실제 API duration 원본 값은 미확인이며 P0D는 합성 재현값이다.
+- 예약/진행 중 방송과 길이0 영상을 deferred 메타데이터 및 unavailable 상태로 저장한다. 제목·출처 필터는 유지하고 정상 결과와 같은 트랜잭션에서 저장한 뒤 cursor를 전진한다. 보류 영상은 검색 없이 videos API로1시간 간격 갱신, 공개 가능한 메타데이터가 오면 available 복구. 사용자 판정·revision은 유지한다. 수동 미리보기/신규등록은 해당 상태에서 unavailable422를 반환한다.
+- invalid_response/response_too_large/repeated_cursor는 해당 source만12시간 후 재시도하며 전역 차단을 추가하지 않는다. 검색50회·정보 갱신 한도 및 Access 설정 유지. DB 마이그레이션 없음.
+- 기준 유튜브23개 통과. 신규 회귀 최초5개 실패 확인 후 구현으로6개 통과, 유튜브 전체64개·전체 npm test281개 통과. 이후 기존 kept 영상의 재보류/1시간 재조회와 제목 필터 보존2개 추가해 신규 파일8개 통과. 테스트는 실제 SQL을 실행하는 SQLite 어댑터와 외부 YouTube 응답 fixture를 사용하며 실제 Cloudflare runtime 실행 결과와 구분한다. Node SQLite 실험 기능 경고 및 예상 오류경로 로그가 있었다.
+- Wrangler4.130.0 deploy --dry-run 성공280.76KiB/gzip69.32KiB. git diff --check 통과. 독립 읽기 전용 리뷰 APPROVED(Critical/Major 없음), 리뷰어는 테스트를 재실행하지 않았다. 새 의존성·비밀값·수집 원본 추가 없음.
+- 운영 배포와 실제 문제 영상 재조회는 아래 후속 기록에서 확인한다.

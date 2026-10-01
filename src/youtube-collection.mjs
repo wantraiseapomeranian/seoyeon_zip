@@ -56,6 +56,12 @@ export async function collectYouTube(env,{now=Math.floor(Date.now()/1000),fetche
    await DB.prepare("UPDATE youtube_sources SET last_error_code='quota_exceeded',next_due_at=?,lease_token=NULL,lease_until=0 WHERE source_key=? AND lease_token=?").bind(error.retryAt,source.source_key,token).run();
    return {status:'quota_wait'};
   }
+  // Retrying a malformed page every five minutes cannot repair its data. Keep
+  // its cursor, but leave other sources and metadata refresh free to proceed.
+  if(['invalid_response','response_too_large','repeated_cursor'].includes(error.message)){
+   await DB.prepare('UPDATE youtube_sources SET last_error_code=?,next_due_at=?,lease_token=NULL,lease_until=0 WHERE source_key=? AND lease_token=?').bind(error.message,now+43200,source.source_key,token).run();
+   return {status:'failed',error:error.message};
+  }
   const code=await block(env,error,now);await DB.prepare('UPDATE youtube_sources SET last_error_code=?,next_due_at=?,lease_token=NULL,lease_until=0 WHERE source_key=? AND lease_token=?').bind(code,now+300,source.source_key,token).run();return {status:'failed',error:code};}
 }
 export async function refreshYouTube(env,{now=Math.floor(Date.now()/1000),fetcher=fetch}={}){
@@ -65,7 +71,7 @@ export async function refreshYouTube(env,{now=Math.floor(Date.now()/1000),fetche
  if(env.YOUTUBE_ENABLED!=='true')return {status:'disabled'};
  const token=crypto.randomUUID(),claim=await DB.prepare('UPDATE youtube_control SET refresh_token=?,refresh_until=? WHERE id=1 AND refresh_until<=? AND refresh_due_at<=? AND blocked_until<=? RETURNING id').bind(token,now+90,now,now,now).first();if(!claim)return {status:'idle'};
  try{
-  const ids=(await DB.prepare('SELECT video_id FROM youtube_videos WHERE metadata_fetched_at<=? ORDER BY metadata_fetched_at,video_id LIMIT 50').bind(now-604800).all()).results.map(r=>r.video_id);
+  const ids=(await DB.prepare("SELECT video_id FROM youtube_videos WHERE metadata_fetched_at<=? OR (json_extract(metadata_json,'$.deferred')=1 AND metadata_fetched_at<=?) ORDER BY metadata_fetched_at,video_id LIMIT 50").bind(now-604800,now-3600).all()).results.map(r=>r.video_id);
   const result=ids.length?await fetchYouTubeVideos(env,ids,{fetcher,now}):{videos:[],unavailableIds:[]};
   const guard=auditGuard(DB,'EXISTS(SELECT 1 FROM youtube_control WHERE id=1 AND refresh_token=? AND refresh_until>unixepoch())',[token]);
   await DB.batch([guard.statement,...result.videos.map(v=>saveVideoStatement(DB,v,now)),...result.unavailableIds.map(id=>unavailableStatement(DB,id,now)),DB.prepare('UPDATE youtube_control SET refresh_token=NULL,refresh_until=0,refresh_due_at=?,last_refresh_at=?,last_error_code=NULL WHERE id=1 AND refresh_token=?').bind(now+(ids.length===50?300:3600),now,token),guard.cleanup]);return {status:'ok',count:ids.length};

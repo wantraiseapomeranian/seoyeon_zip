@@ -16,7 +16,7 @@ async function requestIdentity(input,actor,payload){
 async function replay(DB,r){const row=await DB.prepare('SELECT * FROM youtube_review_events WHERE request_id=?').bind(r.id).first();if(!row)return null;if(row.fingerprint!==r.fingerprint||row.reviewed_by!==r.actor)throw youtubeError('review_conflict',409);return {saved:true,existing:false,id:'yt:'+row.video_id,auditId:row.id};}
 function eventStatement(DB,r,id,action,prev,next,reason,eventId){return DB.prepare('INSERT INTO youtube_review_events(id,request_id,fingerprint,video_id,action,previous_state,new_state,reviewed_by,reason_code) VALUES(?,?,?,?,?,?,?,?,?)').bind(eventId,r.id,r.fingerprint,id,action,JSON.stringify(prev),JSON.stringify(next),r.actor,reason);}
 export async function previewYouTube(env,{url},options={}){
- enabled(env);const parsed=parseYouTubeUrl(url);const {videos}=await fetchYouTubeVideos(env,[parsed.videoId],{...options,budget:'manual'});if(!videos.length)throw youtubeError('unavailable',422);
+ enabled(env);const parsed=parseYouTubeUrl(url);const {videos}=await fetchYouTubeVideos(env,[parsed.videoId],{...options,budget:'manual'});if(!videos.length||videos[0].deferred)throw youtubeError('unavailable',422);
  const existing=await env.DB.prepare('SELECT decision,revision FROM youtube_videos WHERE video_id=?').bind(parsed.videoId).first();return {...videos[0],existing:existing??null};
 }
 export async function registerYouTube(env,input,actor,options={}){
@@ -26,7 +26,7 @@ export async function registerYouTube(env,input,actor,options={}){
  const identity=['register',videoId,input.category];if(format==='shorts')identity.push(format);
  const r=await requestIdentity(input,actor,identity),DB=env.DB;const old=await replay(DB,r);if(old)return old;
  const existing=await DB.prepare('SELECT decision FROM youtube_videos WHERE video_id=?').bind(videoId).first();if(existing)return {saved:false,existing:true,id:'yt:'+videoId,decision:existing.decision};
- const {videos}=await fetchYouTubeVideos(env,[videoId],{...options,budget:'manual'});if(!videos.length)throw youtubeError('unavailable',422);
+ const {videos}=await fetchYouTubeVideos(env,[videoId],{...options,budget:'manual'});if(!videos.length||videos[0].deferred)throw youtubeError('unavailable',422);
  const eventId=crypto.randomUUID(),guard=auditGuard(DB,'NOT EXISTS(SELECT 1 FROM youtube_videos WHERE video_id=?)',[videoId]);
  try{await DB.batch([guard.statement,DB.prepare("INSERT INTO youtube_videos(video_id,metadata_json,metadata_fetched_at,decision,category,format,manual,revision,reviewed_at) VALUES(?,?,unixepoch(),'kept',?,?,1,1,strftime('%Y-%m-%dT%H:%M:%fZ','now'))").bind(videoId,JSON.stringify(videos[0]),input.category,format),eventStatement(DB,r,videoId,'KEEP',null,{decision:'kept',category:input.category,format,revision:1},'SEOYEON_CONFIRMED',eventId),guard.cleanup]);}
  catch(error){const again=await replay(DB,r);if(again)return again;if(/CHECK constraint failed/.test(String(error))){const row=await DB.prepare('SELECT decision FROM youtube_videos WHERE video_id=?').bind(videoId).first();if(row)return {saved:false,existing:true,id:'yt:'+videoId,decision:row.decision};}throw youtubeError('save_failed');}
