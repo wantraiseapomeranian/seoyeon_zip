@@ -6,7 +6,8 @@ export async function acquireDueSource(DB,token) {
       cycle_started_at=COALESCE(cycle_started_at,unixepoch())
     WHERE source=(SELECT source FROM collection_state
       WHERE enabled=1 AND next_due_at<=unixepoch()
-        AND catchup_status!='needs_attention'
+        AND (catchup_status!='needs_attention'
+          OR last_error_code IN ('provider_http_error:404','provider_json_error:404'))
         AND (lease_until IS NULL OR lease_until<=unixepoch())
       ORDER BY next_due_at,COALESCE(last_attempt_at,0),source LIMIT 1)
     AND EXISTS(SELECT 1 FROM collection_control WHERE id=1 AND enabled=1)

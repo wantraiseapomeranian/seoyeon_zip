@@ -1443,3 +1443,13 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - check-feed-paging390/1280px × 최신순/오래된순4조건 통과. check-photo-loading의 시간 초과·재시도·HTTP 실패/복구·전환·destroy 통과. JS구문 검사 및 git diff --check 통과. 데이터/API/DB 변경 없음.
 - 독립 정적 리뷰 APPROVED(Critical/Major 없음).9f634fc main 일반 푸시 후 Workers Builds completed/success. 운영 feed.js/review-gallery.js HTTP200 및 로컬 커밋 내용 전체 일치 확인.
 - 운영 Chrome에서9/30 23:11 게시물1→2→3 직접 전환: 각 사진의 frame384×578.96875px, 카드 상단 기준 양쪽 화살표 y274.484375,card-meta y618.96875,time y646.46875로 동일.2장 원본680×442·3장680×437은 contain으로 위아래 여백을 두고 전체 표시. 스크린샷에서 버튼 위치 유지 확인. 모바일390px은 로컬 Chrome 검증이며 실제 휴대폰 검증과 구분한다.
+
+## 2026-10-01 X 수집 자동 복구
+
+- 원인: scheduler가 HTTP/JSON404에 failures<2 조건을 적용해 세 번째 실패부터 needs_attention으로 저장하고, acquireDueSource가 해당 상태를 무기한 제외한다.기존 기록의 간헐적404 후 성공 및9/30 수동 복구 사례와 대조했다.공급자 내부의404 발생 원인은 확인하지 못했다.
+- 사전 운영 조회: 활성15개 중12개 정상·3개404 retry(각 failures1), 기존 중지1개.전체 next_lane은 활성 계정 latest, 중지된 archive 계정 history.이번 시점에는404 needs_attention 계정이 없어 별도 DB 상태 초기화는 하지 않는다.
+- 변경: 인식된 공급자404는 영구 중단하지 않고 기존 백오프를 유지한다.기본30분→1시간→2시간→4시간→6시간이며 이후6시간 간격, 유효한 Retry-After가 있으면 기존 파서가 우선한다.예약 시각은 실행 보장이 아니며3분마다 한 출처를 선택하는 기존 순서에 따른다.최초 대기 단축·호출 루프·공급자 변경 없음.
+- 이전404 중단 상태는 활성·due·lease 조건을 모두 만족할 때만 다시 확인한다.401/403·스키마 오류 등 다른 needs_attention은 계속 제외한다.수동 중지/전체 중지/실행 중 중지와 cursor·cycle boundary 보호 유지.마이그레이션 없음.
+- 기준 관련25개 통과.기존 정책에서 수정한 회귀7개 중5개가 의도한 needs_attention/idle 불일치로 실패했고 구현 후 관련29개 통과.추가 history404/12시간 Retry-After/다른 출처 진행 검사를 포함해 전체 npm test288개 통과.실제 SQL을 실행하는 Node SQLite 어댑터이며 Cloudflare 운영 runtime 검증과 구분한다.노드 실험 기능 경고와 예상 실패 경로 로그가 있었다.
+- 첫 Wrangler dry-run은 샌드박스의 상위 경로 읽기·로그 쓰기 권한으로 실패했다.권한을 갖춘 동일 --dry-run 재실행은 성공280.82KiB/gzip69.36KiB, 업로드/배포는 하지 않았다.
+- 독립 정적 리뷰 APPROVED(Critical/Major 없음), git diff --check 통과.배포 검증은 진행 중이다.이 변경은 외부404 자체의 제거 또는 수집 누락 없음의 보장이 아니다.
