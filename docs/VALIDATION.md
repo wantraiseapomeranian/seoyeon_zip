@@ -1441,3 +1441,5 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 첫 사진에서만 자연 비율을 갱신하고, 캐시된 첫 사진에서 이미 얻은 비율을 피드 초기화가 덮어쓰지 않도록 수정했다. 이후 사진은 기존 object-fit:contain으로 전체 표시하며 첫 프레임을 유지한다. 첫 사진의 크기가 아직 없으면 기존 메타데이터/기본 비율을 사용한다.
 - check-feed-photo-ratio의 고정 프레임 기대가 수정 전 실패함을 확인. 수정 후390/1280px 모두 세로→가로2장·가로→세로 및 캐시 복귀의 frame/화살표/card-meta/time 좌표·크기 불변 검사 통과. 기존 날짜 행·2/3열·넘침0·검토함·혼합 영상/YouTube 비율 유지. 캡처에서 가로 사진의 위아래 여백과 전체 표시 확인.
 - check-feed-paging390/1280px × 최신순/오래된순4조건 통과. check-photo-loading의 시간 초과·재시도·HTTP 실패/복구·전환·destroy 통과. JS구문 검사 및 git diff --check 통과. 데이터/API/DB 변경 없음.
+- 독립 정적 리뷰 APPROVED(Critical/Major 없음).9f634fc main 일반 푸시 후 Workers Builds completed/success. 운영 feed.js/review-gallery.js HTTP200 및 로컬 커밋 내용 전체 일치 확인.
+- 운영 Chrome에서9/30 23:11 게시물1→2→3 직접 전환: 각 사진의 frame384×578.96875px, 카드 상단 기준 양쪽 화살표 y274.484375,card-meta y618.96875,time y646.46875로 동일.2장 원본680×442·3장680×437은 contain으로 위아래 여백을 두고 전체 표시. 스크린샷에서 버튼 위치 유지 확인. 모바일390px은 로컬 Chrome 검증이며 실제 휴대폰 검증과 구분한다.
