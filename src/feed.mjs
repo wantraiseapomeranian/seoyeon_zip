@@ -1,9 +1,11 @@
 import {publishedDayRange} from './published-day.mjs';
 const dateSql="json_extract(p.data,'$.publishedAt')";
+const platformSql="COALESCE(json_extract(p.data,'$.platform'),'x')";
 export async function readFeed(db, params) {
   const sort=params.get('sort')||'newest', media=params.get('media')||'all';
   const youtubeFormat=params.get('youtubeFormat')||'all',youtubeCategory=params.get('youtubeCategory')||'all';
   const kind=params.get('kind')||'all', source=params.get('source')||'all', month=params.get('month')||'';
+  const platform=params.get('platform')||'all',author=(params.get('author')||'all').toLowerCase();
   const invalid=()=>{throw Object.assign(new Error('invalid_feed_query'),{status:400});};
   const day=params.get('date')||'';let dayRange;
   if(day){try{dayRange=publishedDayRange(day);}catch{invalid();}}
@@ -11,8 +13,13 @@ export async function readFeed(db, params) {
   if(!['all','shorts','regular'].includes(youtubeFormat)||(youtubeFormat!=='all'&&media!=='youtube'))invalid();
   if(!['all','fancam','appearance','cosmo_live','official','other'].includes(youtubeCategory)||(youtubeCategory!=='all'&&media!=='youtube'))invalid();
   if(source!=='all'&&!/^[A-Za-z0-9_]{1,15}$/.test(source))invalid();
+  if(!['all','x','instagram'].includes(platform))invalid();
+  const authorParts=author==='all'?null:/^(x:[a-z0-9_]{1,15}|instagram:[a-z0-9_.]{1,30})$/.test(author)?author.split(':'):invalid();
+  if(authorParts&&platform!=='all'&&platform!==authorParts[0])invalid();
+  if(media==='youtube'&&(platform!=='all'||author!=='all'))invalid();
   if(month&&!/^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(month))invalid();
   const where=[],args=[];
+  if(authorParts){where.push(`${platformSql}=? AND lower(json_extract(p.data,'$.authorHandle'))=?`);args.push(...authorParts);}
   if(kind!=='all'){where.push("json_extract(p.data,'$.contentKind')=?");args.push(kind);}
   if(source==='youtube'){where.push("json_extract(p.data,'$.platform')='youtube'");}else if(source==='manual'){where.push("json_extract(p.data,'$.manual')=1");}else if(source==='instagram'){where.push("json_extract(p.data,'$.platform')='instagram'");}else if(source!=='all'){where.push('EXISTS (SELECT 1 FROM discoveries d WHERE d.post_id=p.id AND d.source=?)');args.push(source);}
   if(media==='youtube')where.push("json_extract(p.data,'$.platform')='youtube'");
@@ -28,7 +35,7 @@ export async function readFeed(db, params) {
     where.push(`${dateSql}>=? AND ${dateSql}<?`);args.push(start.toISOString(),next.toISOString());
   }
   const condition=()=>where.length?' WHERE '+where.join(' AND '):'';
-  const scope=JSON.stringify([sort,media,kind,source,month,...(day?[day]:[]),...(youtubeFormat==='all'?[]:[youtubeFormat]),...(youtubeCategory==='all'?[]:['category:'+youtubeCategory])]);
+  const scope=JSON.stringify([sort,media,kind,source,month,...(day?[day]:[]),...(youtubeFormat==='all'?[]:[youtubeFormat]),...(youtubeCategory==='all'?[]:['category:'+youtubeCategory]),...(platform==='all'?[]:['platform:'+platform]),...(author==='all'?[]:['author:'+author])]);
   let cursor;
   if(params.has('cursor')){
     if(params.get('cursor').length>2048)invalid();
@@ -37,18 +44,27 @@ export async function readFeed(db, params) {
   }
   const direction=sort==='oldest'?'ASC':'DESC';
   const pageCondition=cursor?` WHERE (${dateSql}${sort==='oldest'?'>':'<'}? OR (${dateSql}=? AND p.id>?))`:'';
-  // Share expensive visibility/media projection within this request, without stale cached decisions.
+  // Author choices come from all visible posts on the platform, independently
+  // of the selected day, kind, author and page. Never expose review-only authors.
+  const availableWhere=platform!=='all'?` WHERE ${platformSql}=?`:media==='youtube'?` WHERE ${platformSql}='youtube'`:['image','video'].includes(media)?` WHERE ${platformSql}!='youtube'`:'';
   const [{results:rows},stateResult]=await db.batch([
-    db.prepare(`WITH feed AS MATERIALIZED (SELECT p.id,p.data FROM managed_feed_posts p${condition()}),
+    db.prepare(`WITH available AS MATERIALIZED (SELECT p.id,p.data FROM managed_feed_posts p${availableWhere}),
+      feed AS MATERIALIZED (SELECT p.id,p.data FROM available p${condition()}),
       page AS (SELECT p.id,p.data FROM feed p${pageCondition} ORDER BY ${dateSql} ${direction},p.id ASC LIMIT 49)
       SELECT * FROM (
        SELECT 0 AS section,NULL AS id,NULL AS data,COUNT(*) AS count FROM feed
        UNION ALL SELECT 1,id,data,NULL FROM page
+       UNION ALL SELECT 2,NULL,json_object('platform',${platformSql},'handle',MIN(json_extract(p.data,'$.authorHandle'))),NULL
+        FROM available p WHERE ${platformSql} IN ('x','instagram') AND COALESCE(json_extract(p.data,'$.authorHandle'),'')!=''
+        GROUP BY ${platformSql},lower(json_extract(p.data,'$.authorHandle'))
       ) ORDER BY section,json_extract(data,'$.publishedAt') ${direction},id ASC`)
-      .bind(...args,...(cursor?[cursor.date,cursor.date,cursor.id]:[])),
+      .bind(...(platform==='all'?[]:[platform]),...args,...(cursor?[cursor.date,cursor.date,cursor.id]:[])),
     db.prepare('SELECT MAX(last_success_at) AS latest FROM collection_state')
   ]);
-  const total=rows[0],results=rows.slice(1),state=stateResult.results[0];
+  const total=rows[0],results=rows.filter(r=>r.section===1),state=stateResult.results[0];
+  const authors=rows.filter(r=>r.section===2).map(r=>JSON.parse(r.data))
+    .filter(a=>(a.platform==='x'?/^[A-Za-z0-9_]{1,15}$/:/^[A-Za-z0-9_.]{1,30}$/).test(a.handle))
+    .map(a=>({...a,value:a.platform+':'+a.handle.toLowerCase()})).sort((a,b)=>a.value.localeCompare(b.value));
   const page=results.slice(0,48), posts=page.map(r=>JSON.parse(r.data));
   if(posts.length){
     const ids=JSON.stringify(page.map(r=>r.id));
@@ -65,5 +81,5 @@ export async function readFeed(db, params) {
     for(const post of posts)post.duplicateSources=related.results.filter(r=>r.id===post.id).map(r=>({url:r.url,author:r.author}));
   }
   const last=posts.at(-1);
-  return {posts,total:total.count,collectedAt:state?.latest==null?null:new Date(state.latest*1000).toISOString(),nextCursor:results.length>48?btoa(JSON.stringify({scope,id:page.at(-1).id,date:last.publishedAt})):null};
+  return {posts,authors,total:total.count,collectedAt:state?.latest==null?null:new Date(state.latest*1000).toISOString(),nextCursor:results.length>48?btoa(JSON.stringify({scope,id:page.at(-1).id,date:last.publishedAt})):null};
 }

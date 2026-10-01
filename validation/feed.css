@@ -156,3 +156,16 @@ body:has(dialog[open]) .theme-launch{visibility:hidden}
 
 /* Match the photo/video filter row, including mobile disclosure. */
 @media(max-width:600px){.selects #youtube-feed-format{width:108px}}
+
+/* Platform, content kind and the actual posting account. */
+.filters{flex-wrap:wrap}
+#aux-filters{min-width:0;max-width:100%}
+#aux-filters label{min-width:0}
+#aux-filters #platform{width:134px}
+#aux-filters #kind{width:108px}
+#aux-filters #author{width:200px;text-overflow:ellipsis}
+@media(max-width:600px){
+ .filters[data-open=true] #aux-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px}
+ #aux-filters label:last-child{grid-column:1/-1}
+ #aux-filters #platform,#aux-filters #kind,#aux-filters #author{width:100%;max-width:none}
+}

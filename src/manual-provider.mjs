@@ -30,5 +30,5 @@ export async function fetchManualX(post,fetcher){
 export function manualInstagram(post,rows){
  if(!Array.isArray(rows)||rows.length!==1||rows[0]?.shortCode!==post.platformPostId)fail('invalid_response');
  let p;try{p=normalizeInstagram(rows[0]);}catch{fail('invalid_response');}
- return {...post,authorHandle:p.author,caption:p.caption,...(p.publishedAt?{publishedAt:p.publishedAt,dateEstimated:false}:{}),media:p.media.map((m,position)=>({...m,position,width:null,height:null}))};
+ return {...post,authorHandle:p.author,caption:p.caption,contentKind:p.contentKind,...(p.publishedAt?{publishedAt:p.publishedAt,dateEstimated:false}:{}),media:p.media.map((m,position)=>({...m,position,width:null,height:null}))};
 }

@@ -1456,3 +1456,14 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 운영 배포:1dc28cd main 일반 푸시, Workers Builds b6a4e30a-385a-4063-b59a-6dcd4dd7e21f completed/success(2026-10-01T08:03:12Z).새 의존성/비밀값/수집 원본 추가 및 운영 DB 직접 수정 없음.
 - 후속 운영 읽기:17:03:24 KST tripleSnewsfeed scheduled 수집 stored, 응답20개/필터 일치 저장0개로 정상 처리 완료.실패 횟수0으로 복구했으며 새 게시물이 추가됐다는 의미는 아니다.활성15개 중12정상·3retry·0needs_attention, 수동 중지1개 유지.재시도3개는 S2O806/TRIPLES_FAN_FR/yeoniverse_bb의 공급자404 각1회 상태다.
 - 공개 /api/collection-status200, 비로그인 /api/sources401 확인.이번 운영 표본에서3회 연속404 이후의 회복은 아직 발생하지 않아 해당 분기는 로컬 회귀 증거로 구분한다.장기 실패 빈도·복구 시간 개선은 미측정이다.
+
+## 2026-10-01 플랫폼·종류·작성 계정 필터 — 배포 전
+
+- 새 API4개 테스트 RED 확인 후 기존 관련28개 GREEN, 전체 npm test292/292 통과. 보완 스크립트 별도1/1 통과(판정 유지·동시 수정 건 생략·기존 공식 분류 보존).
+- 새 화면 테스트는 플랫폼 선택자 부재로 RED 확인 후320/390/768/1280px GREEN. 실제 SQL로 계정 전체 목록, 플랫폼·종류 조합,48개 이후 더 보기, URL 복원, 로그인 경합/수집 상태 실패, 오래된 응답 무시, 실패 재시도, 초기화·YouTube 분리 확인.390/1280px 스크린샷 육안 확인.
+- 기존 check-youtube-format 및 check-feed-paging Chrome 회귀 통과. Wrangler dry-run283.25KiB 통과.
+- validate-feed-batch 로컬 workerd는 Windows spawn UNKNOWN으로 시작 실패. 로컬 런타임 통과로 간주하지 않으며 운영 D1/API 확인 예정.
+- 원격 보완 미리보기27건(COSMO25·직찍2), 아직 쓰기 전. 공개/보류/제외 상태와 수집 cursor는 수정 대상 아님. 공개 계정 목록에는 피드 표시 가능한 자료의 핸들만 사용.
+
+- 독립 코드 리뷰 APPROVED. 원격 D1 읽기 전용 비교: 사진1687건·첫48건이 기존/변경 SQL에서 동일. 새 작성 계정90개, Instagram 사진33건·플랫폼 계정57개. 주 조회 SQL 단회 기존367ms/142558행, 변경651ms/195783행; 전체 계정 목록 제공에 따른 조회 비용 증가를 확인했으며 장기 추세는 미측정. 양쪽 rows_written=0.
+- 운영0030 마이그레이션 적용 성공. 변경 전 Instagram kept97/revision합103, excluded99/revision합107, manual3건.

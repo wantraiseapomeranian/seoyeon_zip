@@ -1,3 +1,4 @@
+import {instagramKind} from './instagram-kind.mjs';
 const invalid=()=>{throw Object.assign(new Error('invalid_import'),{status:400});};
 // CDN host and signed query rotate; the asset path identifies the same rendition.
 const imageKey=value=>{try{return new URL(value).pathname;}catch{return null;}};
@@ -48,7 +49,7 @@ export function normalize(p) {
   if(!/triples|트리플\s*에스|트리플s/.test(text)||!/윤서연|seoyeon|서연/.test(text))reasons.push('그룹·인물 문맥 추가 확인 필요');
   if(['jeonghyerin','leejiwoo','kimchaeyeon','kimyooyeon','kimsumin'].filter(n=>text.includes(n)).length>=3)reasons.push('여러 멤버 이름이 반복된 게시물');
   if(!reasons.length)reasons.push('그룹·인물 문맥 일치 · 사진은 직접 확인');
-  return {code,url:`https://www.instagram.com/${p.productType==='clips'?'reel':'p'}/${code}/`,caption,author,publishedAt:date?new Date(date).toISOString():null,image:images[0]??null,images,media,reasons,
+  return {code,url:`https://www.instagram.com/${p.productType==='clips'?'reel':'p'}/${code}/`,caption,author,contentKind:instagramKind({caption,author}),publishedAt:date?new Date(date).toISOString():null,image:images[0]??null,images,media,reasons,
     firstSeenInTrial:typeof p.firstSeenInTrial==='boolean'?p.firstSeenInTrial:null,
     newlyPublished:typeof p.newlyPublished==='boolean'?p.newlyPublished:null,
     mediaCount:Number.isSafeInteger(p.mediaCount??p.childPosts?.length)?Math.max(1,Math.min(100,p.mediaCount??p.childPosts.length)):1};
@@ -67,6 +68,7 @@ export async function importInstagram(DB,input,{before=[],after=[]}={}){
       if(raw.caption==null)p.caption=old.caption;
       if(!raw.productType&&old.url?.includes('/reel/'))p.url=old.url;
       renewMedia(p,old);
+      p.contentKind=instagramKind(p);
     }
     // Re-import enriches metadata but never resets a manual decision or its revision.
     const guards=posts.map(p=>({p,token:crypto.randomUUID(),snapshot:snapshots.get(p.code)}));

@@ -11,6 +11,7 @@ export function testDatabase({beforeYouTubeCategories=false,beforeYouTubeScope=f
   sqlite.exec(readFileSync(new URL('../../migrations/0027_youtube_backfill.sql',import.meta.url),'utf8'));
   sqlite.exec(readFileSync(new URL('../../migrations/0028_youtube_operations_history.sql',import.meta.url),'utf8'));
   if(!beforeYouTubeCategories&&!beforeYouTubeScope){sqlite.exec('BEGIN');sqlite.exec(readFileSync(new URL('../../migrations/0029_youtube_appearance_scope.sql',import.meta.url),'utf8'));sqlite.exec('COMMIT');}
+  sqlite.exec(readFileSync(new URL('../../migrations/0030_instagram_content_kind.sql',import.meta.url),'utf8'));
   const DB={
     prepare(sql) {
       return {sql,args:[],bind(...args){this.args=args;return this;},
