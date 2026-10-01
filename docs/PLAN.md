@@ -745,4 +745,4 @@ X·Instagram·검토 내역의 새로고침 버튼 전체를 오른쪽으로 이
 - [x] 과거404로 needs_attention이 된 활성 출처도 예약 시각이 되면 다시 획득한다.수동 중지·전체 중지·lease·revision·checkpoint 보호는 유지하고 스키마/주기/공급자 변경은 하지 않는다.
 - [x] 회귀 RED→GREEN, 전체288개 테스트 통과.관련 실패 경로에서 checkpoint 보존·legacy 복구·다른 출처 순서·Retry-After·수집 도중 중지 검증.
 - [x] 독립 리뷰 APPROVED·Wrangler 패키징280.82KiB 통과.
-- [ ] 커밋/푸시·Cloudflare 자동 배포 및 운영 후속 조회 확인.
+- [x] 1dc28cd main 일반 푸시·Cloudflare Workers Builds success.배포 후17:03:24 KST tripleSnewsfeed 예약 수집 성공, 운영12정상/3재시도/0중단 확인.장기 안정성 및 실제3회 연속404 이후 복구는 운영에서 아직 미관찰.

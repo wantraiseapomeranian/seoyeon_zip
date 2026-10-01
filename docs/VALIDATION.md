@@ -1452,4 +1452,7 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 이전404 중단 상태는 활성·due·lease 조건을 모두 만족할 때만 다시 확인한다.401/403·스키마 오류 등 다른 needs_attention은 계속 제외한다.수동 중지/전체 중지/실행 중 중지와 cursor·cycle boundary 보호 유지.마이그레이션 없음.
 - 기준 관련25개 통과.기존 정책에서 수정한 회귀7개 중5개가 의도한 needs_attention/idle 불일치로 실패했고 구현 후 관련29개 통과.추가 history404/12시간 Retry-After/다른 출처 진행 검사를 포함해 전체 npm test288개 통과.실제 SQL을 실행하는 Node SQLite 어댑터이며 Cloudflare 운영 runtime 검증과 구분한다.노드 실험 기능 경고와 예상 실패 경로 로그가 있었다.
 - 첫 Wrangler dry-run은 샌드박스의 상위 경로 읽기·로그 쓰기 권한으로 실패했다.권한을 갖춘 동일 --dry-run 재실행은 성공280.82KiB/gzip69.36KiB, 업로드/배포는 하지 않았다.
-- 독립 정적 리뷰 APPROVED(Critical/Major 없음), git diff --check 통과.배포 검증은 진행 중이다.이 변경은 외부404 자체의 제거 또는 수집 누락 없음의 보장이 아니다.
+- 독립 정적 리뷰 APPROVED(Critical/Major 없음), git diff --check 통과.이 변경은 외부404 자체의 제거 또는 수집 누락 없음의 보장이 아니다.
+- 운영 배포:1dc28cd main 일반 푸시, Workers Builds b6a4e30a-385a-4063-b59a-6dcd4dd7e21f completed/success(2026-10-01T08:03:12Z).새 의존성/비밀값/수집 원본 추가 및 운영 DB 직접 수정 없음.
+- 후속 운영 읽기:17:03:24 KST tripleSnewsfeed scheduled 수집 stored, 응답20개/필터 일치 저장0개로 정상 처리 완료.실패 횟수0으로 복구했으며 새 게시물이 추가됐다는 의미는 아니다.활성15개 중12정상·3retry·0needs_attention, 수동 중지1개 유지.재시도3개는 S2O806/TRIPLES_FAN_FR/yeoniverse_bb의 공급자404 각1회 상태다.
+- 공개 /api/collection-status200, 비로그인 /api/sources401 확인.이번 운영 표본에서3회 연속404 이후의 회복은 아직 발생하지 않아 해당 분기는 로컬 회귀 증거로 구분한다.장기 실패 빈도·복구 시간 개선은 미측정이다.
