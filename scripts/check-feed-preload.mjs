@@ -26,7 +26,7 @@ const server=createServer(async(req,res)=>{
  res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));
 });
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({channel:'chrome',headless:true});
-try{for(const query of ['', '?source=instagram','?media=video','?sort=oldest','?date=2026-09-22']){
+try{for(const query of ['', '?platform=instagram','?author=instagram:photo.account','?media=video','?sort=oldest','?date=2026-09-22']){
  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));requests=[];
  const response=await page.goto(`http://127.0.0.1:${server.address().port}/${query}`);await page.waitForFunction(()=>document.querySelector('#gallery').getAttribute('aria-busy')==='false');
  assert.equal(requests.length,1,`one feed request for ${query}`);

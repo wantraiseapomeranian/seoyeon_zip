@@ -1,7 +1,7 @@
 import {sources} from './sources.mjs';
 
 const badStatuses=new Set(['retry','attention','delayed','unconfigured']);
-const labels=new Map([...sources.map(({handle})=>['x:'+handle,'X · '+handle]),['youtube','YouTube 수집'],['instagram','Instagram 수집'],['manual','직접 등록 사진'],['history','일별 운영 기록']]);
+const labels=new Map([...sources.map(({handle})=>['x:'+handle,'X · '+handle]),['youtube','YouTube 수집'],['instagram','Instagram 수집'],['instagram-refresh','Instagram 이미지 갱신'],['manual','직접 등록 사진'],['history','일별 운영 기록']]);
 const iso=value=>value===null||value===undefined?null:new Date(value*1000).toISOString();
 const statusOf=status=>badStatuses.has(status)?'bad':status==='healthy'?'healthy':['disabled','completed'].includes(status)?'stopped':'unknown';
 
@@ -22,6 +22,8 @@ function observations(signals,history,now){
  if(signals?.youtube)result.set('youtube',statusOf(signals.youtube.status));
  const ig=signals?.instagram;
  if(ig)result.set('instagram',['disabled','completed'].includes(ig.status)?'stopped':ig.pendingErrors>0||ig.overdue>0||ig.pendingOverdue>0?'bad':statusOf(ig.status));
+ const refresh=signals?.instagramRefresh;
+ if(refresh)result.set('instagram-refresh',refresh.status==='disabled'?'stopped':refresh.status==='unavailable'||refresh.failedPosts>0||refresh.status!=='budget_wait'&&refresh.overduePosts>0?'bad':statusOf(refresh.status));
  const manual=signals?.manual;
  if(manual?.enabled===false)result.set('manual','stopped');
  else if(manual?.enabled===true)result.set('manual',manual.counts?.failed>0||manual.overdue>0?'bad':typeof manual.counts?.failed==='number'&&typeof manual.overdue==='number'?'healthy':'unknown');

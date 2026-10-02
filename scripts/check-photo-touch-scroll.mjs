@@ -20,6 +20,7 @@ async function fixture(){
   }
  });
  await page.waitForFunction(()=>document.querySelector('img').naturalWidth>0);
+ assert.match(await page.locator('.photo-frame').first().evaluate(e=>getComputedStyle(e).touchAction),/(?:^| )pinch-zoom(?: |$)/,'feed photos allow native pinch zoom');
  await position(page);
  await page.waitForFunction(()=>document.querySelectorAll('.photo-frame img')[3].naturalWidth>0);
  return page;

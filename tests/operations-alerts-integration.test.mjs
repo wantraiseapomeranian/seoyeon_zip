@@ -76,3 +76,25 @@ test('real Instagram running signals preserve overdue pending work for sustained
   assert.ok((await readOperationsAlerts(DB,now+900000)).active.some(item=>item.key==='instagram'));
  }finally{sqlite.close();}
 });
+
+test('healthy Instagram sync cannot mask refresh failures, read failures, recovery and recurrence',async t=>{
+ const {DB,sqlite}=testDatabase();t.after(()=>sqlite.close());
+ const now=Date.parse('2026-09-15T00:00:00Z');let at=now/1000;
+ sqlite.function('unixepoch',()=>at);
+ sqlite.exec("INSERT INTO instagram_sync(id,task_id,last_checked_at,next_due_at) VALUES(1,'testTask','2026-09-15T00:00:00Z',unixepoch()+86400); UPDATE instagram_media_refresh SET state='error',last_error='start_uncertain'; INSERT INTO operations_history(day,captured_at,x_total,instagram_total,manual_total,query_version,query_status) VALUES('2026-09-15','2026-09-15T00:00:00Z',0,0,0,'x-review-v1','ok')");
+ const env={DB,APIFY_SYNC_ENABLED:'true',APIFY_TASK_ID:'testTask',APIFY_TOKEN:'fixture-token',INSTAGRAM_MEDIA_REFRESH_ENABLED:'true'};
+ let unavailable=false;
+ const load=()=>operations.readOperationsState({...env,DB:unavailable?{prepare(sql){if(sql.includes('FROM instagram_media_refresh WHERE'))throw Error('private signed URL');return DB.prepare(sql);}}:DB},{details:false});
+ const run=async seconds=>{at=now/1000+seconds;await evaluateOperationsAlerts(env,load,at*1000);};
+ assert.equal((await load()).instagram.status,'healthy');
+ await run(0);await run(900);
+ assert.deepEqual((await readOperationsAlerts(DB,at*1000)).active.map(item=>item.key),['instagram-refresh']);
+ unavailable=true;await run(1200);await run(1500);
+ assert.deepEqual((await readOperationsAlerts(DB,at*1000)).events.map(item=>item.type),['problem']);
+ unavailable=false;sqlite.exec("UPDATE instagram_media_refresh SET state='idle',last_error=NULL,last_success_at=unixepoch(),next_due_at=unixepoch()+3600");
+ await run(1800);await run(2100);
+ assert.deepEqual((await readOperationsAlerts(DB,at*1000)).events.map(item=>item.type),['recovered','problem']);
+ sqlite.exec("UPDATE instagram_media_refresh SET state='error',last_error='start_uncertain'");await run(2400);await run(3300);
+ env.INSTAGRAM_MEDIA_REFRESH_ENABLED='false';await run(3600);
+ assert.deepEqual((await readOperationsAlerts(DB,at*1000)).events.map(item=>item.type),['stopped','problem','recovered','problem']);
+});

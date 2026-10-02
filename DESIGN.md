@@ -1,5 +1,7 @@
 # 서연모음.zip — Design Specification
 
+> 현재 기능·운영 경계는 [STATUS](docs/STATUS.md), 진행 중인 변경은 [실행 계획](docs/superpowers/plans/2026-10-02-project-improvement.md)을 확인한다. 아래 초기 제안보다 후속 사용자 결정이 우선한다.
+
 작성일: 2026-09-09
 저장소명: `seoyeon-zip`
 상태: 구현 인계용 디자인 기준. 사용자 선택, 제안 기본값, 시안에서 결정할 사항을 구분한다.

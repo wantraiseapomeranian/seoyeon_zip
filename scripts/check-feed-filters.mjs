@@ -54,5 +54,26 @@ try{for(const width of [320,390,768,1280]){
  failFeed=true;await kind.selectOption('other');await page.getByText('목록 조회 실패',{exact:true}).waitFor();failFeed=false;await page.locator('#refresh').click();await count(0);await page.locator('#reset').click();await count(54);
  await page.getByRole('button',{name:'유튜브',exact:true}).click();await count(0);assert.equal(await page.locator('#aux-filters').isVisible(),false);assert.equal(new URL(page.url()).searchParams.has('platform'),false);assert.equal(new URL(page.url()).searchParams.has('author'),false);
  await page.getByRole('button',{name:'사진',exact:true}).click();await count(54);
+ if(width<=390){
+  // Fixed 44px targets must remain separate when text is doubled. Checking
+  // real bounds catches shrinking flex groups and overflowing grid tracks.
+  await page.evaluate(()=>{const es=[...document.querySelectorAll('body *')],sizes=es.map(e=>parseFloat(getComputedStyle(e).fontSize));es.forEach((e,i)=>e.style.fontSize=sizes[i]*2+'px');});
+  await open();
+  const controls=page.locator('header .brand-group a,header .brand-group button,header .actions a:not([hidden]),header .actions button,.media-tabs button,#filter-toggle,#aux-filters select,#month-trigger,.sort-options button');
+  const bounds=await controls.evaluateAll(es=>es.filter(e=>e.getClientRects().length).map(e=>{const r=e.getBoundingClientRect();return {name:e.id||e.getAttribute('aria-label')||e.textContent.trim(),left:r.left,right:r.right,top:r.top,bottom:r.bottom};}));
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`200% text must fit ${width}px`);
+  assert.ok(bounds.every(r=>r.left>=0&&r.right<=width),JSON.stringify(bounds));
+  for(let a=0;a<bounds.length;a++)for(let b=a+1;b<bounds.length;b++){
+   const x=Math.min(bounds[a].right,bounds[b].right)-Math.max(bounds[a].left,bounds[b].left),y=Math.min(bounds[a].bottom,bounds[b].bottom)-Math.max(bounds[a].top,bounds[b].top);
+   assert.ok(x<=1||y<=1,`200% targets overlap at ${width}px: ${bounds[a].name} / ${bounds[b].name}`);
+  }
+  await page.locator('#filter-toggle').focus();
+  for(const id of ['platform','kind','author','month-trigger']){await page.keyboard.press('Tab');assert.equal(await page.evaluate(()=>document.activeElement.id),id);}
+  await page.keyboard.press('Enter');await page.locator('#month').waitFor({state:'visible'});await page.keyboard.press('Tab');assert.equal(await page.evaluate(()=>document.activeElement.id),'month');
+  await page.locator('#month-trigger').press('Escape');await page.locator('#kind').selectOption('official');await count(0);await page.locator('#reset').focus();await page.keyboard.press('Enter');await count(54);
+  const viewport=await page.locator('meta[name="viewport"]').getAttribute('content');assert.doesNotMatch(viewport,/user-scalable\s*=\s*no|maximum-scale\s*=\s*1(?:\D|$)/i,'viewport allows native zoom');
+  await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:'.local/feed-filters/'+width+'-text-200.png'});
+  console.log('PASS '+width+': 200% text, separate header/filter/sort targets, keyboard filters/date/reset, native zoom permitted');
+ }
  assert.deepEqual(errors,[]);console.log('PASS '+width+': platform, author, category, full options, paging, owner race, status failure, reload, stale response, retry, reset, YouTube separation and fit');await page.close();
 }}finally{await browser.close();server.closeAllConnections();server.close();sqlite.close();}

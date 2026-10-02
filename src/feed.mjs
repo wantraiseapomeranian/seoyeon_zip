@@ -67,8 +67,12 @@ export async function readFeed(db, params) {
     .filter(a=>(a.platform==='x'?/^[A-Za-z0-9_]{1,15}$/:/^[A-Za-z0-9_.]{1,30}$/).test(a.handle))
     .map(a=>({...a,value:a.platform+':'+a.handle.toLowerCase()})).sort((a,b)=>a.value.localeCompare(b.value));
   const page=results.slice(0,48), posts=await instagramPreviewUrls(db,page.map(r=>JSON.parse(r.data)));
-  if(posts.length){
-    const ids=JSON.stringify(page.map(r=>r.id));
+  // Only IDs from posts can match x_photo_rows; automatic Instagram, YouTube
+  // and manual-only rows cannot receive this query's duplicate source links.
+  const duplicateIds=page.filter(r=>!r.id.startsWith('ig:')&&!r.id.startsWith('yt:')&&!r.id.startsWith('manual:')).map(r=>r.id);
+  for(const post of posts)post.duplicateSources=[];
+  if(duplicateIds.length){
+    const ids=JSON.stringify(duplicateIds);
     const [related]=await db.batch([
       db.prepare(`WITH photos AS MATERIALIZED (SELECT * FROM x_photo_rows)
        SELECT DISTINCT a.id,json_extract(p.data,'$.canonicalUrl') AS url,json_extract(p.data,'$.authorHandle') AS author
