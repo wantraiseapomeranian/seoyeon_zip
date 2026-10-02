@@ -96,7 +96,7 @@ export async function refreshInstagramMedia(env,{fetcher=fetch}={}){
    try{const u=new URL(value),match=u.pathname.match(/^\/(?:p|reel)\/([A-Za-z0-9_-]{5,64})\/?$/);if(u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&['instagram.com','www.instagram.com'].includes(u.hostname)&&match&&codes.includes(match[1]))return 'requested_post_variant';}catch{}
    return 'other';
   };
-  const normalized=new Map(),failedCodes=new Set(),seenCodes=new Set();
+  const normalized=new Map(),failedCodes=new Set(),seenCodes=new Set();let unknownRows=0;
   for(const [index,row] of rows.entries()){
    let code=row?.shortCode;
    const explicitError=typeof row?.error==='string'&&row.error.length>0&&row.error.length<=2000;
@@ -107,14 +107,17 @@ export async function refreshInstagramMedia(env,{fetcher=fetch}={}){
     if(row.shortCode!==undefined&&row.shortCode!==code)return await finishError(`dataset_error_identity:${index}:shortcode_mismatch`);
     if(row.inputUrl!==undefined&&row.url!==undefined&&row.inputUrl!==row.url)return await finishError(`dataset_error_identity:${index}:url_disagreement:${inputCategory(row.inputUrl)}:${inputCategory(row.url)}`);
    }
-   if(!codes.includes(code))return await finishError(`dataset_identity:${index}:${typeof code==='string'&&/^[A-Za-z0-9_-]{5,64}$/.test(code)?'unrequested':'invalid'}`);
-   if(seenCodes.has(code))return await finishError('dataset_duplicate:'+code);
-   if(row?.error!=null&&!explicitError)return await finishError('dataset_error_shape:'+code);
+   if(typeof code!=='string'||!/^[A-Za-z0-9_-]{5,64}$/.test(code))return await finishError(`dataset_identity:${index}:invalid`);
+   const requested=codes.includes(code),diagnosticCode=requested?code:'unrequested';
+   if(seenCodes.has(code))return await finishError('dataset_duplicate:'+diagnosticCode);
+   if(row?.error!=null&&!explicitError)return await finishError('dataset_error_shape:'+diagnosticCode);
    seenCodes.add(code);
    if(explicitError){failedCodes.add(code);continue;}
    if(!/^[A-Za-z0-9_.]{1,30}$/.test(row.ownerUsername??''))fail('invalid_author');
-   let fresh;try{fresh=normalize(row);}catch{return await finishError('dataset_normalize:'+code);}
-   if(Array.isArray(row.childPosts)&&row.childPosts.length&&fresh.media.length!==row.childPosts.length)return await finishError(`dataset_child_media:${code}:${Math.min(row.childPosts.length,101)}:${fresh.media.length}`);
+   let fresh;try{fresh=normalize(row);}catch{return await finishError('dataset_normalize:'+diagnosticCode);}
+   if(Array.isArray(row.childPosts)&&row.childPosts.length&&fresh.media.length!==row.childPosts.length)return await finishError(`dataset_child_media:${diagnosticCode}:${Math.min(row.childPosts.length,101)}:${fresh.media.length}`);
+   // Apify can return a valid unrelated post. Never assign it to a missing request by position or author.
+   if(!requested){unknownRows++;continue;}
    normalized.set(row.shortCode,fresh);
   }
   const statements=[guard()],transfers=new Map(),patches=[],outcomes=[],aliases=[],clearAliases=[];let updated=0,failed=0;
@@ -149,7 +152,7 @@ export async function refreshInstagramMedia(env,{fetcher=fetch}={}){
   statements.push(DB.prepare("UPDATE instagram_media_refresh SET state='idle',codes_json='[]',last_success_at=unixepoch(),last_error=?,failures=0,next_due_at=unixepoch()+300,lease_token=NULL,lease_until=0 WHERE id=1").bind(failed?'partial_refresh':null));
   statements.push(DB.prepare('DELETE FROM commit_guard WHERE token=? OR token LIKE ?').bind(token,token+':%'));
   await DB.batch(statements);
-  return {status:'complete',runId:job.run_id,updated,failed,aliased:aliases.length};
+  return {status:'complete',runId:job.run_id,updated,failed,aliased:aliases.length,unknownRows};
  }catch(error){
   if(/CHECK constraint failed/i.test(String(error))){await release(60,'refresh_conflict');return {status:'retry',error:'refresh_conflict',updated:0};}
   const code=['provider_network','provider_failure','provider_access','not_found','rate_limited','invalid_response','response_too_large','invalid_author','author_mismatch','ambiguous_asset'].includes(error.message)?error.message:'save_failed';

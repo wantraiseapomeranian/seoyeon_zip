@@ -114,7 +114,6 @@ test('dataset rejection diagnostics identify the guard without exposing provider
  const scenarios=[
   {rows:{error:'secret-value'},error:'dataset_shape'},
   {rows:[row(),row()],error:'dataset_count:1:2'},
-  {rows:[{...row(),shortCode:'Wrong_123'}],error:'dataset_identity:0:unrequested'},
   {count:2,rows:[row(),row()],error:'dataset_duplicate:Post_000'},
   {rows:[{...row(),timestamp:'not-a-date'}],error:'dataset_normalize:Post_000'},
   {rows:[{...row(),childPosts:[{type:'Image',displayUrl:'https://example.test/secret-value'}]}],error:'dataset_child_media:Post_000:1:0'},
@@ -133,5 +132,34 @@ test('dataset rejection diagnostics identify the guard without exposing provider
   assert.deepEqual(s.sqlite.prepare('SELECT code,data FROM instagram_review ORDER BY code').all(),before);
   assert.equal(s.sqlite.prepare('SELECT COUNT(*) n FROM instagram_preview_urls').get().n,0);assert.ok(!JSON.stringify(result).includes('secret-value'));
  }finally{s.sqlite.close();}}
+});
+test('valid foreign rows are ignored while exact requested rows recover and missing requests retain originals',async()=>{
+ const s=await setup(2);try{
+  const missing=s.sqlite.prepare('SELECT * FROM instagram_review WHERE code=?').get('Post_001');
+  s.sqlite.prepare("UPDATE instagram_media_refresh SET state='waiting',run_id='Run123',codes_json=?,started_at=unixepoch(),starts_today=2,budget_day=CAST(unixepoch()/86400 AS INTEGER)").run(JSON.stringify(['Post_000','Post_001']));
+  const p=provider([row(),{...row(),shortCode:'Foreign_123'}]),{refreshInstagramMedia}=await load();const result=await refreshInstagramMedia(s.env,{fetcher:p.fetcher});
+  assert.equal(result.status,'complete');assert.equal(result.updated,1);assert.equal(result.failed,1);assert.equal(result.unknownRows,1);
+  assert.deepEqual(s.sqlite.prepare('SELECT * FROM instagram_review WHERE code=?').get('Post_001'),missing);
+  assert.equal(JSON.parse(s.sqlite.prepare('SELECT data FROM instagram_review WHERE code=?').get('Post_000').data).image,url('one0','new'));
+  assert.equal(s.sqlite.prepare('SELECT last_error FROM instagram_media_refresh_posts WHERE code=?').get('Post_001').last_error,'missing_post');
+  assert.equal(s.sqlite.prepare('SELECT last_error,starts_today FROM instagram_media_refresh').get().starts_today,2);assert.ok(p.calls.every(c=>c.options.method==='GET'));
+  assert.equal(s.sqlite.prepare('SELECT COUNT(*) n FROM instagram_review').get().n,2);
+ }finally{s.sqlite.close();}
+});
+test('solely foreign rows cannot write source metadata, unsafe URLs, aliases or fingerprints',async()=>{
+ const s=await setup();try{
+  const before=s.sqlite.prepare('SELECT * FROM instagram_review').get();s.sqlite.prepare('INSERT INTO x_fingerprints(url,hash,confirmed_hash) VALUES(?,?,?)').run(url('one0'),'old-hash','reviewed-hash');
+  s.sqlite.prepare("UPDATE instagram_media_refresh SET state='waiting',run_id='Run123',codes_json=?,started_at=unixepoch(),starts_today=2,budget_day=CAST(unixepoch()/86400 AS INTEGER)").run(JSON.stringify(['Post_000']));
+  const p=provider([{shortCode:'Foreign_123',ownerUsername:'test.author',caption:'Hostile metadata',type:'Image',displayUrl:'https://example.test/unsafe-url'}]),{refreshInstagramMedia}=await load();const result=await refreshInstagramMedia(s.env,{fetcher:p.fetcher});
+  assert.equal(result.status,'complete');assert.equal(result.updated,0);assert.equal(result.failed,1);assert.equal(result.unknownRows,1);
+  assert.deepEqual(s.sqlite.prepare('SELECT * FROM instagram_review').get(),before);assert.equal(s.sqlite.prepare('SELECT COUNT(*) n FROM instagram_preview_urls').get().n,0);
+  assert.equal(s.sqlite.prepare('SELECT COUNT(*) n FROM x_fingerprints').get().n,1);assert.equal(s.sqlite.prepare('SELECT last_error FROM instagram_media_refresh_posts').get().last_error,'missing_post');assert.ok(p.calls.every(c=>c.options.method==='GET'));
+ }finally{s.sqlite.close();}
+});
+test('foreign rows still obey duplicate, author, normalization and child-media validation',async()=>{
+ const foreign={...row(),shortCode:'Foreign_123'};
+ for(const scenario of [{rows:[foreign,foreign],error:'dataset_duplicate:unrequested'},{rows:[{...foreign,ownerUsername:'bad/author'}],error:'invalid_author'},{rows:[{...foreign,timestamp:'bad-date'}],error:'dataset_normalize:unrequested'},{rows:[{...foreign,childPosts:[{type:'Image',displayUrl:'https://example.test/unsafe'}]}],error:'dataset_child_media:unrequested:1:0'}]){
+  const s=await setup(2);try{const before=s.sqlite.prepare('SELECT code,data FROM instagram_review ORDER BY code').all();const result=await complete(s,provider(scenario.rows));assert.equal(result.error,scenario.error);assert.deepEqual(s.sqlite.prepare('SELECT code,data FROM instagram_review ORDER BY code').all(),before);}finally{s.sqlite.close();}
+ }
 });
 
