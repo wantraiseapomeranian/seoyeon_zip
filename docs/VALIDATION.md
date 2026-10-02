@@ -1499,7 +1499,7 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - check-photo-viewer320×740/390×844/844×390/1280×900/검토함390×844 모두 통과. 기존 전환·터치·로딩 복구·스크롤/초점 복귀 포함.390px 캡처에서 하단 여백 육안 확인. CSS 변경에 관련된 브라우저 검증만 수행했으며 전체 서버 테스트는 재실행하지 않았다.
 - 독립 읽기 전용 리뷰 APPROVED(Critical/Major 없음). 실제 아이폰에서 잘림이 사라졌는지는 사용자 기기 후속 확인이 필요하다.
 
-## 2026-10-02 Instagram 미리보기 만료 복구 — 작업 중
+## 2026-10-02 Instagram 미리보기 만료 복구
 
 - 사전 공개 피드33개 게시물 첫 사진 HEAD:15개200/18개403. COSMO 실제 브라우저 실패 및 재시도 후 같은 실패 확인.3개 실패 주소 GET 응답403 `URL signature expired`. 동기화 last_error=null/failures0으로 새 자료 동기화와 기존 주소 만료를 구분했다.
 - 전체 사진118장까지 확장한 복구 전 HEAD 점검:72장200/46장403, 영향19개 게시물. 첫 사진만 검사했을 때와 달리 DdoWuq1CQpp 내부 사진의 만료가 추가 확인됐다. 이미지 파일을 다운로드·보관하지 않고 상태 및 URL만 git-ignored 로컬 검증 기록에 저장했다.
@@ -1509,3 +1509,14 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 구현4e8c972: 신규 SQLite 회귀의 초기 RED 이후 전체 npm test309/309 통과. 이후 명시적 게시물 오류 응답의 개별 처리 회귀를 추가해 RED→GREEN, 최종 관련 Instagram6개 파일37/37(신규17개) 통과. 전체309개 실행은 마지막 부분 실패 처리 추가 전이며, 마지막 변경 후에는 관련37개를 실행했다. Node SQLite 어댑터 검증으로 실제 Cloudflare 실행과 구분한다.
 - Wrangler4.130.0 dry-run301.63KiB/gzip73.73KiB 및 문법/diff 점검 통과. 실제 운영 대상 SELECT 표본18건은286.6ms/136729rows_read/0write였으며 빈 큐 조회를1시간 간격으로 제한한다.
 - 독립 읽기 전용 최종 리뷰 APPROVED. 유료 시작 예약·lease·시작 불확실 차단·원자 저장·판정/revision 보존 및 중복 판정 이전을 검토했으며 테스트/빌드를 재실행하지 않았다.
+- 운영0031 마이그레이션 적용 성공 후93fbc1f main 푸시·Workers Builds completed/success 확인. 비인증 /api/admin/instagram/sync401 및 공개 Instagram 사진 feed200 유지. 배포 직후 새 갱신 상태 idle/starts_today0 확인, 예약 작업의 실제 복구는 아래 후속 기록과 구분한다.
+- 첫 예약 배치18건 중15건 성공,3건은 같은 사진의 rendition 변경으로 안전 검사에서 보류했다. COSMO 첫 게시물의 두 번째 사진이 실제 확대창에서1440×1919로 디코딩되는 것을 확인했다. 나머지는 원래 fingerprint 키를 보존하는 표시 주소 매핑으로 보완하며, 전체 복구로 보고하지 않는다.
+- b568a61 표시 주소 매핑 보완: 기존 data/fingerprint를 유지하며 정확한(code,source_url)에만 새 URL을 표시한다. 관련45/45 및 전체317/317 테스트 통과, Wrangler dry-run302.79KiB/gzip74.07KiB. 독립 읽기 전용 리뷰 APPROVED.0032 원격 적용2commands/1.12ms 성공.
+- 두 번째 기존 코드 실행은 invalid_dataset으로15건 전체 반영을 보류했다. 안전 검사를 완화하지 않고 오류 구분을 추가해 기존 실행 결과를 재조회한다. 첫 번째/두 번째 실행 합계2회 시작이며 추가 유료 실행 없이 복구를 이어간다.
+- 8754edb 진단 추가: shape/count/identity/duplicate/normalize/child_media 및 error identity의 실패 조건을 구분한다. 원본 URL·오류 본문·토큰은 저장하지 않는다. 관련25개 회귀·문법/diff 통과, 독립 읽기 전용 리뷰 APPROVED. 해당 커밋 Workers Builds completed/success 확인 후 두 번째 기존 run을 waiting으로 복원했다. idle·lease 만료·당일 시작2회 조건을 검사했고 starts_today/budget_day는 보존했다.
+- 두 번째 결과 재조회에서 dataset_identity:14:unrequested 확인. bfb370c는 유효한 다른 게시물 행을 구조 검증 후 제외하고 요청 코드와 정확히 일치하는 결과만 반영한다. 미응답 요청은 개별 missing_post, 기존 자료 보존. 신규3개 회귀 RED→GREEN 및 관련36/36·문법/diff 통과, 독립 읽기 전용 리뷰 APPROVED.
+- 첫 번째 기존 run 재조회는18/18 성공으로 완료. 형식 변경 예외였던 DdJBUT5iPQs도 실제 브라우저 확대창에서1440×1440 이미지 로드 확인. 유료 시작2회 유지.
+- bfb370c main 일반 푸시·Workers Builds completed/success 확인 후 두 번째 기존 run 재조회. 갱신 상태30개 성공/3개 개별 실패: Ddi52GuuTtT missing_post, Ddk6C55kf1h 및 DdoWuq1CQpp incomplete_media. 새 유료 시작 없이 기존 결과만 재조회했고 starts_today2 유지. 세 실패는 자동 backoff 대상으로 남았으며 전체33건 갱신 성공으로 보고하지 않는다.
+- 2026-10-02T02:24:09Z 공개33개 게시물118장 HEAD:117장200/1장403. 기존 실패46장 중45장200으로 복구. 남은 DdoWuq1CQpp의 저장 순서5번째 사진만403. 기존 판정209건의 status/revision/reviewed_at, 공개 게시물/사진 개수·순서·메타데이터 변경0. 처음 보류된3개 게시물의 저장 data 변경0, 표시 주소 매핑60개 모두 원본 hash 유지. x_photo_differences1건·confirmed_hash129건 유지.
+- 남은1장은 Instagram 원문을 실제 브라우저로 열고 첫 사진부터 마지막까지 확인했다. 현재 원문은6장으로 끝나며 저장 당시7장 중 해당 파일(820501425_17929181901408202_4814153552872552975_n.jpg)이 없다. 원문 수정 표시는 보이지만 삭제 시점/이유는 확인하지 않았다. 최신 주소를 얻지 못해 해당1장은 복구 불가로 남기고 기존 자료를 삭제하거나 다른 사진으로 대체하지 않았다. 원본 파일 보관은 하지 않으므로 이 기록에서 이미지 자체를 복원할 수 없다.
+- 자동 갱신은 성공 후3일 주기·UTC 하루2회/배치18개/실행당0.05USD 상한을 유지한다. 이번은 최초 실행/복구 검증이며3일 후 재갱신과 장기 공급자 안정성은 아직 관찰하지 않았다.
