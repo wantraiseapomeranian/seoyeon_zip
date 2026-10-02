@@ -110,4 +110,28 @@ test('an explicitly failed requested post backs off without blocking other succe
   assert.equal(s.sqlite.prepare('SELECT last_error FROM instagram_media_refresh_posts WHERE code=?').get('Post_001').last_error,'provider_post_error');
  }finally{s.sqlite.close();}
 });
+test('dataset rejection diagnostics identify the guard without exposing provider text, URLs or tokens',async()=>{
+ const scenarios=[
+  {rows:{error:'secret-value'},error:'dataset_shape'},
+  {rows:[row(),row()],error:'dataset_count:1:2'},
+  {rows:[{...row(),shortCode:'Wrong_123'}],error:'dataset_identity:0:unrequested'},
+  {count:2,rows:[row(),row()],error:'dataset_duplicate:Post_000'},
+  {rows:[{...row(),timestamp:'not-a-date'}],error:'dataset_normalize:Post_000'},
+  {rows:[{...row(),childPosts:[{type:'Image',displayUrl:'https://example.test/secret-value'}]}],error:'dataset_child_media:Post_000:1:0'},
+  {rows:[{inputUrl:'https://example.test/secret-value',error:'secret-value'}],error:'dataset_error_identity:0:unmatched:other'},
+  {rows:[{inputUrl:'https://www.instagram.com/reel/Post_000/',error:'secret-value'}],error:'dataset_error_identity:0:unmatched:requested_post_variant'},
+  {rows:[{inputUrl:'https://instagram.com/p/Post_000',error:'secret-value'}],error:'dataset_error_identity:0:unmatched:requested_post_variant'},
+  {rows:[{inputUrl:'https://www.instagram.com/p/Post_000/',shortCode:'Wrong_123',error:'secret-value'}],error:'dataset_error_identity:0:shortcode_mismatch'},
+  {rows:[{inputUrl:'https://www.instagram.com/p/Post_000/',url:'https://www.instagram.com/reel/Post_000/',error:'secret-value'}],error:'dataset_error_identity:0:url_disagreement:requested_canonical:requested_post_variant'},
+  {rows:[{...row(),error:{token:'secret-value'}}],error:'dataset_error_shape:Post_000'},
+  {rows:[{...row(),shortCode:'secret-value\n'}],error:'dataset_identity:0:invalid'}
+ ];
+ for(const scenario of scenarios){const s=await setup(scenario.count??1);try{
+  const before=s.sqlite.prepare('SELECT code,data FROM instagram_review ORDER BY code').all();
+  const result=await complete(s,provider(scenario.rows));assert.equal(result.error,scenario.error);assert.equal(result.updated,0);
+  assert.equal(s.sqlite.prepare('SELECT last_error FROM instagram_media_refresh').get().last_error,scenario.error);
+  assert.deepEqual(s.sqlite.prepare('SELECT code,data FROM instagram_review ORDER BY code').all(),before);
+  assert.equal(s.sqlite.prepare('SELECT COUNT(*) n FROM instagram_preview_urls').get().n,0);assert.ok(!JSON.stringify(result).includes('secret-value'));
+ }finally{s.sqlite.close();}}
+});
 

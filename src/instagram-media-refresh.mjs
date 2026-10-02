@@ -88,22 +88,33 @@ export async function refreshInstagramMedia(env,{fetcher=fetch}={}){
   // Read latest metadata before the remote page; the transaction checks it again after download.
   snapshots=(await DB.prepare(`SELECT r.code,r.data,r.revision,f.failures FROM instagram_review r LEFT JOIN instagram_media_refresh_posts f ON f.code=r.code WHERE r.code IN (SELECT value FROM json_each(?)) AND ${visible}`).bind(JSON.stringify(codes)).all()).results;
   const rows=await providerJson(`https://api.apify.com/v2/datasets/${run.defaultDatasetId}/items?format=json&limit=${batchSize+1}&clean=false&skipEmpty=false&skipHidden=false&fields=${fields}`,{fetcher,token:env.APIFY_TOKEN});
-  if(!Array.isArray(rows)||rows.length>codes.length)return await finishError('invalid_dataset');
+  // Diagnostics contain only fixed labels, bounded counts and already requested public shortcodes.
+  if(!Array.isArray(rows))return await finishError('dataset_shape');
+  if(rows.length>codes.length)return await finishError(`dataset_count:${codes.length}:${Math.min(rows.length,1000)}`);
+  const inputCategory=value=>{
+   if(codes.some(code=>value===`https://www.instagram.com/p/${code}/`))return 'requested_canonical';
+   try{const u=new URL(value),match=u.pathname.match(/^\/(?:p|reel)\/([A-Za-z0-9_-]{5,64})\/?$/);if(u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&['instagram.com','www.instagram.com'].includes(u.hostname)&&match&&codes.includes(match[1]))return 'requested_post_variant';}catch{}
+   return 'other';
+  };
   const normalized=new Map(),failedCodes=new Set(),seenCodes=new Set();
-  for(const row of rows){
+  for(const [index,row] of rows.entries()){
    let code=row?.shortCode;
    const explicitError=typeof row?.error==='string'&&row.error.length>0&&row.error.length<=2000;
    if(explicitError){
     const input=row.inputUrl??row.url;
     code=codes.find(c=>input===`https://www.instagram.com/p/${c}/`);
-    if(!code||row.shortCode!==undefined&&row.shortCode!==code||row.inputUrl!==undefined&&row.url!==undefined&&row.inputUrl!==row.url)return await finishError('invalid_dataset');
+    if(!code)return await finishError(`dataset_error_identity:${index}:unmatched:${inputCategory(input)}`);
+    if(row.shortCode!==undefined&&row.shortCode!==code)return await finishError(`dataset_error_identity:${index}:shortcode_mismatch`);
+    if(row.inputUrl!==undefined&&row.url!==undefined&&row.inputUrl!==row.url)return await finishError(`dataset_error_identity:${index}:url_disagreement:${inputCategory(row.inputUrl)}:${inputCategory(row.url)}`);
    }
-   if(!codes.includes(code)||seenCodes.has(code)||row?.error!=null&&!explicitError)return await finishError('invalid_dataset');
+   if(!codes.includes(code))return await finishError(`dataset_identity:${index}:${typeof code==='string'&&/^[A-Za-z0-9_-]{5,64}$/.test(code)?'unrequested':'invalid'}`);
+   if(seenCodes.has(code))return await finishError('dataset_duplicate:'+code);
+   if(row?.error!=null&&!explicitError)return await finishError('dataset_error_shape:'+code);
    seenCodes.add(code);
    if(explicitError){failedCodes.add(code);continue;}
    if(!/^[A-Za-z0-9_.]{1,30}$/.test(row.ownerUsername??''))fail('invalid_author');
-   let fresh;try{fresh=normalize(row);}catch{return await finishError('invalid_dataset');}
-   if(Array.isArray(row.childPosts)&&row.childPosts.length&&fresh.media.length!==row.childPosts.length)return await finishError('invalid_dataset');
+   let fresh;try{fresh=normalize(row);}catch{return await finishError('dataset_normalize:'+code);}
+   if(Array.isArray(row.childPosts)&&row.childPosts.length&&fresh.media.length!==row.childPosts.length)return await finishError(`dataset_child_media:${code}:${Math.min(row.childPosts.length,101)}:${fresh.media.length}`);
    normalized.set(row.shortCode,fresh);
   }
   const statements=[guard()],transfers=new Map(),patches=[],outcomes=[],aliases=[],clearAliases=[];let updated=0,failed=0;
