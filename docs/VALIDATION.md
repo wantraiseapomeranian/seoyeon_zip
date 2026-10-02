@@ -1,3 +1,17 @@
+## 종합 개선 실행 — 2026-10-02
+
+기준 main `452a46351ed8a5ad34e81a36b74fe1de36b3ef19`, 별도 `codex/project-improvement` 작업 폴더에서 구현했다. 원래 작업 폴더의 미커밋 문서·디자인 자료는 보존했다. Node 24.14.1/Windows/Chrome 기준이며 원격 결과는 별도 추가한다.
+
+- 기준 전체 테스트 321/321. 새 통합 `npm run check:release` exit 0: Node 343/343, 실제 로컬 workerd/D1 runtime 2개, 테마·강제 다크·터치 스크롤·이미지 실패/재시도·검토 초점·YouTube 200% 글자·피드 필터/추가 페이지/preload/사진 비율·확대창·운영 탭 12개 검사 모두 통과. 실패·건너뜀 0. 마지막 측정 도구의 보고 형식 보완은 생산 코드 변경이 아니다. 원격 결과는 후속 기록을 따른다.
+- 작업별 독립 검토와 최종 전체 변경 읽기 전용 리뷰 APPROVED. 발견했던 브라우저 redirect 우회는 회귀와 함께 수정 후 재검토했다. 검토자는 검사를 재실행하지 않았다.
+- 원격 실패 검증: [PR #1](https://github.com/wantraiseapomeranian/seoyeon_zip/pull/1), `9d844aa`, [Linux 실행](https://github.com/wantraiseapomeranian/seoyeon_zip/actions/runs/36964911319)은 341통과/의도적 실패1로 즉시 중단. 실제 `Release checks` app15368을 main 필수 검사(strict/관리자 적용/PR필수)에 등록 후 `mergeStateStatus=BLOCKED` 확인. PR은 병합 없이 닫았다. Cloudflare PR 미리보기 버전은 만들어졌지만 활성 운영 버전은 사전 `3e08028b` 유지, main도 `452a463` 유지였다. Builds 설정 조회403은 미확인으로 기록하고 우회하지 않았다.
+- Instagram 갱신: 상태 계약·오류 코드 정제·공개 사진만 집계·UTC 예산·독립 알림·운영 섹션 구현. 관련 42/42, 운영 Chrome 320/390/768/1280px 통과. 인증 해제·부분 실패·오래된 응답·링크/초점·키보드·쓰기 0 확인. 사용자 미디어 주소/실행 ID를 상태에 포함하지 않는다.
+- 피드: 대표 7조건×각5회 전체 응답 해시 일치. 원격 D1 SELECT 메타데이터로 Instagram 부분 합계 194,390→127,279행, YouTube 전체 합계 191,658→124,532행. 상세 조건·범위·제한은 [PERFORMANCE](PERFORMANCE.md). 후속 페이지 authors 생략 후보는 효과가 입증되지 않아 미적용.
+- 출시 검사: 실패 코드 전파·시작 실패·자손 프로세스 시간 제한 종료·미일치 외부 fetch 차단·route.continue/redirect 우회 회귀를 포함한 8/8 통과. 첫 RED 탐색에는 인증 없는 공급자 호스트 시도 가능성이 있었으나 유료 실행은 시작하지 않았다. 최종 검사는 `.test` 목적지와 로컬 fixture를 사용한다. 사전 Windows 실제 workerd operations/feed runtime 모두 통과했다.
+- 복구: 실제 export의 두 새 로컬 사본, integrity 정상/FK 0/37테이블 및 schema 해시 동일. 운영 주요 판정·revision 집계 일치, 비교 SELECT 쓰기 0. X 상태는 시간이 달라 변동. [RECOVERY](RECOVERY.md)에 실패 시도·정확한 범위·시간·복원 한계를 기록했다. 운영 DB 복원·데이터 삭제는 수행하지 않았다.
+- YouTube 후속 운영 확인: 검색 출처 3개 마지막 성공 10/2 04:04:29/04:09:28/04:14:30 KST, 오류 null/pages0/cursor 없음. 10/1 16:00 KST 예산 초기화 이후 정상 완료 증거다. 예약 영상 상태 전환이나 일주일 안정성을 의미하지 않는다.
+- 실제 iPhone Safari, Samsung Internet, VoiceOver는 접근 가능한 실기기가 없어 미확인. Chrome touch/viewport/키보드와 200% 글자 자동 검사를 대체 증거로 표현하지 않는다. 7일 및 정상 이미지 갱신 두 주기는 [후속 관찰](OPERATIONS-OBSERVATION.md)에서 관리한다.
+
 ## 검토함 필터 너비 안정화 — 2026-09-10
 
 - 수정 전 펼침으로 버튼50→170px 변화 재현. 원인: 보조 행 grid spanning 최소 너비가 auto 열을 확장.
