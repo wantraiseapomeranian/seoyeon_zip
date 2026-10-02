@@ -1498,3 +1498,14 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 하단 최소32px 또는8px+safe inset, 좌우 최소24px 또는12px+safe inset으로 보완. 확대창 footer CSS만 변경하고 viewport 메타 설정은 유지한다.
 - check-photo-viewer320×740/390×844/844×390/1280×900/검토함390×844 모두 통과. 기존 전환·터치·로딩 복구·스크롤/초점 복귀 포함.390px 캡처에서 하단 여백 육안 확인. CSS 변경에 관련된 브라우저 검증만 수행했으며 전체 서버 테스트는 재실행하지 않았다.
 - 독립 읽기 전용 리뷰 APPROVED(Critical/Major 없음). 실제 아이폰에서 잘림이 사라졌는지는 사용자 기기 후속 확인이 필요하다.
+
+## 2026-10-02 Instagram 미리보기 만료 복구 — 작업 중
+
+- 사전 공개 피드33개 게시물 첫 사진 HEAD:15개200/18개403. COSMO 실제 브라우저 실패 및 재시도 후 같은 실패 확인.3개 실패 주소 GET 응답403 `URL signature expired`. 동기화 last_error=null/failures0으로 새 자료 동기화와 기존 주소 만료를 구분했다.
+- 전체 사진118장까지 확장한 복구 전 HEAD 점검:72장200/46장403, 영향19개 게시물. 첫 사진만 검사했을 때와 달리 DdoWuq1CQpp 내부 사진의 만료가 추가 확인됐다. 이미지 파일을 다운로드·보관하지 않고 상태 및 URL만 git-ignored 로컬 검증 기록에 저장했다.
+- 원격 사전 판정 기준값209건:kept97/excluded99/pending13. x_photo_differences1건, confirmed_hash 보유 fingerprint129건. 운영 복구 후 기존 행의 status/revision/reviewed_at 및 공개 사진 순서/개수를 비교한다.
+- 공식 Apify actor 공개 메타데이터의 현재 결과당 최대 tier 가격0.0027 USD 및 최소 maxTotalChargeUsd0.0027 확인.18개×0.0027=0.0486이므로 실행당0.05 한도 안에서 처리하도록 배치 크기18, 하루2회 시작으로 제한한다. 가격 변동 시 작업의 비용 한도가 우선하며 실제 요금은 실행 결과로 확인한다.
+- API 계약 참고: https://docs.apify.com/api/v2/actors-runs-post 와 https://apify.com/apify/instagram-scraper/input-schema (2026-10-02 확인). D1 batch는 기존 프로젝트의 원자 저장 패턴을 따른다.
+- 구현4e8c972: 신규 SQLite 회귀의 초기 RED 이후 전체 npm test309/309 통과. 이후 명시적 게시물 오류 응답의 개별 처리 회귀를 추가해 RED→GREEN, 최종 관련 Instagram6개 파일37/37(신규17개) 통과. 전체309개 실행은 마지막 부분 실패 처리 추가 전이며, 마지막 변경 후에는 관련37개를 실행했다. Node SQLite 어댑터 검증으로 실제 Cloudflare 실행과 구분한다.
+- Wrangler4.130.0 dry-run301.63KiB/gzip73.73KiB 및 문법/diff 점검 통과. 실제 운영 대상 SELECT 표본18건은286.6ms/136729rows_read/0write였으며 빈 큐 조회를1시간 간격으로 제한한다.
+- 독립 읽기 전용 최종 리뷰 APPROVED. 유료 시작 예약·lease·시작 불확실 차단·원자 저장·판정/revision 보존 및 중복 판정 이전을 검토했으며 테스트/빌드를 재실행하지 않았다.
