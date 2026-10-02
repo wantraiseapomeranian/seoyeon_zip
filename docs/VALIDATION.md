@@ -1477,3 +1477,14 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 실제 Chrome에서도 세 필터 노출·Instagram COSMO4건 및 작성 계정 chelsea_dinos_sss4건 확인. 일부 기존 Instagram CDN 사진은 미리보기 로드 실패 상태이며 이번 분류 변경으로 복구된 것으로 보고하지 않음.
 
 - 운영390px 필터 펼침에서 플랫폼·종류 첫 줄/작성 계정 둘째 줄, 모든 컨트롤 높이44px·가로 넘침 없음 확인 후 임시 viewport 복원. 통계 출력명·Wrangler JSON 파싱 최종 독립 리뷰도 APPROVED.
+
+## 2026-10-02 모바일 확대 감상 — 배포 전
+
+- 기존 확대창이 viewport 전체를 사용하지 않는 RED 확인 후 새 check-photo-viewer Chrome 테스트 GREEN:320×740,390×844,844×390,1280×900,검토함 CSS390×844.
+- 같은 게시물 내 사진 순서·이전/다음 경계·방향키·Escape·44px 조작부·내부/가로 넘침 없음·닫기 후 사진/스크롤/초점 복귀 확인. CDP 실제 터치 이벤트로 가로 스와이프 전환, pointercancel 후 전환 없음 확인. 실제 휴대폰의 Safari/Samsung 및 멀티터치는 미검증.
+- 원본404→재시도 성공, 원본15초 초과 실패 안내, 재시도 후 키보드 초점, 열린 확대창 destroy 시 스크롤 잠금 해제, 사진/영상 혼합 목록의 사진만 전환 후 원래 인덱스 복귀 확인.
+- 기존 check-photo-touch-scroll / check-feed-photo-ratio / check-photo-loading / check-photo-comparison / check-feed-paging 통과. npm test293/293, Wrangler dry-run283.25KiB 통과.320px·가로844px·1280px 결과 캡처 육안 확인.
+- 새 UI 테스트 초반 스크롤 차이는 Playwright locator 자동 스크롤이어서 좌표 클릭으로 실제 사용자 입력을 분리했고, 실패 이미지 테스트는 메모리 캐시 재사용을 피하는 별도 URL을 사용했다. Chrome 터치 후 키보드 초점 유실은 구현에서 수정 후 재검증했다.
+- 독립 리뷰 및 운영 배포 확인 대기.
+
+- 배포 전 독립 코드 리뷰 APPROVED. 검토자는 테스트/빌드를 재실행하지 않은 읽기 전용 검토를 수행했다.
