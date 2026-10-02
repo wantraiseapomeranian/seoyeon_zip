@@ -1,6 +1,14 @@
 ## 종합 개선 실행 — 2026-10-02
 
-기준 main `452a46351ed8a5ad34e81a36b74fe1de36b3ef19`, 별도 `codex/project-improvement` 작업 폴더에서 구현했다. 원래 작업 폴더의 미커밋 문서·디자인 자료는 보존했다. Node 24.14.1/Windows/Chrome 기준이며 원격 결과는 별도 추가한다.
+### 배포 결과
+
+- [구현 PR #2](https://github.com/wantraiseapomeranian/seoyeon_zip/pull/2), 검증 head `259315fbe107eebbbebc300649d0f115aca56062`: [Linux Release checks](https://github.com/wantraiseapomeranian/seoyeon_zip/actions/runs/36966061302) 성공. Node 343/343 및 runtime/UI 전체, 후속 200% 글자 회귀 포함. GitHub `mergeStateStatus=CLEAN` 확인 후 보호 규칙에 따라 정상 병합했다.
+- 병합 `df30fc6fb7c1cd100bc92ff0acf024514650775f`, 04:49:53 UTC. 해당 커밋 Workers Builds 성공과 [main 후속 검사](https://github.com/wantraiseapomeranian/seoyeon_zip/actions/runs/36966258831) 성공을 구분해 확인했다. 실제 활성 배포 04:50:20 UTC, Worker `55863e4e-fe35-40d1-b648-274fe214fe24`, 트래픽 100%.
+- 배포 후 사진 feed 200(총1,687), Instagram 사진 feed 200(33), YouTube feed 200(160), authors·duplicateSources 응답 유지. `/api/admin/operations`, `/api/admin/instagram/sync`, `/operations.html` 비인증 요청 모두401. 공개 CSS의 확대 글자 보완·핀치 허용 코드 확인. 실제 소유자 로그인으로 운영 화면을 재열람한 증거는 없으며 UI는 로컬 실제 Worker/Chrome 검사 결과와 구분한다.
+- 실제 공개 Worker/CDN의 배포 전후 화면별5회 측정: API 중앙값 모바일1,036.1→925.3ms/데스크톱881→805ms, 관찰 LCP3,960→2,704ms/4,592→3,764ms, CLS0·요청/HTTP/페이지 오류0. 외부 조건이 고정되지 않아 코드만의 개선량으로 단정하지 않으며 2.5초 목표는 미달. [PERFORMANCE](PERFORMANCE.md)에 범위·관찰 창·한계를 기록했다.
+- 읽기 전용 운영 관찰 시작13:50:20 KST, 매일15시 예약. 완료는10/9 13:50 이후와 정상 이미지 갱신 두 주기를 모두 요구한다. 실제 기기·장기 결과는 아직 미완료다. 후속 문서 커밋은 이 기능 배포와 별도로 관리한다.
+
+기준 main `452a46351ed8a5ad34e81a36b74fe1de36b3ef19`, 별도 `codex/project-improvement` 작업 폴더에서 구현했다. 원래 작업 폴더의 미커밋 문서·디자인 자료는 보존했다. 로컬은 Node24.14.1/Windows10.0.26200/Chrome154.0.8037.58 기준이며 원격 결과는 위 배포 결과를 따른다.
 
 - 기준 전체 테스트 321/321. 새 통합 `npm run check:release` exit 0: Node 343/343, 실제 로컬 workerd/D1 runtime 2개, 테마·강제 다크·터치 스크롤·이미지 실패/재시도·검토 초점·YouTube 200% 글자·피드 필터/추가 페이지/preload/사진 비율·확대창·운영 탭 12개 검사 모두 통과. 실패·건너뜀 0. 마지막 측정 도구의 보고 형식 보완은 생산 코드 변경이 아니다. 원격 결과는 후속 기록을 따른다.
 - 작업별 독립 검토와 최종 전체 변경 읽기 전용 리뷰 APPROVED. 발견했던 브라우저 redirect 우회는 회귀와 함께 수정 후 재검토했다. 검토자는 검사를 재실행하지 않았다.

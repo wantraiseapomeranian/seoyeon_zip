@@ -48,7 +48,7 @@ runtime 검사의 Miniflare `outboundService`도 외부 요청을 거부한다. 
 
 [실패 증거 PR #1](https://github.com/wantraiseapomeranian/seoyeon_zip/pull/1)의 `9d844aa`는 의도적 Node 실패 1건으로 후속 runtime/UI를 실행하지 않고 종료했다. GitHub `mergeStateStatus=BLOCKED`를 확인한 뒤 병합 없이 닫았다. 실패 파일은 main에 넣지 않는다. Cloudflare는 이 브랜치의 미리보기 버전만 만들었고 활성 운영 버전 `3e08028b-908b-4149-968d-68d8c7c7702f`는 유지됐다.
 
-Workers Builds 설정 API는 현재 OAuth 권한으로 403이어서 실제 빌드 명령·모든 branch 설정은 읽지 못했다. 설정을 추정해 수정하지 않았다. PR 빌드와 활성 운영 배포를 API로 구분했고 기존 연동을 유지한다. 성공 구현 PR의 Linux 검사·병합·운영 배포 결과는 [VALIDATION](VALIDATION.md)에 추가한다.
+Workers Builds 설정 API는 현재 OAuth 권한으로 403이어서 실제 빌드 명령·모든 branch 설정은 읽지 못했다. 설정을 추정해 수정하지 않았다. PR 빌드와 활성 운영 배포를 API로 구분했고 기존 연동을 유지한다. 구현 PR #2의 `259315f`는 Linux 전체 검사가 성공해 `CLEAN` 상태로 정상 병합됐다. 병합 `df30fc6`의 main 검사와 Workers Builds가 성공했고 활성 버전 `55863e4e`를 확인했다. 정확한 결과는 [VALIDATION](VALIDATION.md)을 따른다.
 
 Windows의 `workerd.exe`는 OS 서명 정책 때문에 `spawn UNKNOWN`으로 차단된 이력이 있다. 이 경우 runtime 실패·미확인으로 기록하고 Linux CI 결과를 확인한다. 브라우저 UA 에뮬레이션을 실제 모바일 검증으로 기록하지 않는다.
 
