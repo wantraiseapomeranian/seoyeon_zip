@@ -1,33 +1,55 @@
-# 로컬 검증 명령
+# 릴리스 검증 명령
 
-프로젝트 루트에서 실행한다. Node.js 24.14.1 이상과 `npm ci`로 설치한 의존성이 필요하다. UI 검사는 설치된 Google Chrome을 사용한다(`channel: 'chrome'`). 별도 개발 서버나 운영 인증 정보는 필요하지 않다.
+프로젝트 루트에서 Node.js 24.14.1 이상과 `npm ci`로 설치한 잠금 파일 의존성을 사용한다. 브라우저 검사는 Google Chrome(`channel: 'chrome'`)이 필요하다. Linux에서 준비할 때는 `npx --no-install playwright install --with-deps chrome`을 실행한다.
 
 | 명령 | 실행 범위 | 한계 |
 | --- | --- | --- |
-| `npm test` | 기존 `tests/*.test.mjs` 전체 | Node 테스트이며 Cloudflare 런타임·브라우저 검사를 대신하지 않는다. |
-| `npm run check:runtime` | 운영 일별 기록·알림의 workerd/D1 검사, 피드 SQL batch·페이지·오류 응답 검사 | 임시 로컬 D1과 표본을 사용하며 실제 운영 데이터·예약 실행 결과를 확인하지 않는다. |
-| `npm run check:ui` | 여섯 화면 테마, 사진 지연·오류·재시도, X/Instagram/YouTube 판정 후 초점, YouTube 200% 글자 확대 | 로컬 Chrome과 모의 응답을 사용한다. 전체 접근성 검사나 실제 iPhone Safari·Samsung Internet·VoiceOver 검증은 아니다. |
+| `npm run check:release` | Node 전체 테스트 → 로컬 runtime 2개 → 기본 UI 6개 → 핵심 피드 4개 → 사진 확대창 → 운영 탭 | 로컬 표본과 모의 응답으로 검사한다. 운영 DB·공급자·실기기 결과를 확인하지 않는다. |
+| `npm test` | `tests/*.test.mjs` 전체 | Node 검사. 신규 fixture guard 회귀도 Chrome을 사용한다. |
+| `npm run check:runtime` | workerd/D1 운영 기록·알림, 피드 SQL batch·페이지·오류 응답 | 임시 D1을 사용한다. 실제 예약 실행은 확인하지 않는다. |
+| `npm run check:ui` | 테마·강제 다크·터치 스크롤·사진 오류·검토 후 초점·200% 글자 확대 | Chrome 기반. iPhone Safari·Samsung Internet·VoiceOver 검증은 별도다. |
 
-각 명령은 독립 실행한다. runtime/UI 내부 검사는 순서대로 실행하며 한 검사가 실패하면 뒤의 검사를 실행하지 않고 실패로 종료한다. 이 명령을 추가한 것만으로 자동 배포 전 검증이 설정되는 것은 아니다.
+`check:release`는 실패한 검사 이름과 자식 종료 코드를 출력하고 즉시 종료한다. 시작 실패·신호 종료·180초 초과도 실패다. 이후 검사는 실행하지 않으며 통과로 표시하지 않는다. 검사 서버는 자식 프로세스 안에서만 동작하고 각 스크립트의 `finally`에서 정리한다. 시간 초과 또는 중단 시 실행기는 프로세스 트리를 종료한다. Linux에서는 프로세스 그룹을 종료하고 Windows에서는 `taskkill /T /F`를 사용한다.
 
-Windows의 runtime 검사에는 OS가 로컬 `workerd.exe` 실행을 허용해야 한다. `spawn UNKNOWN`이 발생하면 Windows CodeIntegrity 로그의 차단 여부를 확인한다. 2026-09-22에는 서명 정책의 실행 차단이 확인됐으며 해당 검사는 실패·미검증으로 기록했다. 이 경우 OS가 허용하는 실행 환경을 확보한 뒤 다시 검사해야 한다.
+실행기에는 다음 목록이 명시돼 있다.
 
-## 포함된 검사와 결과
+1. `node --test tests/*.test.mjs`에 해당하는 정렬된 파일 목록. 쉘 glob에 의존하지 않는다.
+2. `check-operations-runtime.mjs --local`, `validate-feed-batch.mjs --local`.
+3. `check-theme.mjs`, `check-forced-dark.mjs`, `check-photo-touch-scroll.mjs`, `check-photo-loading.mjs`, `check-ui-audit-fixes.mjs`, `check-ui-audit-fixes.mjs text`.
+4. `check-feed-filters.mjs`, `check-feed-paging.mjs`, `check-feed-preload.mjs`, `check-feed-photo-ratio.mjs`.
+5. `check-photo-viewer.mjs`, `check-operations-tabs.mjs`.
 
-- runtime: `check-operations-runtime.mjs --local`, `validate-feed-batch.mjs --local`. 두 검사 모두 외부 요청을 차단하고 임시 D1을 생성·정리한다. 결과는 터미널에 출력한다.
-- UI: `check-theme.mjs`, `check-photo-touch-scroll.mjs`, `check-photo-loading.mjs`, `check-ui-audit-fixes.mjs`, `check-ui-audit-fixes.mjs text`. 테마·초점 검사는 임의 포트의 로컬 서버를 직접 시작·종료하고 사진 검사는 서버 없이 실행한다. 터치 스크롤 검사는 화면 설정 버튼과 사진 영역이 겹칠 때 터치·마우스의 사진 이동·확대·닫기 및 키보드 초점 가시성을 확인한다.
-- `check-forced-dark.mjs`도 UI 명령에 포함한다. OS 다크 선호에서 Chrome Auto Dark를 켜고 끈 실제 스크린샷을 비교해 사이트의 밝게·어둡게·기기 설정 및 새로고침 후 색상이 유지되는지 검사한다. 삼성 인터넷 실기기 검증은 별도다.
-- UI 캡처는 `.local/theme/`, `.local/forced-dark/`, `.local/ui-fixes/`에 저장되며 다음 실행에서 같은 파일을 덮어쓸 수 있다. 사진 오류 검사는 터미널 결과만 남긴다. `.local` 결과물을 Git에 추가하지 않는다.
-- 테마 검사의 axe 검증은 기본 명령에 포함하지 않는다. 필요한 경우 `node scripts/check-theme.mjs --axe <로컬-axe-파일>`로 별도 실행한다.
+운영 탭 검사는 고정 포트 4198을 사용하므로 목록을 병렬로 실행하지 않는다. UI 캡처는 `.local/`에 남으며 커밋하거나 공개 CI artifact로 올리지 않는다. 테마 axe 검사는 기본 목록에 포함하지 않는다. 필요 시 로컬 파일을 사용해 `node scripts/check-theme.mjs --axe <로컬-axe-파일>`을 별도 실행한다.
+
+## 외부 요청과 비밀값 경계
+
+릴리스 실행기만 `check-release-fixtures.mjs`를 preload한다. Node `fetch`는 loopback 주소만 허용한다. Chrome은 서비스 워커를 차단하고 loopback 및 각 검사에 명시된 fixture route만 허용한다. 모의 응답으로 처리되지 않은 외부 요청은 실제 전송 전에 중단하고 해당 검사를 실패로 종료한다. 로컬 응답도 redirect를 따라가기 전에 확인하고 redirect는 실패로 처리한다. 기존 독립 검사 명령에는 preload를 자동 적용하지 않는다.
+
+runtime 검사의 Miniflare `outboundService`도 외부 요청을 거부한다. 운영 DB·운영 인증 정보·유료 공급자 호출은 사용하지 않는다. 실행기는 OS·Chrome에 필요한 환경 변수만 자식에 전달하고 공급자 토큰·키·`NODE_OPTIONS`는 전달하지 않는다. 이 guard는 기존 검사 경로의 `fetch`와 Playwright 요청을 제한하는 장치이며 범용 OS 네트워크 샌드박스는 아니다.
+
+## GitHub 검사와 배포 연결
+
+`.github/workflows/verify.yml`은 `main` 대상 PR, `main` push, 수동 실행에서 Linux의 `Release checks` job을 실행한다. Node는 24.14.1로 고정하고 `npm ci` 및 Chrome 설치 후 같은 릴리스 명령을 사용한다. workflow에는 운영 secrets와 Cloudflare 배포 명령을 넣지 않는다.
+
+2026-10-02 읽기 전용 조회 결과: 기존 Actions workflow는 0개, `main.protected=false`, 필수 status check 목록은 비어 있고 repository ruleset은 `[]`였다. 당시 조회 계정은 저장소 읽기 권한만 갖고 있었다. 기준 `452a46351ed8a5ad34e81a36b74fe1de36b3ef19`에는 `Workers Builds: seoyeon-zip` 성공 check가 있다. GitHub check 응답에는 Workers Builds의 브랜치 트리거·빌드 명령이 없으므로 이 설정은 별도로 확인해야 한다.
+
+배포 전 차단을 완성하려면 다음 실제 증거가 필요하다.
+
+1. PR에서 `Release checks`의 실제 이름·SHA·결과를 확인한다.
+2. 저장소 관리자 권한으로 그 check를 `main` 필수 검사에 연결하고 직접 push 우회 경로를 차단한다. 기존 Workers Builds 연동은 유지한다.
+3. 일회성 PR 브랜치에서 테스트 하나를 의도적으로 실패시켜 필수 검사가 실패하고 병합이 차단되는지 확인한다. 실패 fixture는 `main`에 병합하지 않는다.
+4. 성공 커밋으로 되돌린 뒤 필수 검사 통과와 병합 허용을 확인한다. 병합된 SHA의 Workers Builds·실제 배포 결과를 각각 확인한다.
+
+`main` push와 나란히 실행되는 Actions만으로는 Workers Builds 시작을 막지 못한다. 직접 push가 계속 허용된다면 Workers Builds의 배포 전 빌드 명령에 Linux/Chrome 의존성을 갖춘 `npm run check:release`를 연결하는 등 별도 차단을 검증해야 한다. 원격 보호 설정·빌드 명령 변경·실패 차단 증거는 로컬 파일 생성만으로 완료 처리하지 않는다.
+
+Windows의 `workerd.exe`는 OS 서명 정책 때문에 `spawn UNKNOWN`으로 차단된 이력이 있다. 이 경우 runtime 실패·미확인으로 기록하고 Linux CI 결과를 확인한다. 브라우저 UA 에뮬레이션을 실제 모바일 검증으로 기록하지 않는다.
 
 ## 변경에 따라 추가할 기존 검사
 
-모든 검사 파일을 일괄 실행하지 않는다. 추가 검사는 변경 범위와 아래 실행 조건을 확인해 선택한다.
+- `check-review-filters.mjs`: X·Instagram 검토 필터·페이지·계정·초기화·너비. 로컬 Chrome/모의 응답.
+- `check-youtube.mjs`: 로컬 API/메모리 DB. 포트 4198을 사용하며 일부 요청이 실제 `fetch`로 나갈 수 있으므로 릴리스 목록에 넣지 않았다.
+- `check-public-runtime.mjs`, `check-public-limit-runtime.mjs`: 별도 로컬 Worker 필요. 후자는 요청 제한 상태를 소진한다.
+- `check-x-quality.mjs`: `.local/x-quality-posts.json`, `.local/x-quality-backfill.sql` 입력 필요.
+- `check-dark-controls.mjs`와 `--iphone`: 날짜 입력 변경 검사. 실제 모바일 엔진을 대신하지 않는다.
 
-- `node scripts/check-review-filters.mjs`: X·Instagram 검토 화면의 필터 요청·페이지 초기화·선택 계정 보존·초기화·펼치기·너비를 로컬 Chrome과 모의 응답으로 확인한다. 임의 포트의 서버를 직접 시작·종료하며 운영 데이터는 변경하지 않는다.
-- `node scripts/check-youtube.mjs`: 등록·판정·감사 내역을 로컬 API/메모리 DB로 확인한다. 고정 포트 4198을 사용하므로 같은 포트의 `check-operations-tabs.mjs`와 동시에 실행하지 않는다. 일부 요청은 실제 `fetch`로 전달할 수 있어 외부 요청 차단을 보장하는 runtime 프로필과 구분한다.
-- `check-public-runtime.mjs`, `check-public-limit-runtime.mjs`: 별도로 시작한 로컬 Worker가 필요하다. 후자는 요청 제한 상태를 소진하므로 같은 서버에서 다른 검사와 함께 실행할 때 상태 영향을 고려한다.
-- `check-x-quality.mjs`: `.local/x-quality-posts.json`과 `.local/x-quality-backfill.sql` 입력이 필요해 기본 프로필에 포함하지 않는다.
-- `check-dark-controls.mjs`와 `check-dark-controls.mjs --iphone`: 날짜 입력 변경 시 선택한다. Chrome의 UA 에뮬레이션이며 실제 모바일 엔진 검증을 대신하지 않는다.
-
-검증 결과와 남은 미확인 사항은 `docs/VALIDATION.md`에 기록한다. 로컬 통과, GitHub 푸시, Cloudflare 배포 성공, 운영 확인은 각각 구분한다.
+검사 커밋·환경·명령·결과·한계는 `docs/VALIDATION.md`에 기록한다. 로컬 통과, GitHub push, 필수 검사 차단, Cloudflare 배포 성공과 운영 확인은 각각 구분한다.

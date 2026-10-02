@@ -1,0 +1,36 @@
+name: Verify
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    name: Release checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.14.1'
+          cache: npm
+      - run: npm ci
+      - name: Install Chrome and browser system dependencies
+        run: npx --no-install playwright install --with-deps chrome
+      - name: Verify Chrome channel
+        run: google-chrome --version
+      - name: Run release checks
+        run: npm run check:release
