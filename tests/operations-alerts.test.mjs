@@ -38,6 +38,34 @@ test('Instagram persisted errors remain bad during running and manual failures a
  value.instagram.pendingErrors=0;value.manual.overdue=1;value.manual.counts.failed=0;await d.run(1200,value);await d.run(1500,value);assert.equal((await d.read()).active.length,2);
 });
 
+test('Instagram refresh alerts are independent, preserve failures through budget and running, and confirm recovery',async()=>{
+ const d=setup(),value=signals('healthy');value.instagramRefresh={status:'attention',failedPosts:0,overduePosts:0};
+ await d.run(0,value);await d.run(900,value);
+ assert.deepEqual((await d.read()).active.map(a=>a.key),['instagram-refresh']);
+ assert.equal((await d.read()).active[0].label,'Instagram 이미지 갱신');
+ value.instagramRefresh={status:'budget_wait',failedPosts:1,overduePosts:1};await d.run(1200,value);await d.run(1500,value);
+ value.instagramRefresh.status='running';await d.run(1800,value);
+ assert.deepEqual((await d.read()).events.map(e=>e.type),['problem']);
+ value.instagramRefresh={status:'healthy',failedPosts:0,overduePosts:0};await d.run(2100,value);await d.run(2400,value);
+ assert.deepEqual((await d.read()).events.map(e=>e.type),['recovered','problem']);
+ value.instagramRefresh.status='retry';await d.run(2700,value);await d.run(3600,value);
+ value.instagramRefresh.status='disabled';await d.run(3900,value);
+ assert.deepEqual((await d.read()).events.map(e=>e.type),['stopped','problem','recovered','problem']);
+});
+
+test('Instagram refresh unavailable signals cannot recover and sustained read failure opens an alert',async()=>{
+ const d=setup(),value=signals('healthy');value.instagramRefresh={status:'unavailable'};
+ await d.run(0,value);await d.run(900,value);await d.run(1200,value);await d.run(1500,value);
+ assert.deepEqual((await d.read()).active.map(a=>a.key),['instagram-refresh']);
+ assert.deepEqual((await d.read()).events.map(e=>e.type),['problem']);
+ value.instagramRefresh={status:'budget_wait',failedPosts:0,overduePosts:0};await d.run(1800,value);await d.run(2100,value);
+ assert.equal((await d.read()).active.length,1);
+ value.instagramRefresh.status='healthy';await d.run(2400,value);await d.run(2700,value);
+ assert.deepEqual((await d.read()).events.map(e=>e.type),['recovered','problem']);
+ const clean=setup(),normal=signals('healthy');normal.instagramRefresh={status:'budget_wait',failedPosts:0,overduePosts:4};
+ await clean.run(0,normal);await clean.run(900,normal);assert.equal((await clean.read()).active.length,0);
+});
+
 test('lease is acquired before reading signals and concurrent/same timestamp calls do not duplicate transitions',async()=>{
  const d=setup();await d.run(0);let release;const gate=new Promise(resolve=>{release=resolve;});let entered;const ready=new Promise(resolve=>{entered=resolve;});
  const first=alerts.evaluateOperationsAlerts({DB:d.DB},async()=>{entered();await gate;return signals('retry');},start+900000);await ready;

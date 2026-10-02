@@ -13,7 +13,7 @@ sqlite.exec("UPDATE collection_state SET history_paused=1,catchup_status='limite
 sqlite.exec("INSERT INTO instagram_sync(id,task_id,last_checked_at,last_success_at,next_due_at) VALUES(1,'testTask',datetime('now'),datetime('now','-1 day'),unixepoch()+300)");
 sqlite.prepare('INSERT INTO manual_posts VALUES(?,?,?,?)').run('manual:x:123','https://x.com/sample/status/123','{}',new Date().toISOString());
 sqlite.exec("INSERT INTO manual_media_jobs(post_id,state,error) VALUES('manual:x:123','failed','provider_network')");
-const env={DB,YOUTUBE_ENABLED:'true',YOUTUBE_COLLECTION_ENABLED:'true',YOUTUBE_API_KEY:'fixture',COLLECTION_ENABLED:'true',APIFY_SYNC_ENABLED:'true',APIFY_TASK_ID:'testTask',APIFY_TOKEN:'local-test-only',MANUAL_MEDIA_ENABLED:'true'};
+const env={DB,YOUTUBE_ENABLED:'true',YOUTUBE_COLLECTION_ENABLED:'true',YOUTUBE_API_KEY:'fixture',COLLECTION_ENABLED:'true',APIFY_SYNC_ENABLED:'true',APIFY_TASK_ID:'testTask',APIFY_TOKEN:'local-test-only',INSTAGRAM_MEDIA_REFRESH_ENABLED:'true',MANUAL_MEDIA_ENABLED:'true'};
 sqlite.exec("INSERT INTO youtube_videos(video_id) VALUES('Pending1234'); UPDATE youtube_sources SET last_success_at=unixepoch()-60,next_due_at=unixepoch()+3600");
 await recordOperationsSnapshot(env,Date.now()-86400000);
 sqlite.exec("INSERT INTO youtube_videos(video_id) VALUES('Pending5678'); INSERT INTO operations_alert_events(key,label,type,created_at) VALUES('youtube','YouTube 수집','problem',unixepoch()-600),('youtube','YouTube 수집','recovered',unixepoch()-60)");
@@ -31,6 +31,7 @@ const server=createServer(async(req,res)=>{
    const data=await response.json();
    if(mode==='history'||mode==='both')data.history={...data.history,status:'unavailable'};
    if(mode==='alerts'||mode==='both')data.alerts={...data.alerts,status:'unavailable'};
+   if(mode==='refresh')data.instagramRefresh={...data.instagramRefresh,status:'unavailable'};
    res.writeHead(response.status,Object.fromEntries(response.headers));res.end(JSON.stringify(data));return;
   }
   const file=url.pathname==='/admin/operations'?'operations.html':url.pathname.slice(1);
@@ -79,6 +80,7 @@ try{
  }
  assert.match(await page.locator('#overview-values').innerText(),/YouTube\s*정상/);
  assert.match(await page.locator('#overview-values').innerText(),/유튜브 미검토\s*2건/);
+ assert.match(await page.locator('#overview-values').innerText(),/Instagram 이미지 갱신\s*첫 처리 대기/);
  assert.equal(await page.locator('#youtube-operations').count(),0);
  await selected('overview');assert.equal(reads,1,'initial data uses one API read');
  assert.equal(await page.locator('#ops-panel-overview section').first().getAttribute('aria-labelledby'),'attention-title','actionable problems come first in DOM and reading order');
@@ -86,6 +88,9 @@ try{
  assert.equal(await page.locator('#operations-status').getAttribute('role'),'status');
  assert.equal(await page.locator('#operations-status').evaluate(el=>getComputedStyle(el).position),'absolute','success announcement stays available without taking visual space');
  await page.locator('#ops-tab-collection').click();
+ assert.equal(await page.locator('#instagram-refresh-title').innerText(),'Instagram 이미지 갱신');
+ assert.match(await page.locator('#instagram-refresh-values').innerText(),/마지막 성공\s*기록 없음/);
+ assert.match(await page.locator('#instagram-refresh-values').innerText(),/오늘 시작\s*0 \/ 2회/);
  assert.match(await page.locator('#youtube-values').innerText(),/저장 영상\s*2건/);
  assert.match(await page.locator('#youtube-values').innerText(),/오늘 검색\s*0 \/ 50회/);
  assert.match(await page.locator('#x-values').innerText(),/수집 오류·지연\s*0개 계정/);
@@ -110,6 +115,20 @@ try{
  assert.match(await page.locator('#attention-summary').innerText(),/확인이 필요한 항목은 없어요/);
  sqlite.exec("UPDATE manual_media_jobs SET state='failed' WHERE post_id='manual:x:123'");
  await refresh();assert.equal(await page.locator('#operations-issues li').count(),1);
+ // Refresh health cannot disappear behind a successful Instagram sync.
+ sqlite.exec("UPDATE instagram_media_refresh SET state='error',last_error='start_uncertain',run_id='private-run-id'; INSERT INTO operations_alert_state(key,label,opened_at,last_seen_at,observed_at) VALUES('instagram-refresh','Instagram 이미지 갱신',unixepoch()-900,unixepoch(),unixepoch())");
+ await refresh();
+ assert.match(await page.locator('#instagram-status').innerText(),/정상/);
+ assert.match(await page.locator('#instagram-refresh-status').innerText(),/확인 필요/);
+ assert.doesNotMatch(await page.locator('#operations-content').innerText(),/private-run-id|local-test-only/);
+ const refreshIssue=page.locator('#operations-issues a[href="#instagram-refresh-title"]');
+ assert.equal(await refreshIssue.count(),1);await refreshIssue.click();await selected('collection');
+ assert.equal(await page.evaluate(()=>document.activeElement.id),'instagram-refresh-title');
+ await page.locator('#ops-tab-alerts').click();
+ await page.locator('#alerts-active a[href="#instagram-refresh-title"]').click();await selected('collection');
+ assert.equal(await page.evaluate(()=>document.activeElement.id),'instagram-refresh-title');
+ sqlite.exec("UPDATE instagram_media_refresh SET state='idle',last_success_at=unixepoch(),last_error=NULL,run_id=NULL; DELETE FROM operations_alert_state WHERE key='instagram-refresh'");
+ await refresh();assert.match(await page.locator('#instagram-refresh-status').innerText(),/정상/);
  assert.match(await page.locator('#total-values').innerText(),/유튜브 저장 영상\s*2건/);
  assert.match(await page.locator('#growth-values').innerText(),/유튜브 저장 영상\s*2건 · 전일 대비 \+1건/);
  assert.match(await page.locator('#alerts-rows').innerText(),/YouTube 수집/);
@@ -135,12 +154,13 @@ try{
  }
  await page.locator('#ops-tab-alerts').click();await page.reload();await settled();await selected('alerts');
  // A successful HTTP response can still contain unavailable sections.
- for(const partial of ['history','alerts','both']){
+ for(const partial of ['history','alerts','both','refresh']){
   mode=partial;await refresh();await selected('alerts');
   const error=page.locator('#operations-error');
   assert.equal(await error.getAttribute('role'),'alert');assert.equal(await error.isVisible(),true);
-  if(partial!=='alerts')assert.match(await error.innerText(),/자료 증가|추이/);
-  if(partial!=='history')assert.match(await error.innerText(),/알림/);
+  if(['history','both'].includes(partial))assert.match(await error.innerText(),/자료 증가|추이/);
+  if(['alerts','both'].includes(partial))assert.match(await error.innerText(),/알림/);
+  if(partial==='refresh')assert.match(await error.innerText(),/Instagram 이미지 갱신/);
   assert.equal(await page.locator('#operations-content').getAttribute('data-partial'),'true');
   assert.equal(await page.locator('#operations-status').getAttribute('role'),'status');
   assert.notEqual((await page.locator('#operations-status').innerText()).trim(),'현황을 확인했어요.','partial result must not claim full success');

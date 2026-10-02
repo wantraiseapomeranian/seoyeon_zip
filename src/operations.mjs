@@ -2,6 +2,7 @@ import {readYouTubeOperations} from './youtube-operations.mjs';
 import {sources} from './sources.mjs';
 import {readOperationsHistory} from './operations-history.mjs';
 import {readOperationsAlerts} from './operations-alerts.mjs';
+import {readInstagramRefreshOperations,unavailableInstagramRefresh} from './instagram-refresh-operations.mjs';
 
 const grace=900;
 const historyNotes=new Set(['history_window_unverified','unverified_exhaustion','repeated_cursor']);
@@ -39,7 +40,7 @@ export async function readOperationsState(env,{details=true}={}){
   const {now}=await DB.prepare('SELECT unixepoch() AS now').first();
   const configured=!!env.APIFY_TOKEN&&typeof env.APIFY_TASK_ID==='string'&&/^[A-Za-z0-9]{3,64}$/.test(env.APIFY_TASK_ID);
   const task=configured?env.APIFY_TASK_ID:'';
-  const [control,xRows,ig,runs,manualRows,manualDue,totals,history,youtube]=await Promise.all([
+  const [control,xRows,ig,runs,manualRows,manualDue,totals,history,youtube,instagramRefresh]=await Promise.all([
    DB.prepare('SELECT enabled FROM collection_control WHERE id=1').first(),
    DB.prepare('SELECT source,enabled,last_attempt_at,last_success_at,last_complete_sync_at,next_due_at,lease_until,failures,last_error_code,catchup_status,history_paused FROM collection_state ORDER BY source').all(),
    DB.prepare('SELECT task_id,last_checked_at,last_success_at,next_due_at,lease_until,failures,last_error FROM instagram_sync WHERE id=1').first(),
@@ -48,7 +49,8 @@ export async function readOperationsState(env,{details=true}={}){
    DB.prepare("SELECT COUNT(*) AS count FROM manual_media_jobs WHERE state IN ('pending','starting','waiting') AND lease_until<=? AND (CASE WHEN next_due_at>0 THEN next_due_at ELSE updated_at END)>0 AND (CASE WHEN next_due_at>0 THEN next_due_at ELSE updated_at END)<?").bind(now,now-grace).first(),
    details?DB.prepare('SELECT (SELECT COUNT(*) FROM posts) AS x,(SELECT COUNT(*) FROM instagram_review) AS instagram,(SELECT COUNT(*) FROM manual_posts) AS manual,(SELECT COUNT(*) FROM youtube_videos) AS youtube').first():null,
    details?readOperationsHistory(DB,now*1000).then(data=>({status:'ok',...data})).catch(()=>({status:'unavailable',items:[]})):null,
-   readYouTubeOperations(env,now).catch(()=>({status:'unavailable'}))
+   readYouTubeOperations(env,now).catch(()=>({status:'unavailable'})),
+   readInstagramRefreshOperations(env,now).catch(unavailableInstagramRefresh)
   ]);
   const enabled=env.COLLECTION_ENABLED==='true'&&control?.enabled===1;
   // X runs one eligible source every three minutes, so allow one full rotation.
@@ -68,7 +70,7 @@ export async function readOperationsState(env,{details=true}={}){
   const counts={pending:0,starting:0,waiting:0,ready:0,no_media:0,failed:0,existing:0};
   for(const row of manualRows.results)if(Object.hasOwn(counts,row.state))counts[row.state]=row.count;
   const manualEnabled=env.MANUAL_MEDIA_ENABLED==='true';
-  return {generatedAt:iso(now),delayGraceSeconds:grace,youtube,
+  return {generatedAt:iso(now),delayGraceSeconds:grace,youtube,instagramRefresh,
    x:{enabled,delayGraceSeconds:xGrace,sources:xRows.results.map(row=>xSource(row,enabled,now,xGrace))},
    instagram:{status,checkedAt:iso(ig?.last_checked_at),syncedAt:iso(ig?.last_success_at),nextDueAt:iso(ig?.next_due_at),failures:ig?.failures??0,error:mismatch?'task_mismatch':safeError(ig?.last_error),pending:runs.pending,pendingErrors:runs.errors,overdue,pendingOverdue:igEnabled&&!mismatch?runs.overdue:0},
    manual:{enabled:manualEnabled,counts,overdue:manualEnabled?manualDue.count:0},...(details?{totals,history}:{})};
