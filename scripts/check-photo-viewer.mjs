@@ -14,6 +14,7 @@ try{for(const [width,height,review] of [[320,740,false],[390,844,false],[844,390
  await page.locator('.photo-frame').scrollIntoViewIfNeeded();await page.waitForFunction(()=>document.querySelector('.photo-frame img').naturalWidth>0);await page.locator('.photo-frame').scrollIntoViewIfNeeded();const before=await page.evaluate(()=>scrollY);
  const frame=await page.locator('.photo-frame').boundingBox();await page.mouse.click(frame.x+frame.width/2,frame.y+frame.height/2);await page.locator('.photo-dialog[open]').waitFor();
  const box=await page.locator('.photo-dialog').boundingBox();assert.ok(box.width>=width-2&&box.height>=height-2,'viewer uses the whole viewport');
+ const footerArrows=await page.locator('.photo-viewer-arrow').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect();return {left:r.left,right:innerWidth-r.right,bottom:innerHeight-r.bottom};}));assert.ok(footerArrows.every(r=>r.bottom>=32&&r.left>=24&&r.right>=24),'footer controls stay clear of rounded screen corners even with zero safe-area insets');
  const ready=()=>page.waitForFunction(()=>{const im=document.querySelector('.photo-viewer-stage img');return im&&!im.hidden&&im.complete&&im.naturalWidth>0;});await ready();
  assert.equal(await page.locator('.photo-viewer-count').textContent(),'1 / 3');await page.getByRole('button',{name:'다음 사진',exact:true}).click();await ready();assert.equal(await page.locator('.photo-viewer-count').textContent(),'2 / 3');
  await page.screenshot({path:`.local/photo-viewer/${review?'review-':''}${width}.png`});

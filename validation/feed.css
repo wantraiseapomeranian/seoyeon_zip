@@ -171,7 +171,8 @@ body:has(dialog[open]) .theme-launch{visibility:hidden}
 .photo-viewer-stage>img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-select:none}
 .photo-viewer-stage:focus-visible{outline:3px solid var(--ink);outline-offset:-3px}
 .photo-viewer-status{margin:0;padding-inline:16px;text-align:center;font-size:14px;color:var(--muted)}
-.photo-viewer-footer{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:12px;padding:8px max(12px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+/* Keep controls inside rounded screen corners even when the browser reports zero safe-area insets. */
+.photo-viewer-footer{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:12px;padding:8px max(24px,calc(12px + env(safe-area-inset-right,0px))) max(32px,calc(8px + env(safe-area-inset-bottom,0px))) max(24px,calc(12px + env(safe-area-inset-left,0px)))}
 .photo-viewer-footer>a{display:flex;align-items:center;justify-content:center;justify-self:center;min-height:44px;padding-inline:12px;font-size:13px}
 .photo-viewer-arrow{display:grid;place-items:center;width:44px;height:44px;min-height:44px;padding:0;background:var(--surface)}
 .photo-viewer-arrow svg{display:block;width:20px;height:20px}
