@@ -1485,6 +1485,9 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 원본404→재시도 성공, 원본15초 초과 실패 안내, 재시도 후 키보드 초점, 열린 확대창 destroy 시 스크롤 잠금 해제, 사진/영상 혼합 목록의 사진만 전환 후 원래 인덱스 복귀 확인.
 - 기존 check-photo-touch-scroll / check-feed-photo-ratio / check-photo-loading / check-photo-comparison / check-feed-paging 통과. npm test293/293, Wrangler dry-run283.25KiB 통과.320px·가로844px·1280px 결과 캡처 육안 확인.
 - 새 UI 테스트 초반 스크롤 차이는 Playwright locator 자동 스크롤이어서 좌표 클릭으로 실제 사용자 입력을 분리했고, 실패 이미지 테스트는 메모리 캐시 재사용을 피하는 별도 URL을 사용했다. Chrome 터치 후 키보드 초점 유실은 구현에서 수정 후 재검증했다.
-- 독립 리뷰 및 운영 배포 확인 대기.
+- 독립 리뷰 및 운영 배포 결과는 아래 기록 참조.
 
 - 배포 전 독립 코드 리뷰 APPROVED. 검토자는 테스트/빌드를 재실행하지 않은 읽기 전용 검토를 수행했다.
+- 운영:f87df3a main 일반 푸시 후 Workers Builds: seoyeon-zip completed/success 확인. DB 변경 없음.
+- 배포된 사이트의9/30 23:11 @Seowoo_0501 게시물을 내장 브라우저390×844에서 직접 조작: 확대1/3→다음2/3, 두 번째 원본3106×2020 로드 확인. 확대창 높이844px 및 clientHeight=scrollHeight=844로 내부 스크롤 없음, 이전/다음 버튼44×44px. 화면 캡처에서 사진 전체와 고정된 조작부 확인.
+- 닫기 후 해당 카드2/3·photo-frame 초점·scrollY40.799999 유지, 확대창 제거 및 html/body overflow 원복 확인. 임시 viewport 복원. 실제 휴대폰 검증 및 커스텀 핀치/두 번 탭 확대는 포함하지 않는다.
