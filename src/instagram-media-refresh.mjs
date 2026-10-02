@@ -16,18 +16,18 @@ function rendition(value){
  const query=[...u.searchParams].filter(([key])=>!/^_nc_/.test(key)&&!['oh','oe','ccb','edm','ig_cache_key'].includes(key)).sort(([a,av],[b,bv])=>a.localeCompare(b)||av.localeCompare(bv));
  return JSON.stringify([u.pathname,query]);
 }
-function renew(old,fresh,evidence){
+function renew(old,fresh){
  const images=old.images??(old.image?[old.image]:[]),incoming=fresh.media;
  const oldKeys=images.map(identity),newKeys=incoming.map(m=>identity(m.previewUrl));
  if(new Set(oldKeys).size!==oldKeys.length||new Set(newKeys).size!==newKeys.length)fail('ambiguous_asset');
- const mapping=new Map();let missing=false,renditionChanged=false;
+ const mapping=new Map(),aliases=new Map(),clearAliases=[];let missing=false;
  for(let position=0;position<images.length;position++){
   const previous=images[position];if(old.media?.[position]?.kind!=='image')continue;
   const item=incoming.find(m=>identity(m.previewUrl)===oldKeys[position]);
   if(!item||item.kind==='video'){missing=true;continue;}
-  if(previous===item.previewUrl)continue;
-  if(evidence.has(previous)&&rendition(previous)!==rendition(item.previewUrl)){renditionChanged=true;continue;}
-  mapping.set(previous,item.previewUrl);
+  if(rendition(previous)!==rendition(item.previewUrl)){aliases.set(previous,item.previewUrl);continue;}
+  clearAliases.push(previous);
+  if(previous!==item.previewUrl)mapping.set(previous,item.previewUrl);
  }
  const data={...old};
  if(mapping.size){
@@ -35,7 +35,7 @@ function renew(old,fresh,evidence){
   if(old.image)data.image=mapping.get(old.image)??old.image;
   if(Array.isArray(old.media))data.media=old.media.map(m=>({...m,previewUrl:mapping.get(m.previewUrl)??m.previewUrl}));
  }
- return {data,mapping,error:renditionChanged?'rendition_changed':missing?'incomplete_media':null};
+ return {data,mapping,aliases,clearAliases,error:missing?'incomplete_media':null};
 }
 export async function instagramMediaRefreshStatus(env){
  if(env.INSTAGRAM_MEDIA_REFRESH_ENABLED!=='true'||env.APIFY_SYNC_ENABLED!=='true')return {status:'disabled'};
@@ -106,37 +106,39 @@ export async function refreshInstagramMedia(env,{fetcher=fetch}={}){
    if(Array.isArray(row.childPosts)&&row.childPosts.length&&fresh.media.length!==row.childPosts.length)return await finishError('invalid_dataset');
    normalized.set(row.shortCode,fresh);
   }
-  const statements=[guard()],transfers=new Map(),patches=[],outcomes=[];let updated=0,failed=0;
+  const statements=[guard()],transfers=new Map(),patches=[],outcomes=[],aliases=[],clearAliases=[];let updated=0,failed=0;
   statements.push(DB.prepare(`INSERT INTO commit_guard(token,ok) SELECT ?,CASE WHEN NOT EXISTS(SELECT 1 FROM json_each(?) s WHERE NOT EXISTS(SELECT 1 FROM instagram_review r WHERE r.code=json_extract(s.value,'$.code') AND r.data=json_extract(s.value,'$.data') AND r.revision=json_extract(s.value,'$.revision') AND ${visible})) THEN 1 ELSE 0 END`).bind(token+':posts',JSON.stringify(snapshots)));
-  const oldUrls=JSON.stringify(snapshots.flatMap(s=>{const p=JSON.parse(s.data);return p.images??(p.image?[p.image]:[]);}));
-  const evidence=new Set((await DB.prepare("SELECT value AS url FROM json_each(?) WHERE EXISTS(SELECT 1 FROM x_fingerprints f WHERE f.url=value AND (f.hash IS NOT NULL OR f.confirmed_hash IS NOT NULL OR f.dhash IS NOT NULL OR f.near_url IS NOT NULL OR f.candidate_metadata_json IS NOT NULL)) OR EXISTS(SELECT 1 FROM x_photo_differences d WHERE d.left_url=value OR d.right_url=value) OR EXISTS(SELECT 1 FROM x_fingerprints f WHERE f.near_url=value)").bind(oldUrls).all()).results.map(r=>r.url));
   for(const snapshot of snapshots){
    const old=JSON.parse(snapshot.data),fresh=normalized.get(snapshot.code);let result;
    if(fresh){
     if(fresh.author.toLowerCase()!==(old.author??'').toLowerCase())fail('author_mismatch');
-    result=renew(old,fresh,evidence);
-   }else result={data:old,mapping:new Map(),error:failedCodes.has(snapshot.code)?'provider_post_error':'missing_post'};
+    result=renew(old,fresh);
+   }else result={data:old,mapping:new Map(),aliases:new Map(),clearAliases:[],error:failedCodes.has(snapshot.code)?'provider_post_error':'missing_post'};
    for(const [from,to] of result.mapping){if(transfers.has(from)&&transfers.get(from)!==to)fail('ambiguous_asset');transfers.set(from,to);}
-   if(result.mapping.size){updated++;patches.push({code:snapshot.code,data:JSON.stringify(result.data)});}
+   if(result.mapping.size||result.aliases.size)updated++;
+   if(result.mapping.size)patches.push({code:snapshot.code,data:JSON.stringify(result.data)});
+   for(const [source,preview] of result.aliases)aliases.push({code:snapshot.code,source,preview});
+   for(const source of result.clearAliases)clearAliases.push({code:snapshot.code,source});
    if(result.error)failed++;
    outcomes.push({code:snapshot.code,delay:result.error?backoff(snapshot.failures??0):successDelay,success:result.error?0:1,failures:result.error?(snapshot.failures??0)+1:0,error:result.error});
   }
   statements.push(DB.prepare("UPDATE instagram_review SET data=(SELECT json_extract(p.value,'$.data') FROM json_each(?) p WHERE json_extract(p.value,'$.code')=instagram_review.code) WHERE code IN (SELECT json_extract(value,'$.code') FROM json_each(?))").bind(JSON.stringify(patches),JSON.stringify(patches)));
+  statements.push(DB.prepare("INSERT INTO instagram_preview_urls(code,source_url,preview_url,updated_at) SELECT json_extract(value,'$.code'),json_extract(value,'$.source'),json_extract(value,'$.preview'),unixepoch() FROM json_each(?) WHERE true ON CONFLICT(code,source_url) DO UPDATE SET preview_url=excluded.preview_url,updated_at=excluded.updated_at").bind(JSON.stringify(aliases)));
+  // A same-rendition/current-source response supersedes an older display alias for that exact source key.
+  statements.push(DB.prepare("DELETE FROM instagram_preview_urls WHERE (code,source_url) IN (SELECT json_extract(value,'$.code'),json_extract(value,'$.source') FROM json_each(?))").bind(JSON.stringify(clearAliases)));
   statements.push(DB.prepare("INSERT INTO instagram_media_refresh_posts(code,next_due_at,last_success_at,failures,last_error) SELECT json_extract(value,'$.code'),unixepoch()+json_extract(value,'$.delay'),CASE WHEN json_extract(value,'$.success')=1 THEN unixepoch() ELSE NULL END,json_extract(value,'$.failures'),json_extract(value,'$.error') FROM json_each(?) WHERE true ON CONFLICT(code) DO UPDATE SET next_due_at=excluded.next_due_at,last_success_at=COALESCE(excluded.last_success_at,last_success_at),failures=excluded.failures,last_error=excluded.last_error").bind(JSON.stringify(outcomes)));
-  const mapping=JSON.stringify([...transfers].map(([from,to])=>({from,to,same:rendition(from)===rendition(to)?1:0})));
+  const mapping=JSON.stringify([...transfers].map(([from,to])=>({from,to})));
   if(transfers.size){
-   // A different rendition was allowed only without evidence. Check again atomically for late reviews/maintenance.
-   statements.push(DB.prepare("INSERT INTO commit_guard(token,ok) SELECT ?,CASE WHEN NOT EXISTS(SELECT 1 FROM json_each(?) m WHERE json_extract(m.value,'$.same')=0 AND (EXISTS(SELECT 1 FROM x_fingerprints f WHERE f.url=json_extract(m.value,'$.from') AND (f.hash IS NOT NULL OR f.confirmed_hash IS NOT NULL OR f.dhash IS NOT NULL OR f.near_url IS NOT NULL OR f.candidate_metadata_json IS NOT NULL)) OR EXISTS(SELECT 1 FROM x_photo_differences d WHERE d.left_url=json_extract(m.value,'$.from') OR d.right_url=json_extract(m.value,'$.from')) OR EXISTS(SELECT 1 FROM x_fingerprints f WHERE f.near_url=json_extract(m.value,'$.from')))) THEN 1 ELSE 0 END").bind(token+':evidence',mapping));
    // Existing byte/dedup hashes must agree before merging URL keys. Read current evidence in the transaction.
    statements.push(DB.prepare("INSERT INTO commit_guard(token,ok) SELECT ?,CASE WHEN NOT EXISTS(SELECT 1 FROM json_each(?) m JOIN x_fingerprints old ON old.url=json_extract(m.value,'$.from') JOIN x_fingerprints fresh ON fresh.url=json_extract(m.value,'$.to') WHERE (old.hash IS NOT NULL AND fresh.hash IS NOT NULL AND old.hash!=fresh.hash) OR (old.confirmed_hash IS NOT NULL AND fresh.confirmed_hash IS NOT NULL AND old.confirmed_hash!=fresh.confirmed_hash)) THEN 1 ELSE 0 END").bind(token+':hashes',mapping));
-   statements.push(DB.prepare("INSERT INTO x_fingerprints(url,hash,confirmed_hash,dhash,width,height,near_url,error,next_check,candidate_metadata_json) SELECT json_extract(m.value,'$.to'),f.hash,f.confirmed_hash,f.dhash,f.width,f.height,COALESCE((SELECT json_extract(n.value,'$.to') FROM json_each(?) n WHERE json_extract(n.value,'$.from')=f.near_url),f.near_url),NULL,0,f.candidate_metadata_json FROM json_each(?) m JOIN x_fingerprints f ON f.url=json_extract(m.value,'$.from') WHERE json_extract(m.value,'$.same')=1 ON CONFLICT(url) DO UPDATE SET hash=COALESCE(x_fingerprints.hash,excluded.hash),confirmed_hash=COALESCE(x_fingerprints.confirmed_hash,excluded.confirmed_hash),dhash=COALESCE(x_fingerprints.dhash,excluded.dhash),width=COALESCE(x_fingerprints.width,excluded.width),height=COALESCE(x_fingerprints.height,excluded.height),near_url=COALESCE(x_fingerprints.near_url,excluded.near_url),candidate_metadata_json=COALESCE(x_fingerprints.candidate_metadata_json,excluded.candidate_metadata_json),error=NULL,next_check=0").bind(mapping,mapping));
+   statements.push(DB.prepare("INSERT INTO x_fingerprints(url,hash,confirmed_hash,dhash,width,height,near_url,error,next_check,candidate_metadata_json) SELECT json_extract(m.value,'$.to'),f.hash,f.confirmed_hash,f.dhash,f.width,f.height,COALESCE((SELECT json_extract(n.value,'$.to') FROM json_each(?) n WHERE json_extract(n.value,'$.from')=f.near_url),f.near_url),NULL,0,f.candidate_metadata_json FROM json_each(?) m JOIN x_fingerprints f ON f.url=json_extract(m.value,'$.from') WHERE true ON CONFLICT(url) DO UPDATE SET hash=COALESCE(x_fingerprints.hash,excluded.hash),confirmed_hash=COALESCE(x_fingerprints.confirmed_hash,excluded.confirmed_hash),dhash=COALESCE(x_fingerprints.dhash,excluded.dhash),width=COALESCE(x_fingerprints.width,excluded.width),height=COALESCE(x_fingerprints.height,excluded.height),near_url=COALESCE(x_fingerprints.near_url,excluded.near_url),candidate_metadata_json=COALESCE(x_fingerprints.candidate_metadata_json,excluded.candidate_metadata_json),error=NULL,next_check=0").bind(mapping,mapping));
    statements.push(DB.prepare("INSERT OR IGNORE INTO x_photo_differences(left_url,right_url) SELECT MIN(l,r),MAX(l,r) FROM (SELECT COALESCE((SELECT json_extract(m.value,'$.to') FROM json_each(?) m WHERE json_extract(m.value,'$.from')=d.left_url),d.left_url) l,COALESCE((SELECT json_extract(m.value,'$.to') FROM json_each(?) m WHERE json_extract(m.value,'$.from')=d.right_url),d.right_url) r FROM x_photo_differences d) WHERE l!=r").bind(mapping,mapping));
    statements.push(DB.prepare("UPDATE x_fingerprints SET near_url=(SELECT json_extract(m.value,'$.to') FROM json_each(?) m WHERE json_extract(m.value,'$.from')=x_fingerprints.near_url) WHERE near_url IN (SELECT json_extract(value,'$.from') FROM json_each(?))").bind(mapping,mapping));
   }
   statements.push(DB.prepare("UPDATE instagram_media_refresh SET state='idle',codes_json='[]',last_success_at=unixepoch(),last_error=?,failures=0,next_due_at=unixepoch()+300,lease_token=NULL,lease_until=0 WHERE id=1").bind(failed?'partial_refresh':null));
   statements.push(DB.prepare('DELETE FROM commit_guard WHERE token=? OR token LIKE ?').bind(token,token+':%'));
   await DB.batch(statements);
-  return {status:'complete',runId:job.run_id,updated,failed};
+  return {status:'complete',runId:job.run_id,updated,failed,aliased:aliases.length};
  }catch(error){
   if(/CHECK constraint failed/i.test(String(error))){await release(60,'refresh_conflict');return {status:'retry',error:'refresh_conflict',updated:0};}
   const code=['provider_network','provider_failure','provider_access','not_found','rate_limited','invalid_response','response_too_large','invalid_author','author_mismatch','ambiguous_asset'].includes(error.message)?error.message:'save_failed';
@@ -146,4 +148,3 @@ export async function refreshInstagramMedia(env,{fetcher=fetch}={}){
   return {status:'retry',error:code,updated:0};
  }
 }
-

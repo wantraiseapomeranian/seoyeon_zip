@@ -1,6 +1,7 @@
 import {requireActor,auditFailure} from './review-audit.mjs';
 import {decideInstagram} from './review-mutations.mjs';
 import {normalize,importInstagram} from './instagram-import.mjs';
+import {instagramPreviewUrls} from './instagram-preview-urls.mjs';
 export {normalize};
 import {reviewFilters} from './review-filters.mjs';
 const statuses=['pending','kept','excluded','held'];
@@ -31,7 +32,8 @@ export async function handleInstagramReview(request,env,context) {
     const counts=await env.DB.prepare('SELECT status,COUNT(*) AS count FROM instagram_review'+where+' GROUP BY status').bind(...args).all();
     const {results}=await env.DB.prepare('SELECT * FROM instagram_review'+where+(status==='all'?'':(where?' AND':' WHERE')+' status=?')+' ORDER BY imported_at DESC,code LIMIT 25 OFFSET ?').bind(...args,...(status==='all'?[]:[status]),offset).all();
     const authors=await env.DB.prepare("SELECT DISTINCT json_extract(data,'$.author') AS author FROM instagram_review WHERE COALESCE(json_extract(data,'$.author'),'')!='' ORDER BY author").all();
-    return reply({items:results.map(r=>({...JSON.parse(r.data),status:r.status,revision:r.revision,importedAt:r.imported_at,reviewedAt:r.reviewed_at})),counts:Object.fromEntries(counts.results.map(r=>[r.status,r.count])),authors:authors.results.map(r=>r.author)});
+    const items=await instagramPreviewUrls(env.DB,results.map(r=>({...JSON.parse(r.data),status:r.status,revision:r.revision,importedAt:r.imported_at,reviewedAt:r.reviewed_at})),{review:true});
+    return reply({items,counts:Object.fromEntries(counts.results.map(r=>[r.status,r.count])),authors:authors.results.map(r=>r.author)});
   }
   if(request.method!=='POST')return reply({error:'method_not_allowed'},405);
   if(request.headers.get('origin')!==url.origin||request.headers.get('x-review-action')!=='review')return reply({error:'invalid_origin'},403);

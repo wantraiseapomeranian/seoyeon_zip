@@ -1,4 +1,5 @@
 import {publishedDayRange} from './published-day.mjs';
+import {instagramPreviewUrls} from './instagram-preview-urls.mjs';
 const dateSql="json_extract(p.data,'$.publishedAt')";
 const platformSql="COALESCE(json_extract(p.data,'$.platform'),'x')";
 export async function readFeed(db, params) {
@@ -65,7 +66,7 @@ export async function readFeed(db, params) {
   const authors=rows.filter(r=>r.section===2).map(r=>JSON.parse(r.data))
     .filter(a=>(a.platform==='x'?/^[A-Za-z0-9_]{1,15}$/:/^[A-Za-z0-9_.]{1,30}$/).test(a.handle))
     .map(a=>({...a,value:a.platform+':'+a.handle.toLowerCase()})).sort((a,b)=>a.value.localeCompare(b.value));
-  const page=results.slice(0,48), posts=page.map(r=>JSON.parse(r.data));
+  const page=results.slice(0,48), posts=await instagramPreviewUrls(db,page.map(r=>JSON.parse(r.data)));
   if(posts.length){
     const ids=JSON.stringify(page.map(r=>r.id));
     const [related]=await db.batch([

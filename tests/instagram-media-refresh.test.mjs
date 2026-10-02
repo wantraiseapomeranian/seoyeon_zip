@@ -60,14 +60,15 @@ test('concurrent moderation, import and lost lease are preserved during renewal'
 test('write failure rolls back URLs, fingerprints and completion together',async()=>{
  const s=await setup();try{s.sqlite.prepare('INSERT INTO x_fingerprints(url,hash) VALUES(?,?)').run(url('one0'),'hash1');s.sqlite.exec("CREATE TRIGGER fail_refresh BEFORE UPDATE OF last_success_at ON instagram_media_refresh BEGIN SELECT RAISE(ABORT,'injected'); END");await complete(s,provider([row()]));assert.equal(JSON.parse(s.sqlite.prepare('SELECT data FROM instagram_review').get().data).images[0],url('one0'));assert.equal(s.sqlite.prepare('SELECT COUNT(*) n FROM x_fingerprints').get().n,1);assert.equal(s.sqlite.prepare('SELECT state FROM instagram_media_refresh').get().state,'waiting');}finally{s.sqlite.close();}
 });
-test('new fingerprint evidence before commit blocks a change of rendition',async()=>{
+test('new fingerprint evidence before commit remains on the source when using a rendition alias',async()=>{
  const s=await setup();try{
   const batch=s.DB.batch.bind(s.DB);let injected=false;
   s.DB.batch=async statements=>{if(!injected&&statements.some(q=>q.sql.startsWith('UPDATE instagram_review'))){injected=true;s.sqlite.prepare('INSERT INTO x_fingerprints(url,hash,confirmed_hash) VALUES(?,?,?)').run(url('one0'),'late-hash','late-confirmed');}return batch(statements);};
   const r=row();r.childPosts[1].displayUrl=url('one0','new','&stp=crop');
-  const result=await complete(s,provider([r]));assert.equal(result.status,'retry');
+  const result=await complete(s,provider([r]));assert.equal(result.status,'complete');assert.equal(result.aliased,1);
   assert.equal(JSON.parse(s.sqlite.prepare('SELECT data FROM instagram_review').get().data).images[0],url('one0'));
   assert.equal(s.sqlite.prepare('SELECT COUNT(*) n FROM x_fingerprints').get().n,1);
+  assert.equal(s.sqlite.prepare('SELECT preview_url FROM instagram_preview_urls WHERE source_url=?').get(url('one0')).preview_url,url('one0','new','&stp=crop'));
  }finally{s.sqlite.close();}
 });
 test('cron keeps collection and refresh failures separate and private status exposes refresh',async()=>{
