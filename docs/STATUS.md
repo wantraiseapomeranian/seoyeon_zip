@@ -19,6 +19,7 @@
 - Instagram/YouTube 피드에서 불필요한 X 중복 출처 조회 생략. [전후 성능 기록](PERFORMANCE.md).
 - 필수 테스트/runtime/UI 실행기 및 PR 검사. [검사와 정책](CHECKS.md).
 - 실제 export의 격리 복원과 행·schema 검증. [복구 절차](RECOVERY.md).
+- 200% 글자에서 모바일 상단 버튼·정렬·분류 라벨의 겹침/넘침 보완. 네이티브 핀치 확대 허용, 실제 기기 동작은 후속 확인.
 
 ## 남은 확인
 
