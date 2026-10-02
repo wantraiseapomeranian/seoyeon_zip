@@ -7,6 +7,7 @@ import {processManual} from './manual-posts.mjs';
 import {publicSource,publicPost} from './public-data.mjs';
 import {handleManagement} from './management.mjs';
 import {syncInstagram,instagramSyncStatus} from './instagram-sync.mjs';
+import {refreshInstagramMedia,instagramMediaRefreshStatus} from './instagram-media-refresh.mjs';
 import { authorize,authorizeOwnerContext } from './access.mjs';
 import { handleReviewAudit } from './review-audit-api.mjs';
 import { sources } from './sources.mjs';
@@ -30,7 +31,7 @@ export async function handleApi(request,env,context,ctx) {
   if(url.pathname==='/api/admin/review-audit'||url.pathname.startsWith('/api/admin/review-audit/'))return handleReviewAudit(request,env,context);
   if(url.pathname==='/api/admin/operations')return handleOperations(request,env);
   if(url.pathname==='/api/admin/x')return handleXReview(request,env,context);
-  if(url.pathname==='/api/admin/instagram/sync'&&request.method==='GET')return reply(await instagramSyncStatus(env));
+  if(url.pathname==='/api/admin/instagram/sync'&&request.method==='GET')return reply({...await instagramSyncStatus(env),refresh:await instagramMediaRefreshStatus(env)});
   if(url.pathname==='/api/admin/instagram'||url.pathname.startsWith('/api/admin/instagram/')) return handleInstagramReview(request,env,context);
   if(url.pathname==='/api/feed' && request.method==='GET') {
     try { const data=await readFeed(env.DB,url.searchParams);return reply({...data,posts:data.posts.map(publicPost)}); }
@@ -67,7 +68,13 @@ export default {
       catch(error){console.log(JSON.stringify({event:'operations_snapshot',status:'failed'}));throw error;}
       return;
     }
-    if(env.MANUAL_MEDIA_ENABLED==='true')ctx.waitUntil(processManual(env).then(result=>console.log(JSON.stringify({event:'manual_media',...result}))).catch(()=>console.log(JSON.stringify({event:'manual_media',status:'failed'}))));if(controller.cron==='2-59/5 * * * *')console.log(JSON.stringify({event:'instagram_sync',...await syncInstagram(env)}));else if(controller.cron==='1-59/3 * * * *')await maintainX(env);else await runDueSource(env);
+    if(env.MANUAL_MEDIA_ENABLED==='true')ctx.waitUntil(processManual(env).then(result=>console.log(JSON.stringify({event:'manual_media',...result}))).catch(()=>console.log(JSON.stringify({event:'manual_media',status:'failed'}))));
+    if(controller.cron==='2-59/5 * * * *'){
+      for(const [event,operation] of [['instagram_sync',syncInstagram],['instagram_media_refresh',refreshInstagramMedia]]){
+        try{console.log(JSON.stringify({event,...await operation(env)}));}
+        catch{console.log(JSON.stringify({event,status:'failed'}));}
+      }
+    }else if(controller.cron==='1-59/3 * * * *')await maintainX(env);else await runDueSource(env);
   },
   async fetch(request,env,ctx) {
     const url=new URL(request.url);
