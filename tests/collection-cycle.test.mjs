@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { startCycle,advanceCycle,retryAt } from '../src/collection-cycle.mjs';
+import { startCycle,advanceCycle,retryAt,notFoundRetryAt,rateLimitRetryAt } from '../src/collection-cycle.mjs';
 test('initial history has no date cutoff; overlap fixed; partial and catchup never advance boundary',()=>{
   assert.equal(startCycle({},1000000).cycle_boundary_at,0);
   const state=startCycle({committed_boundary_at:100000},200000);
@@ -24,4 +24,18 @@ test('Retry-After seconds or future HTTP date; bounded fallback for invalid valu
   const now=1700000000;assert.equal(retryAt(now,0,new Date((now+120)*1000).toUTCString()),now+120);
   assert.equal(retryAt(now,0,'bad'),now+1800);assert.equal(retryAt(now,1,null),now+3600);
   assert.equal(retryAt(now,9,null),now+21600);assert.equal(retryAt(now,0,'-1'),now+1800);
+});
+
+test('404 retries cap at 30 minutes independently of the rate-limit backoff',()=>{
+  assert.deepEqual([0,1,2,3,20].map(n=>notFoundRetryAt(1000,n)-1000),[300,900,1800,1800,1800]);
+  assert.deepEqual([0,1,2,3,20].map(n=>rateLimitRetryAt(1000,n)-1000),[900,1800,3600,3600,3600]);
+});
+
+test('rate limits honor valid Retry-After even beyond the fallback cap',()=>{
+  const now=1700000000;
+  assert.equal(rateLimitRetryAt(now,0,'43200'),now+43200);
+  assert.equal(rateLimitRetryAt(now,9,new Date((now+7200)*1000).toUTCString()),now+7200);
+  assert.equal(rateLimitRetryAt(now,0,'0'),now);
+  for(const value of ['-1','bad','999999999999999999999',new Date((now-60)*1000).toUTCString()])
+    assert.equal(rateLimitRetryAt(now,0,value),now+900);
 });

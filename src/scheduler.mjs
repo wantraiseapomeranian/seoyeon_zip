@@ -1,7 +1,8 @@
 import { fetchPage,normalizePage,ProviderError } from './collection.mjs';
 import { sources } from './sources.mjs';
-import { startCycle,advanceCycle,advanceLatest,retryAt } from './collection-cycle.mjs';
+import { startCycle,advanceCycle,advanceLatest,retryAt,notFoundRetryAt } from './collection-cycle.mjs';
 import { acquireDueSource,commitPage,recordFailure } from './collection-state.mjs';
+import { withProviderRetry,ProviderCooldownError } from './provider-retry.mjs';
 
 export async function runDueSource(env) {
   if(env.COLLECTION_ENABLED!=='true') return {status:'disabled'};
@@ -12,14 +13,13 @@ export async function runDueSource(env) {
   let fetched,page;
   try {
     if(!source) throw new ProviderError(null,'unknown_source');
-    fetched=await fetchPage(source.handle,state.next_lane==='latest'?null:state.next_cursor);
+    fetched=await withProviderRetry(env.DB,()=>fetchPage(source.handle,state.next_lane==='latest'?null:state.next_cursor));
     if(fetched.kind==='not-modified') throw new ProviderError(204,'unexpected_204');
     try { page=normalizePage(fetched.json,source); }
     catch { throw new ProviderError(null,'provider_schema'); }
   } catch(error) {
-    if(!(error instanceof ProviderError)) throw error;
-    // Missing profiles can be transient. Keep probing through the existing
-    // backoff (up to six hours) instead of requiring a manual restart.
+    if(!(error instanceof ProviderError) && !(error instanceof ProviderCooldownError)) throw error;
+    // A profile 404 is ambiguous; keep its checkpoint and use its own short backoff.
     const retryNotFound=error.status===404 &&
       ['provider_http_error','provider_json_error'].includes(error.code);
     const retry=retryNotFound || error.status===429 || (error.status>=500 && error.status<=599) ||
@@ -34,10 +34,13 @@ export async function runDueSource(env) {
     }
     const outcome=resetCursor?'retry':status;
     const errorCode=error.status==null?error.code:`${error.code}:${error.status}`;
+    const nextDueAt=error instanceof ProviderCooldownError?error.nextDueAt:
+      retryNotFound?notFoundRetryAt(now,state.not_found_failures??0):retryAt(now,state.failures,error.retryAfter);
     try { await recordFailure(env.DB,lease,state,{code:errorCode,
-      nextDueAt:retryAt(now,state.failures,error.retryAfter),status:outcome}); }
+      nextDueAt,status:outcome}); }
     catch(failure){if(failure.message==='stale_lease')return {status:'stale'};throw failure;}
-    const result={status:outcome,source:lease.source,error:errorCode};
+    const result={status:outcome,source:lease.source,error:errorCode,
+      ...(retryNotFound && (state.not_found_failures??0)>=2?{warning:'repeated_provider_not_found'}:{})};
     console.log(JSON.stringify({event:'collection_failure',...result}));
     return result;
   }

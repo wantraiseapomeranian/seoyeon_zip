@@ -20,7 +20,7 @@ export async function stopCollection(DB) {
 }
 
 const fields=['next_due_at','last_success_at','last_complete_sync_at','committed_boundary_at',
-  'cycle_started_at','cycle_boundary_at','next_cursor','pages_in_cycle','failures','cursor_resets','last_error_code','catchup_status',
+  'cycle_started_at','cycle_boundary_at','next_cursor','pages_in_cycle','failures','not_found_failures','cursor_resets','last_error_code','catchup_status',
   'next_lane','last_latest_success_at','history_paused'];
 
 function guard(DB,lease,token) {
@@ -37,7 +37,7 @@ async function commitState(DB,lease,state,statements=[]) {
     return await DB.batch([guard(DB,lease,token),...statements,
       DB.prepare(`UPDATE collection_state SET ${fields.map(f=>`${f}=?`).join(',')},
         revision=revision+1,lease_token=NULL,lease_until=NULL WHERE source=?`)
-        .bind(...fields.map(f=>state[f]??null),lease.source),
+        .bind(...fields.map(f=>state[f]??(f==='not_found_failures'?0:null)),lease.source),
       DB.prepare('DELETE FROM commit_guard WHERE token=?').bind(token)]);
   } catch(error) {
     if(/CHECK constraint failed/.test(String(error))) throw new Error('stale_lease');
@@ -62,7 +62,10 @@ export async function commitPage(DB,lease,page,nextState,{stopAfterPage=false}={
 }
 
 export async function recordFailure(DB,lease,state,{code,nextDueAt,status}) {
-  return commitState(DB,lease,{...state,failures:state.failures+1,
+  const notFound=['provider_http_error:404','provider_json_error:404'].includes(code);
+  const rateLimited=['provider_http_error:429','provider_json_error:429'].includes(code);
+  return commitState(DB,lease,{...state,failures:state.failures+(notFound||rateLimited?0:1),
+    not_found_failures:(state.not_found_failures??0)+(notFound?1:0),
     next_due_at:nextDueAt,last_error_code:code,catchup_status:status});
 }
 

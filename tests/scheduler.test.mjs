@@ -46,6 +46,7 @@ test('401 stops; 429 backs off and keeps cycle fixed; unexpected 204 does not co
   const initial=get();assert.equal(initial.next_due_at-initial.last_attempt_at,120);
   assert.equal(initial.committed_boundary_at,null);
   sqlite.exec('UPDATE collection_state SET next_due_at=0');
+  sqlite.exec('UPDATE provider_retry_state SET next_due_at=1,lease_until=0');
   fetch.mock.mockImplementation(async()=>new Response(null,{status:401}));
   assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'needs_attention');
   assert.equal(get().cycle_started_at,initial.cycle_started_at);

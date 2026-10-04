@@ -1,5 +1,6 @@
 import {normalize as normalizeInstagram} from './instagram-import.mjs';
 const fail=code=>{throw new Error(code);};
+const rateLimited=response=>{throw Object.assign(Error('rate_limited'),{status:429,retryAfter:response.headers.get('retry-after')});};
 export function manualUrl(value){
  const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password||u.port)fail('invalid_url');let m;
  if(['x.com','www.x.com','twitter.com','www.twitter.com'].includes(u.hostname)&&(m=u.pathname.match(/^\/([A-Za-z0-9_]{1,15})\/status\/(\d{1,30})\/?$/)))return {id:'manual:x:'+m[2],platform:'x',platformPostId:m[2],authorHandle:m[1],canonicalUrl:`https://x.com/${m[1]}/status/${m[2]}`};
@@ -8,11 +9,13 @@ export function manualUrl(value){
 }
 export async function providerJson(url,{fetcher=fetch,token,body}={}){
  let response;try{response=await fetcher(url,{method:body?'POST':'GET',headers:{'User-Agent':'SeoyeonZip/0.1',...(token?{Authorization:'Bearer '+token}:{}),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),redirect:'manual',signal:AbortSignal.timeout(8000)});}catch{fail('provider_network');}
- if(!response.ok){await response.body?.cancel();fail(response.status===429?'rate_limited':response.status===404?'not_found':response.status===401||response.status===403?'provider_access':'provider_failure');}
+ if(!response.ok){await response.body?.cancel();if(response.status===429)rateLimited(response);fail(response.status===404?'not_found':response.status===401||response.status===403?'provider_access':'provider_failure');}
  const reader=response.body?.getReader();if(!reader)fail('invalid_response');const chunks=[];let size=0;
  try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>2_000_000){await reader.cancel();fail('response_too_large');}chunks.push(value);}}catch(error){if(error.message==='response_too_large')throw error;fail('provider_network');}
  const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
- try{return JSON.parse(new TextDecoder().decode(bytes));}catch{fail('invalid_response');}
+ let json;try{json=JSON.parse(new TextDecoder().decode(bytes));}catch{fail('invalid_response');}
+ if(json?.code===429)rateLimited(response);
+ return json;
 }
 export async function fetchManualX(post,fetcher){
  const json=await providerJson(`https://api.fxtwitter.com/status/${post.platformPostId}`,{fetcher});

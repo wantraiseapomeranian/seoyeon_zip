@@ -102,6 +102,6 @@ export async function fetchPage(handle, cursor = null) {
   let json;
   try { json=JSON.parse(Buffer.concat(chunks).toString('utf8')); }
   catch { throw new ProviderError(response.status,'invalid_json'); }
-  if (json?.code !== 200) throw new ProviderError(Number.isInteger(json?.code)?json.code:response.status,'provider_json_error');
+  if (json?.code !== 200) throw new ProviderError(Number.isInteger(json?.code)?json.code:response.status,'provider_json_error',response.headers.get('retry-after'));
   return {kind:'page',json,observation:{...observation,code:json.code,bytes,wallMs:Math.round(performance.now()-start)}};
 }

@@ -1,4 +1,5 @@
 import {manualUrl,fetchManualX,manualInstagram,providerJson} from './manual-provider.mjs';
+import {withProviderRetry,ProviderCooldownError} from './provider-retry.mjs';
 const active=['pending','starting','waiting'];
 const opaque=value=>typeof value==='string'&&/^[A-Za-z0-9]{3,64}$/.test(value);
 export async function existingPost(DB,p){
@@ -27,14 +28,14 @@ export async function processManual(env,{fetcher=fetch,id=null}={}){
  const {DB}=env,token=crypto.randomUUID();
  const job=await DB.prepare("UPDATE manual_media_jobs SET lease_token=?,lease_until=unixepoch()+60 WHERE post_id=(SELECT post_id FROM manual_media_jobs WHERE state IN ('pending','starting','waiting') AND next_due_at<=unixepoch() AND lease_until<=unixepoch() AND (? IS NULL OR post_id=?) ORDER BY next_due_at,post_id LIMIT 1) RETURNING *").bind(token,id,id).first();
  if(!job)return {status:'idle'};
- const finish=async(state,error=null,runId=job.run_id,delay=0)=>DB.prepare('UPDATE manual_media_jobs SET state=?,error=?,run_id=?,next_due_at=unixepoch()+?,lease_token=NULL,lease_until=0,updated_at=unixepoch() WHERE post_id=? AND lease_token=?').bind(state,error,runId,delay,job.post_id,token).run();
+ const finish=async(state,error=null,runId=job.run_id,delay=0,nextDueAt=null)=>DB.prepare('UPDATE manual_media_jobs SET state=?,error=?,run_id=?,next_due_at=COALESCE(?,unixepoch()+?),lease_token=NULL,lease_until=0,updated_at=unixepoch() WHERE post_id=? AND lease_token=?').bind(state,error,runId,nextDueAt,delay,job.post_id,token).run();
  let post,row;
  try{
   row=await DB.prepare('SELECT data FROM manual_posts WHERE id=?').bind(job.post_id).first();
   post={...JSON.parse(row.data),...manualUrl(JSON.parse(row.data).canonicalUrl)};
   if(await existingPost(DB,post)){await finish('existing');return {status:'existing'};}
   let enriched;
-  if(post.platform==='x')enriched=await fetchManualX(post,fetcher);
+  if(post.platform==='x')enriched=await withProviderRetry(DB,()=>fetchManualX(post,fetcher));
   else {
    if(!env.APIFY_TOKEN)throw Error('not_configured');
    if(job.state==='starting'&&!job.run_id)throw Error('start_uncertain');
@@ -66,6 +67,7 @@ export async function processManual(env,{fetcher=fetch,id=null}={}){
   return {status:state};
  }catch(error){
   if(/CHECK constraint failed/i.test(String(error)))return {status:'stale'};
+  if(post?.platform==='x'&&error instanceof ProviderCooldownError){await finish('pending','rate_limited',job.run_id,0,error.nextDueAt);return {status:'waiting',error:'rate_limited',nextDueAt:error.nextDueAt};}
   const code=['provider_network','provider_failure','provider_access','not_found','unavailable','rate_limited','invalid_response','response_too_large','not_configured','start_uncertain','run_timeout','run_failed'].includes(error.message)?error.message:'save_failed';
   await finish('failed',code);return {status:'failed',error:code};
  }
