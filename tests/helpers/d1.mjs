@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 
 // Executes production SQL; this adapter does not claim Cloudflare runtime equivalence.
-export function testDatabase({beforeYouTubeCategories=false,beforeYouTubeScope=false}={}) {
+export function testDatabase({beforeYouTubeCategories=false,beforeYouTubeScope=false,beforeProviderRetry=false}={}) {
   const sqlite=new DatabaseSync(':memory:');
   sqlite.exec('PRAGMA foreign_keys=ON');
   for(const name of ['0001_validation.sql','0002_collection_state.sql','0003_collection_lanes.sql','0004_secondary_sources.sql','0005_official_review.sql','0006_pumpkin_source.sql','0007_source_outcome.sql','0009_instagram_review.sql','0010_x_quality.sql','0011_x_photo_decisions.sql','0012_instagram_feed.sql','0013_management.sql','0014_instagram_media.sql','0015_instagram_sync.sql','0016_wev86_source.sql','0017_diverse_sources.sql','0018_myeongsim_source.sql','0019_review_audit.sql','0020_manual_media.sql','0021_x_review_index.sql','0022_operations_history.sql','0023_operations_alerts.sql','0024_youtube.sql'])
@@ -14,6 +14,7 @@ export function testDatabase({beforeYouTubeCategories=false,beforeYouTubeScope=f
   sqlite.exec(readFileSync(new URL('../../migrations/0030_instagram_content_kind.sql',import.meta.url),'utf8'));
   sqlite.exec(readFileSync(new URL('../../migrations/0031_instagram_media_refresh.sql',import.meta.url),'utf8'));
   sqlite.exec(readFileSync(new URL('../../migrations/0032_instagram_preview_urls.sql',import.meta.url),'utf8'));
+  if(!beforeProviderRetry)sqlite.exec(readFileSync(new URL('../../migrations/0033_provider_retry.sql',import.meta.url),'utf8'));
   const DB={
     prepare(sql) {
       return {sql,args:[],bind(...args){this.args=args;return this;},

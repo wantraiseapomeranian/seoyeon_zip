@@ -19,11 +19,20 @@ test('404 requires provider not-found payload; transient failure preserves avail
  const post={id:'x:1',platformPostId:'1',canonicalUrl:'https://x.com/test/status/1',caption:'서연',media:[]};sqlite.prepare('INSERT INTO posts VALUES(?,?)').run(post.id,JSON.stringify(post));
  try{
  globalThis.fetch=async()=>Response.json({code:404,message:'NOT_FOUND',tweet:null},{status:404});assert.equal(await checkOriginal(post),'missing');
- sqlite.exec("UPDATE collection_control SET enabled=1; INSERT INTO x_quality(post_id,decision,availability) VALUES('x:1','hidden','missing');");
- globalThis.fetch=async()=>new Response('rate limited',{status:429});await maintainX({DB,COLLECTION_ENABLED:'true'});
- assert.equal(sqlite.prepare('SELECT availability FROM x_quality').get().availability,'missing');assert.equal(sqlite.prepare('SELECT decision FROM x_quality').get().decision,'hidden');
+ sqlite.exec("UPDATE collection_control SET enabled=1; INSERT INTO x_quality(post_id,decision,availability,missing_count,checked_at) VALUES('x:1','hidden','missing',2,123);");
+ let calls=0;globalThis.fetch=async()=>{calls++;return new Response('rate limited',{status:429,headers:{'retry-after':'600'}});};await maintainX({DB,COLLECTION_ENABLED:'true'});
+ const quality=sqlite.prepare('SELECT * FROM x_quality').get(),gate=sqlite.prepare('SELECT * FROM provider_retry_state').get();
+ assert.equal(quality.availability,'missing');assert.equal(quality.decision,'hidden');assert.equal(quality.missing_count,2);assert.equal(quality.checked_at,123);assert.equal(quality.next_check,gate.next_due_at);
+ await assert.rejects(checkOriginal(post,DB),error=>error.status===429&&error.nextDueAt===gate.next_due_at);assert.equal(calls,1);assert.equal(sqlite.prepare('SELECT rate_limit_failures FROM provider_retry_state').get().rate_limit_failures,1);
  globalThis.fetch=async()=>Response.json({code:200,tweet:{id:'1'}});assert.equal(await checkOriginal(post),'available');
  }finally{globalThis.fetch=original;sqlite.close();}
+});
+test('original checks preserve Retry-After for HTTP and JSON rate limits',async t=>{
+ const post={canonicalUrl:'https://x.com/test/status/1',platformPostId:'1'};
+ for(const status of [200,429]){
+  t.mock.method(globalThis,'fetch',async()=>Response.json({code:429},{status,headers:{'retry-after':'120'}}));
+  await assert.rejects(checkOriginal(post),error=>error.message==='rate_limited'&&error.status===429&&error.retryAfter==='120');
+ }
 });
 test('notice and mascot go to review but ordinary COSMO remains',()=>{
  assert.ok(reviewReason('tripleS MEET & VIDEO CALL EVENT 서연 응모기간'));

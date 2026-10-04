@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {testDatabase} from './helpers/d1.mjs';
 import worker,{handleApi} from '../src/worker.mjs';
+import {providerJson} from '../src/manual-provider.mjs';
+import {maintainX} from '../src/x-maintenance.mjs';
 const request=body=>new Request('https://test.local/api/manual-posts',{method:'POST',headers:{origin:'https://test.local','content-type':'application/json','x-management-action':'manage'},body:JSON.stringify(body)});
 const tweet={id:'123',author:{screen_name:'actual'},text:'photo',created_at:'2026-09-01T00:00:00Z',media:{all:[{type:'photo',url:'https://pbs.twimg.com/media/a.jpg',width:800,height:1000},{type:'video',thumbnail_url:'https://pbs.twimg.com/media/b.jpg'}]}};
 async function enqueue(env,url='https://x.com/input/status/123'){
@@ -25,6 +27,28 @@ test('provider failure preserves link and successful media; repeated registratio
  assert.equal(sqlite.prepare('SELECT state FROM manual_media_jobs').get().state,'failed');
  await handleApi(request({url:'https://x.com/input/status/123'}),env);
  assert.equal(sqlite.prepare('SELECT state FROM manual_media_jobs').get().state,'failed');
+ }finally{sqlite.close();}
+});
+test('manual provider preserves Retry-After for HTTP and JSON rate limits',async()=>{
+ for(const status of [200,429])await assert.rejects(providerJson('https://api.fxtwitter.com/status/123',{fetcher:async()=>Response.json({code:429},{status,headers:{'retry-after':'120'}})}),error=>error.message==='rate_limited'&&error.status===429&&error.retryAfter==='120');
+});
+test('manual rate limits schedule jobs and block maintenance until a shared retry succeeds',async t=>{
+ const {DB,sqlite}=testDatabase();try{
+ const env={DB,MANUAL_MEDIA_ENABLED:'true',COLLECTION_ENABLED:'true'},now=Math.floor(Date.now()/1000);await enqueue(env);
+ const before=sqlite.prepare('SELECT data FROM manual_posts').get().data;let calls=0;
+ const delayed=await process(env,async()=>{calls++;return new Response('Too Many Requests',{status:429,headers:{'retry-after':'600'}});});
+ assert.equal(delayed.status,'waiting');assert.ok(delayed.nextDueAt>=now+600);
+ let job=sqlite.prepare('SELECT * FROM manual_media_jobs').get();assert.equal(job.state,'pending');assert.equal(job.error,'rate_limited');assert.equal(job.next_due_at,delayed.nextDueAt);assert.equal(job.lease_token,null);assert.equal(sqlite.prepare('SELECT data FROM manual_posts').get().data,before);
+ await enqueue(env,'https://x.com/input/status/456');
+ const blocked=await process(env,async()=>{calls++;throw Error('must not call');});assert.equal(blocked.nextDueAt,delayed.nextDueAt);assert.equal(calls,1);
+ assert.equal(sqlite.prepare("SELECT state FROM manual_media_jobs WHERE post_id='manual:x:456'").get().state,'pending');
+ const post={id:'x:700',platformPostId:'700',canonicalUrl:'https://x.com/test/status/700',media:[]};sqlite.prepare('INSERT INTO posts VALUES(?,?)').run(post.id,JSON.stringify(post));
+ sqlite.exec("UPDATE collection_control SET enabled=1; INSERT INTO x_quality(post_id,availability,missing_count,checked_at) VALUES('x:700','missing',2,123)");
+ t.mock.method(globalThis,'fetch',async()=>{calls++;throw Error('must not call');});await maintainX(env);assert.equal(calls,1);
+ const quality=sqlite.prepare('SELECT * FROM x_quality').get();assert.equal(quality.availability,'missing');assert.equal(quality.missing_count,2);assert.equal(quality.checked_at,123);assert.equal(quality.next_check,delayed.nextDueAt);
+ assert.equal(sqlite.prepare('SELECT rate_limit_failures FROM provider_retry_state').get().rate_limit_failures,1);
+ sqlite.exec('UPDATE provider_retry_state SET next_due_at=unixepoch()-1,lease_until=0; UPDATE manual_media_jobs SET next_due_at=0');
+ assert.equal((await process(env,async()=>Response.json({code:200,tweet}))).status,'ready');assert.equal(sqlite.prepare('SELECT next_due_at FROM provider_retry_state').get().next_due_at,0);
  }finally{sqlite.close();}
 });
 test('Instagram run resumes after restart and preserves carousel media types',async()=>{
