@@ -1558,3 +1558,17 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - Cloudflare main 빌드 dba38361-117f-4990-a693-dcc4ba83d66a의 버전 ffd809a5가 운영 트래픽100%에 적용된 것을 확인했다. 이후 collection_control을 조건부 revision2→3, enabled1로 복원했다.
 - 배포 후 실제 예약 수집: @sogeumdwarf 21:27:43 시도→21:27:44 저장 성공, 일반/404 실패 횟수0, 다음 예정 약5분. history_window_unverified는 기존 과거 범위 미확인 상태이며 최신 수집 성공과 구분한다. 인증된 수집 및 관리 화면도 해당 성공 시각을 표시했다.
 - 운영 공개 피드 GET200, 제목 정상, 비인증 관리 API /api/admin/instagram/sync GET401 확인. 외부 제공자의 404/429 자체가 사라졌다고 판단하지 않으며 새 재시도 정책과 첫 운영 수집 성공을 확인한 범위로 보고한다.
+
+## 2026-11-10 Instagram 수집 중단 원인과 복구
+
+- 원인: Apify 결제 주기 10/10~11/9 UTC 사용량 $5.08(Actors $5.07)로 무료 한도 $5 초과. 콘솔에 "No new Actors will start" 표시. 예약 `wAU7AHUyZuD1IC8w2`의 마지막 호출과 전체 실행의 마지막은 10/31 09:40 KST. Worker 마지막 저장은 10/31 10:07:36 KST이며 이후 오류 없이 idle로 끝났다. 토큰·dataset 조회 오류는 관측되지 않았다.
+- 비용: 10월 달력월 원시 사용량 hashtag scraper $5.56, instagram-scraper $1.44, 합계 $7.00(약 $0.226/일). 10/10부터 22일째인 10/31 도달과 일치한다. hashtag 예약만으로도 약 $0.179/일이라 31일 주기의 약 28일째 $5에 도달한다.
+- 대안 검토: Creator 플랜($1/월, 6개월 선결제 $6, 1회성 $500)은 공식 페이지상 본인 Actor·Universal Actors·tools for creators만 허용하며 현재 두 Instagram Actor는 두 목록에 없다. 실제 가입 시도는 하지 않았다.
+- 예약 변경(사용자 승인): `40 0 * * *` → `40 0 2-30/2 * *` UTC, 짝수일 09:40 KST. 입력 override 3개 유지. 31일이 있는 달은 30일→2일로 3일 간격이다. 계산상 월 약 $4.2이며 실측 아님.
+- 코드(PR #6, 머지 e59d70d): 시작 POST의 400/401/402/403/404/429는 실행 미생성으로 보고 1시간 뒤 자동 재시도한다. Apify 공식 문서에서 402는 사용량 한도 초과, 408은 실행의 엔드포인트 시간 초과로 명시되어 408·3xx·5xx·네트워크 오류는 기존대로 차단한다. 예약된 일일 시작 횟수는 돌려주지 않아 무료 재시도도 UTC 하루 2회로 제한된다. 저장 성공이 78시간(예약 최대 간격 3일+6시간) 없으면 Instagram을 delayed로 표시해 기존 알림 경로를 사용한다.
+- 검증: 신규 회귀 RED→GREEN, npm test 369/369, Wrangler dry-run 315.11KiB/gzip77.35KiB, 5xx 범위 확대 변이가 테스트로 실패함을 확인. 독립 읽기 전용 리뷰는 4xx 범위 과대와 안전장치 테스트 부족 2건을 지적했고 허용 목록·lease 유실·시작 횟수·재시도 시각·3xx 검증을 보완했다. 보완 후 재리뷰는 하지 않았다.
+- 배포: PR 체크 Release checks pass, main e59d70d Workers Builds completed/success(2026-11-10T00:31:47Z). 09:32 KST 운영 API에서 Instagram 상태가 healthy→delayed로 바뀐 것으로 새 코드 동작 확인.
+- 차단 해제(사용자 승인): 11/1 이후 Instagram Scraper 실행이 없음을 Apify 내역으로 확인한 뒤 D1 콘솔에서 state/last_error/run_id/lease/started_at 조건 UPDATE 1회. RETURNING 1행 idle/run_id null/next_due_at 0.
+- 재개 확인: Apify 사용량 09:03 KST $0.00/$5.00, 주기 11/10~12/9 UTC, 배너 해제. 09:40 KST 예약 3건 성공 40/20/10건 $0.18, 이미지 갱신 09:37 KST 18건 $0.05, 09:51 KST 누적 $0.23. Worker 09:47:29 KST 저장, 인스타 자료 357→377건, 상태 healthy, 09:51 KST 기준 실행 3건 페이지 처리 중.
+- 미해결: 이미지 갱신 실행 `9LwZfeJaqJjDIHIvP`가 `dataset_duplicate:DeZgD7nGqDu`로 18건 전체 실패(failedPosts 18, 기한 지난 게시물 28). 입력 `DeZa_SlvQFf`, `DeZa_PwvYRe`, `DeZgD7nGqDu`가 모두 같은 shortCode로 반환됐다. 해당 게시물이 함께 묶인 배치는 재시도 때도 같은 이유로 실패할 수 있어 유료 실행이 낭비되고 함께 묶인 정상 게시물도 갱신되지 않는다. 코드 변경 없음, 후속 판단 대상.
+- 미확인: 이 경로에서 실제 Apify 402 응답, 11/12 이후 2일 주기 실행, 월 사용량 실측, 10/31~11/10 게시물의 보충 범위, 현재 이미지 URL의 실제 만료 건수.
