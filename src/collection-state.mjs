@@ -1,3 +1,4 @@
+import {sourceHandlesJson} from './sources.mjs';
 export async function acquireDueSource(DB,token) {
   return DB.prepare(`UPDATE collection_state
     SET lease_token=?,lease_until=unixepoch()+120,last_attempt_at=unixepoch(),revision=revision+1,
@@ -5,14 +6,14 @@ export async function acquireDueSource(DB,token) {
         THEN COALESCE(committed_boundary_at-86400,0) ELSE cycle_boundary_at END,
       cycle_started_at=COALESCE(cycle_started_at,unixepoch())
     WHERE source=(SELECT source FROM collection_state
-      WHERE enabled=1 AND next_due_at<=unixepoch()
+      WHERE enabled=1 AND next_due_at<=unixepoch() AND source IN (SELECT value FROM json_each(?))
         AND (catchup_status!='needs_attention'
           OR last_error_code IN ('provider_http_error:404','provider_json_error:404'))
         AND (lease_until IS NULL OR lease_until<=unixepoch())
       ORDER BY next_due_at,COALESCE(last_attempt_at,0),source LIMIT 1)
     AND EXISTS(SELECT 1 FROM collection_control WHERE id=1 AND enabled=1)
     RETURNING *,unixepoch() AS db_now,
-      (SELECT revision FROM collection_control WHERE id=1) AS control_revision`).bind(token).first();
+      (SELECT revision FROM collection_control WHERE id=1) AS control_revision`).bind(token,sourceHandlesJson).first();
 }
 
 export async function stopCollection(DB) {
@@ -81,6 +82,6 @@ export async function listSources(DB) {
     catchup_status,last_error_code,next_lane,last_latest_success_at,history_paused,pages_in_cycle,
     last_attempt_at,next_due_at,last_received_count,last_matched_count,last_review_count,
     (SELECT enabled FROM collection_control WHERE id=1) AS collection_enabled
-    FROM collection_state ORDER BY source`).all();
+    FROM collection_state WHERE source IN (SELECT value FROM json_each(?)) ORDER BY source`).bind(sourceHandlesJson).all();
   return results;
 }

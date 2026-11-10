@@ -5,6 +5,11 @@ import { acquireDueSource,stopCollection,commitPage,recordFailure } from '../src
 import { startCycle,advanceCycle } from '../src/collection-cycle.mjs';
 
 const page={posts:[],nextCursor:'next',receivedCount:21,traversal:{}};
+test('state rows outside the fixed source list are never leased',async t=>{
+  const {sqlite,DB,enable}=testDatabase();t.after(()=>sqlite.close());enable();
+  sqlite.exec("UPDATE collection_state SET next_due_at=unixepoch()+3600;INSERT INTO collection_state(source,enabled) VALUES('RemovedSource',1)");
+  assert.equal(await acquireDueSource(DB,'a'),null);
+});
 test('disabled by default; one owner; expired lease rejects both old success and failure',async t=>{
   const {sqlite,DB,enable}=testDatabase();t.after(()=>sqlite.close());
   assert.equal(await acquireDueSource(DB,'off'),null);
