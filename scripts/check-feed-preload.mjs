@@ -12,7 +12,8 @@ const server=createServer(async(req,res)=>{
   return res.end(JSON.stringify(url.pathname==='/api/session'?{role:'visitor'}:{sources:[]}));
  }
  const response=await worker.fetch(new Request(url),{PUBLIC_FEED_ENABLED:'true',ASSETS:{fetch:async request=>{
-  const file=new URL(request.url).pathname.slice(1);if(!/^[\w-]+\.(html|js|css|ico|png|webmanifest)$/.test(file))return new Response(null,{status:404});
+  // Like Cloudflare assets, the canonical /feed serves feed.html.
+  const path=new URL(request.url).pathname.slice(1),file=path==='feed'?'feed.html':path;if(!/^[\w-]+\.(html|js|css|ico|png|webmanifest)$/.test(file))return new Response(null,{status:404});
   try{
    let content=readFileSync('validation/'+file);
    if(file==='feed.js'){
@@ -28,7 +29,7 @@ const server=createServer(async(req,res)=>{
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({channel:'chrome',headless:true});
 try{for(const query of ['', '?platform=instagram','?author=instagram:photo.account','?media=video','?sort=oldest','?date=2026-09-22']){
  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));requests=[];
- const response=await page.goto(`http://127.0.0.1:${server.address().port}/${query}`);await page.waitForFunction(()=>document.querySelector('#gallery').getAttribute('aria-busy')==='false');
+ const response=await page.goto(`http://127.0.0.1:${server.address().port}/feed${query}`);await page.waitForFunction(()=>document.querySelector('#gallery').getAttribute('aria-busy')==='false');
  assert.equal(requests.length,1,`one feed request for ${query}`);
  const timing=await page.evaluate(()=>({script:window.feedScriptTime,api:performance.getEntriesByType('resource').find(r=>r.name.includes('/api/feed'))?.startTime}));
  if(!query){assert.match(response.headers().link,/as=fetch/);assert.ok(timing.api<timing.script-300,JSON.stringify(timing));}

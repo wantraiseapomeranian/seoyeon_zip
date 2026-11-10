@@ -7,14 +7,15 @@ import {createHash} from 'node:crypto';
 let release;const gate=new Promise(r=>release=r);
 const server=createServer(async(req,res)=>{
  const response=await worker.fetch(new Request('https://fixture.test'+req.url),{PUBLIC_FEED_ENABLED:'true',ASSETS:{fetch:async request=>{
-  const name=new URL(request.url).pathname.slice(1);if(!/^[\w.-]+\.(html|js|css)$/.test(name))return new Response('',{status:404});
+  // Like Cloudflare assets, the canonical /feed serves feed.html.
+  const path=new URL(request.url).pathname.slice(1),name=path==='feed'?'feed.html':path;if(!/^[\w.-]+\.(html|js|css)$/.test(name))return new Response('',{status:404});
   if(name==='theme.js')await gate;
   try{return new Response(readFileSync('validation/'+name),{headers:{'Content-Type':name.endsWith('.js')?'text/javascript':name.endsWith('.css')?'text/css':'text/html'}})}catch{return new Response('',{status:404})}
  }}});res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));
 });
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({channel:'chrome',headless:true});
 try{const page=await browser.newPage({viewport:{width:390,height:844}});await page.addInitScript(()=>localStorage.setItem('seoyeon-theme','dark'));
- const response=await page.goto(`http://127.0.0.1:${server.address().port}/`,{waitUntil:'commit'});
+ const response=await page.goto(`http://127.0.0.1:${server.address().port}/feed`,{waitUntil:'commit'});
  const policy=response.headers()['content-security-policy'];assert.ok(!policy.includes("'unsafe-inline'"));
  for(const file of ['feed','x-review','instagram','youtube','review-history','operations']){
   const html=readFileSync('validation/'+file+'.html','utf8');const boot=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];assert.ok(boot,file);
