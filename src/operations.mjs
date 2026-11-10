@@ -1,5 +1,5 @@
 import {readYouTubeOperations} from './youtube-operations.mjs';
-import {sources} from './sources.mjs';
+import {sources,sourceHandlesJson} from './sources.mjs';
 import {readOperationsHistory} from './operations-history.mjs';
 import {readOperationsAlerts} from './operations-alerts.mjs';
 import {readInstagramRefreshOperations,unavailableInstagramRefresh} from './instagram-refresh-operations.mjs';
@@ -44,7 +44,7 @@ export async function readOperationsState(env,{details=true}={}){
   const task=configured?env.APIFY_TASK_ID:'';
   const [control,xRows,ig,runs,manualRows,manualDue,totals,history,youtube,instagramRefresh]=await Promise.all([
    DB.prepare('SELECT enabled FROM collection_control WHERE id=1').first(),
-   DB.prepare('SELECT source,enabled,last_attempt_at,last_success_at,last_complete_sync_at,next_due_at,lease_until,failures,last_error_code,catchup_status,history_paused FROM collection_state ORDER BY source').all(),
+   DB.prepare('SELECT source,enabled,last_attempt_at,last_success_at,last_complete_sync_at,next_due_at,lease_until,failures,last_error_code,catchup_status,history_paused FROM collection_state WHERE source IN (SELECT value FROM json_each(?)) ORDER BY source').bind(sourceHandlesJson).all(),
    DB.prepare('SELECT task_id,last_checked_at,last_success_at,next_due_at,lease_until,failures,last_error FROM instagram_sync WHERE id=1').first(),
    DB.prepare("SELECT COUNT(*) AS pending,COUNT(CASE WHEN last_error IS NOT NULL THEN 1 END) AS errors,COUNT(CASE WHEN (CASE WHEN next_due_at>0 THEN next_due_at ELSE COALESCE(unixepoch((SELECT last_checked_at FROM instagram_sync WHERE id=1 AND task_id=?)),unixepoch(finished_at)) END)<? THEN 1 END) AS overdue FROM instagram_sync_runs WHERE task_id=? AND state='pending'").bind(task,now-grace,task).first(),
    DB.prepare('SELECT state,COUNT(*) AS count FROM manual_media_jobs GROUP BY state').all(),

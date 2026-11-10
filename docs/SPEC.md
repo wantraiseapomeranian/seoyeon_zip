@@ -48,8 +48,8 @@ tripleS 윤서연 사진과 영상이 올라오는 여러 출처를 하나의 �
 
 | 플랫폼 | handle | 의도한 역할 | 기본 상태 |
 |---|---|---|---|
-| X | gapyeonghaus | COSMO 등 tripleS 종합 미러 | 검증 후 활성 후보 |
-| X | tripleSnewsfeed | 종합 업데이트·누락 보완 | 검증 후 활성 후보 |
+| X | gapyeonghaus | COSMO 등 tripleS 종합 미러 | 2026-11-10 고정 목록에서 제외 |
+| X | tripleSnewsfeed | 종합 업데이트·누락 보완 | 2026-11-10 고정 목록에서 제외 |
 | X | TRIPLES_FAN_FR | 종합 팬베이스·COSMO 보완 | 검증 후 활성 후보 |
 | X | Seowoo_0501 | 윤서연 직찍·영상 | 검증 후 활성 후보 |
 | X | Or1gin030806 | 윤서연 직찍·영상 | 검증 후 활성 후보 |
