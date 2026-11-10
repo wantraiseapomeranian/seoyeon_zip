@@ -1595,3 +1595,10 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 변경: `src/sources.mjs`에 추가, `migrations/0034_gorgeouseoyeon_source.sql`로 비활성 행 생성, 테스트 DB 도우미에 0034 등록. 회귀 4건(계정 수 15, 지연 허용 2700초, 재시도 경로 인식·비활성 기본값·이름 기준 설정, 스케줄러 순회 포함) RED→GREEN. Wrangler dry-run 315.53KiB/gzip77.43KiB. 로컬 전체 실행에서 Playwright·프로세스 검사 2건이 시간 초과로 실패했고, 해당 2개 파일 단독 실행은 8/8 통과했다.
 - 운영 DB: 대시보드 콘솔 탭이 응답하지 않아 실행 전에 중단했고, 사용자가 Wrangler에 로그인한 뒤 `wrangler d1 migrations list`로 대기 항목이 0034 하나뿐인지 확인했다. 적용 전 행 0건 확인 후 `wrangler d1 migrations apply --remote`로 적용했다. 이력 id 34(2026-11-10 02:21:07 UTC), 행 enabled=0. 기존 코드는 목록에 없는 행을 무시하므로 코드 배포 전에 적용했다.
 - 배포·활성화: PR #10 Release checks pass, main f963da9 Workers Builds completed/success(02:24:53 UTC). 수집 관리 화면에서 켠 뒤 enabled=1. 02:27:45 UTC 첫 예약 수집 성공: 받은 20건, 저장 19건, 검토 0건, 오류 없음. 공개 상태 ok, 운영 현황 healthy, 계정 필터 피드 19건이 모두 GorgeouSeoyeon 작성 글. 다음 순번부터 과거 게시물 구간을 이어서 수집한다. 장기 저장량과 수동 숨김 비율은 후속 관찰 대상.
+
+## 2026-11-10 검색·크롤러 정책과 공유 미리보기
+
+- 변경 전 운영 실측: `/robots.txt`·`/sitemap.xml`·`/llms.txt`·없는 주소 모두 401 `access_denied`, `/` → `/feed` 307, 피드 HTML에 설명·OG·트위터 카드·canonical 없음, 서버 HTML에는 메뉴 글자만 있고 게시물은 `/api/feed`로 그린다. robots.txt 4xx는 구글 기준 제한 없음으로 처리된다.
+- 변경: `validation/robots.txt`(AI 학습·답변 크롤러 16종 전체 차단, 그 외 `/api/`·`/admin` 차단), 공개 경로 목록에 `/robots.txt` 추가, `/`는 쿼리를 유지한 308로 `/feed` 이동, 피드에 사이트 안내 문구 기반 설명·OG·트위터 카드(summary)·canonical과 자체 아이콘 `app-icon-512.png`(512×512) 미리보기 이미지. 인라인 테마 스크립트와 CSP 해시는 변경하지 않았다.
+- 검증: 회귀 4건 RED→GREEN(공개 경로, 308·쿼리 유지·자산/DB 미접근, robots 그룹 규칙, 미리보기 태그와 이미지 공개 경로). npm test 375/375, Wrangler dry-run 315.64KiB/gzip77.46KiB.
+- 첫 PR 검사 실패: `Release checks`의 `Feed: preload`가 `/`로 접속하다 리디렉션 차단으로 `ERR_FAILED`. 검사 대역은 `/`에서 피드를 바로 제공해 운영(원래도 `/feed`로 이동)과 달랐다. Worker를 거쳐 `/`에 접속하는 `check-feed-preload.mjs`·`check-theme-first-paint.mjs`를 `/feed`로 바꾸고 대역이 Cloudflare처럼 `/feed`를 `feed.html`로 연결하게 했다. 두 검사는 release 가드에서 로컬 통과. `check-operations.mjs`는 HTML을 자체 서버로 제공해 영향이 없다.

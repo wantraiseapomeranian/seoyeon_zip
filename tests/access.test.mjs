@@ -47,7 +47,7 @@ test('all paths remain private when PUBLIC_FEED_ENABLED is absent or not exactly
 });
 
 test('public mode permits only the exact asset method and path allowlist',async()=>{
-  for(const method of ['GET','HEAD']) for(const path of ['/','/feed','/feed.html','/feed.css','/feed.js','/review-gallery.js','/date-controls.js','/theme.js','/theme.css','/favicon.ico','/favicon-16.png','/favicon-32.png','/manifest.webmanifest','/apple-touch-icon.png','/app-icon-192.png','/app-icon-512.png']) {
+  for(const method of ['GET','HEAD']) for(const path of ['/robots.txt','/feed','/feed.html','/feed.css','/feed.js','/review-gallery.js','/date-controls.js','/theme.js','/theme.css','/favicon.ico','/favicon-16.png','/favicon-32.png','/manifest.webmanifest','/apple-touch-icon.png','/app-icon-192.png','/app-icon-512.png']) {
     const {env,counts}=spies();const response=await worker.fetch(new Request(`https://example.test${path}`,{method}),env);
     assert.equal(response.status,200,`${method} ${path}`);assert.deepEqual(counts(),{assets:1,db:0});
   }
@@ -65,15 +65,23 @@ test('public mode permits only the exact asset method and path allowlist',async(
   }
 });
 
+test('root permanently redirects to the feed with its query and touches no asset or data',async()=>{
+ for(const [path,location] of [['/','https://example.test/feed'],['/?media=video&date=2026-09-22','https://example.test/feed?media=video&date=2026-09-22']]){
+  const {env,counts}=spies();const response=await worker.fetch(new Request('https://example.test'+path),env);
+  assert.equal(response.status,308,path);assert.equal(response.headers.get('Location'),location);
+  assert.equal(response.headers.get('Cache-Control'),'private, no-store');assert.deepEqual(counts(),{assets:0,db:0});
+ }
+});
+
 test('only unfiltered feed HTML preloads its exact first API request',async()=>{
- for(const [path,method,expected] of [['/','GET',true],['/feed','GET',true],['/feed.html','GET',true],['/?media=video','GET',false],['/?source=instagram','GET',false],['/?date=2026-09-22','GET',false],['/?sort=oldest','GET',false],['/feed.css','GET',false],['/','HEAD',false]]){
+ for(const [path,method,expected] of [['/feed','GET',true],['/feed.html','GET',true],['/feed?media=video','GET',false],['/feed?source=instagram','GET',false],['/feed?date=2026-09-22','GET',false],['/feed?sort=oldest','GET',false],['/feed.css','GET',false],['/feed','HEAD',false]]){
   const {env}=spies();env.ASSETS={fetch:async()=>new Response('<html></html>',{headers:{'Content-Type':'text/html'}})};
   const response=await worker.fetch(new Request('https://example.test'+path,{method}),env);
   assert.equal(response.headers.get('Link'),expected?'</api/feed?media=image>; rel=preload; as=fetch; crossorigin=anonymous':null,path);
   assert.equal(response.headers.get('Cache-Control'),'private, no-store');
  }
  const {env}=spies();env.ASSETS={fetch:async()=>new Response('missing',{status:404})};
- assert.equal((await worker.fetch(new Request('https://example.test/'),env)).headers.get('Link'),null);
+ assert.equal((await worker.fetch(new Request('https://example.test/feed'),env)).headers.get('Link'),null);
  const denied=await worker.fetch(new Request('https://example.test/admin/x'),env);
  assert.equal(denied.status,401);assert.equal(denied.headers.get('Link'),null);
 });
