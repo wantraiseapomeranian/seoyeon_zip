@@ -1572,3 +1572,11 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 재개 확인: Apify 사용량 09:03 KST $0.00/$5.00, 주기 11/10~12/9 UTC, 배너 해제. 09:40 KST 예약 3건 성공 40/20/10건 $0.18, 이미지 갱신 09:37 KST 18건 $0.05, 09:51 KST 누적 $0.23. Worker 09:47:29 KST 저장, 인스타 자료 357→377건, 상태 healthy, 09:51 KST 기준 실행 3건 페이지 처리 중.
 - 미해결: 이미지 갱신 실행 `9LwZfeJaqJjDIHIvP`가 `dataset_duplicate:DeZgD7nGqDu`로 18건 전체 실패(failedPosts 18, 기한 지난 게시물 28). 입력 `DeZa_SlvQFf`, `DeZa_PwvYRe`, `DeZgD7nGqDu`가 모두 같은 shortCode로 반환됐다. 해당 게시물이 함께 묶인 배치는 재시도 때도 같은 이유로 실패할 수 있어 유료 실행이 낭비되고 함께 묶인 정상 게시물도 갱신되지 않는다. 코드 변경 없음, 후속 판단 대상.
 - 미확인: 이 경로에서 실제 Apify 402 응답, 11/12 이후 2일 주기 실행, 월 사용량 실측, 10/31~11/10 게시물의 보충 범위, 현재 이미지 URL의 실제 만료 건수.
+
+## 2026-11-10 Instagram 이미지 갱신 리디렉션 행 처리
+
+- 원인: 실행 `9LwZfeJaqJjDIHIvP`에서 입력 `DeZa_SlvQFf`, `DeZa_PwvYRe`의 행이 inputUrl은 자기 요청 그대로이고 url·shortCode는 함께 요청한 `DeZgD7nGqDu`였다. 중복 검사가 shortCode 기준이라 18건 배치 전체가 실패했다. 같은 조사에서 리디렉션 행 하나만 있으면 대상 게시물을 그 행으로 갱신하는 기존 문제도 확인했다.
+- 수정: 중복은 행이 답한 요청(정확한 canonical inputUrl, 없으면 shortCode) 기준으로 판정한다. 리디렉션 행은 기존 요청 외 게시물처럼 작성자·정규화·사진 검증만 하고 무시하며, 그 요청은 missing_post 개별 실패로 남는다. 같은 요청에 대한 반복 응답은 계속 dataset_duplicate로 실패한다.
+- 검증: 운영 응답 형태의 회귀 2개 RED→GREEN, npm test 371/371, Wrangler dry-run 315.26KiB/gzip77.38KiB. 중복 키를 shortCode로 되돌리는 변이와 answered===code 조건 제거 변이 모두 테스트 실패로 검출. 독립 읽기 전용 리뷰 APPROVED. 선택 제안이던 리디렉션 행의 다른 이미지 버전 검증도 반영했다.
+- 남은 범위: inputUrl이 없거나 canonical이 아닌 성공 행은 이전처럼 shortCode로 대응한다. 리뷰 확인상 renew가 같은 자산 식별자만 교체하고 작성자 불일치는 배치 실패여서 Major는 아니다.
+- 운영: 11/10 UTC 유료 시작 2회를 이미 사용해 실패했던 18건은 11/11 09:00 KST 이후 실행에서 새 코드로 처리된다. 운영 결과는 미확인.
