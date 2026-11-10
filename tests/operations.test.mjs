@@ -61,7 +61,7 @@ test('X distinguishes disabled, healthy, running, retry, attention, delayed, and
 test('X delay allows a full three minute source rotation before alerting',async()=>{
  const {sqlite,env,enable}=setup();enable();
  sqlite.exec("UPDATE collection_state SET enabled=1,catchup_status='idle',next_due_at=unixepoch()-1200,last_success_at=unixepoch()-1400;INSERT INTO collection_state(source,enabled,catchup_status,next_due_at,last_success_at) VALUES('RemovedSource',1,'idle',unixepoch()-1200,unixepoch()-1400)");
- let data=await (await get(env)).json();assert.equal(data.x.sources.length,14);assert.equal(data.x.delayGraceSeconds,2520);
+ let data=await (await get(env)).json();assert.equal(data.x.sources.length,15);assert.equal(data.x.delayGraceSeconds,2700);
  assert.ok(data.x.sources.every(row=>row.status==='healthy'));assert.equal(data.delayGraceSeconds,900);
  sqlite.exec('UPDATE collection_state SET next_due_at=unixepoch()-7200');
  data=await (await get(env)).json();assert.ok(data.x.sources.every(row=>row.status==='delayed'));

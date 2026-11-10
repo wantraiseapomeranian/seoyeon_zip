@@ -66,8 +66,8 @@ test('each listed due source gets one turn, enabled rows of removed sources are 
   const {DB,sqlite,enable}=testDatabase();t.after(()=>sqlite.close());enable();sqlite.exec('UPDATE collection_state SET enabled=1');
   t.mock.method(console,'log',()=>{});
   const seen=[];t.mock.method(globalThis,'fetch',async url=>{seen.push(new URL(url).pathname);return Response.json({code:200,results:[],cursor:{bottom:'next'}});});
-  for(let i=0;i<14;i++) assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'stored');
-  assert.equal(new Set(seen).size,14);assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'idle');
+  for(let i=0;i<15;i++) assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'stored');
+  assert.equal(new Set(seen).size,15);assert.ok(seen.includes('/2/profile/GorgeouSeoyeon/statuses'));assert.equal((await runDueSource({DB,COLLECTION_ENABLED:'true'})).status,'idle');
   assert.ok(seen.every(path=>!/gapyeonghaus|tripleSnewsfeed/.test(path)));
 });
 

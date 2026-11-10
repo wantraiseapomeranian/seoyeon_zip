@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import worker,{handleApi} from '../src/worker.mjs';
 import { testDatabase } from './helpers/d1.mjs';
+import { sources } from '../src/sources.mjs';
 
 test('retired probe cannot call provider or write data',async t=>{
   t.mock.method(globalThis,'fetch',()=>{throw Error('unexpected provider');});
@@ -17,6 +18,10 @@ test('retry only schedules runnable sources and preserves leases and boundaries'
   const state=sqlite.prepare('SELECT * FROM collection_state WHERE source=?').get('Seowoo_0501');
   assert.equal(state.lease_token,'live');assert.equal(state.revision,5);assert.equal(state.committed_boundary_at,100);
   assert.equal((await handleApi(request('TRIPLES_FAN_FR'),env)).status,409);
+  // Seeded disabled and name-filtered: other members' unnamed direct posts must not pass as verified-direct.
+  assert.equal((await handleApi(request('GorgeouSeoyeon'),env)).status,409);
+  assert.equal(sources.find(s=>s.handle==='GorgeouSeoyeon')?.verifiedDirect,false);
+  assert.equal(sqlite.prepare('SELECT enabled FROM collection_state WHERE source=?').get('GorgeouSeoyeon')?.enabled,0);
   for(const removed of ['gapyeonghaus','tripleSnewsfeed'])assert.equal((await handleApi(request(removed),env)).status,404);
   assert.equal((await handleApi(request('unknown'),env)).status,404);
   assert.equal((await handleApi(request('Seowoo_0501','https://other.test'),env)).status,403);
@@ -28,5 +33,5 @@ test('public source routes remain fail-closed; source API omits lease tokens',as
   const request=new Request('https://example.test/api/sources');
   assert.equal((await worker.fetch(request,{DB})).status,503);
   const body=await (await handleApi(request,{DB})).json();
-  assert.equal(body.sources.length,14);assert.ok(body.sources.every(s=>!('lease_token' in s)));
+  assert.equal(body.sources.length,15);assert.ok(body.sources.every(s=>!('lease_token' in s)));
 });
