@@ -56,6 +56,7 @@ tripleS 윤서연 사진과 영상이 올라오는 여러 출처를 하나의 �
 | X | First0806_ | 윤서연 직찍·영상 | 검증 후 활성 후보 |
 | X | triplescosmos | 공식 게시물 | 후보, 초기 비활성 |
 | X | sogeumdwarf, hamhamm806, S2O806, Pumpkin030806, hampuppy806 | 추가 팬계정 | 후보, 초기 비활성 |
+| X | GorgeouSeoyeon | 윤서연 직찍·직캠, 이름 기준 수집 | 2026-11-10 추가 |
 | Instagram | triples_house, chelsea_dinos_sss, ptzzz_4eva | 인스타 보강 | 자동 수집 비활성 |
 | Archive | rachive.page | 과거 미디어 참고 | 비활성, 최신 범위 미검증 |
 
