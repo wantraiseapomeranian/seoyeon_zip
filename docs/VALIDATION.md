@@ -1603,3 +1603,8 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 - 검증: 회귀 4건 RED→GREEN(공개 경로, 308·쿼리 유지·자산/DB 미접근, robots 그룹 규칙, 미리보기 태그와 이미지 공개 경로). npm test 375/375, Wrangler dry-run 315.64KiB/gzip77.46KiB.
 - 첫 PR 검사 실패: `Release checks`의 `Feed: preload`가 `/`로 접속하다 리디렉션 차단으로 `ERR_FAILED`. 검사 대역은 `/`에서 피드를 바로 제공해 운영(원래도 `/feed`로 이동)과 달랐다. Worker를 거쳐 `/`에 접속하는 `check-feed-preload.mjs`·`check-theme-first-paint.mjs`를 `/feed`로 바꾸고 대역이 Cloudflare처럼 `/feed`를 `feed.html`로 연결하게 했다. 두 검사는 release 가드에서 로컬 통과. `check-operations.mjs`는 HTML을 자체 서버로 제공해 영향이 없다.
 - 배포: 보완 커밋 0ad9833의 Release checks success(03:13:06 UTC), main b13279e Workers Builds success(03:14:50 UTC). 운영 확인: `/`·`/?media=video` 308 → `/feed`(쿼리 유지), `/robots.txt` 200 text/plain, `/feed` 200에 설명·OG·트위터 카드·canonical 포함, `/app-icon-512.png` 200, 없는 주소와 `/api/admin/x`는 기존대로 401. 링크 미리보기 서비스의 캐시 갱신과 검색 콘솔 등록은 확인하지 않았다.
+
+## 2026-11-10 구글 서치 콘솔 소유 확인 파일
+
+- 사용자가 URL 접두어 속성 `https://seoyeon-zip.seoyeon-archive.workers.dev/`의 HTML 파일 확인 방식을 선택했다. 받은 `googleda7ef8c89123f1b6.html`(53바이트, 끝 줄바꿈 없음)을 바이트 그대로 `validation/`에 추가하고 공개 경로 목록에 넣었다.
+- Cloudflare 정적 파일은 `*.html` 요청을 확장자 없는 주소로 307 이동시키므로, Worker가 이 파일만 확장자 없는 자산 경로로 요청해 이동 없이 200으로 제공한다. 회귀 2건 RED→GREEN, npm test 376/376. 로컬 `wrangler dev`(실제 자산 처리)에서 해당 주소 200·내용 일치, 비교용 `/feed.html`은 307을 확인했다. 확인 상태 유지를 위해 파일을 삭제하지 않는다.
