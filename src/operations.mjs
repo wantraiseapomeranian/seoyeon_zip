@@ -5,6 +5,8 @@ import {readOperationsAlerts} from './operations-alerts.mjs';
 import {readInstagramRefreshOperations,unavailableInstagramRefresh} from './instagram-refresh-operations.mjs';
 
 const grace=900;
+// ponytail: Apify runs on even days (longest gap 3 days) plus 6h to drain pages; change this with that schedule.
+const igSaveAllowance=78*3600;
 const historyNotes=new Set(['history_window_unverified','unverified_exhaustion','repeated_cursor']);
 const knownErrors=new Set(['unknown_source','unexpected_204','provider_schema','provider_timeout','provider_network','cursor_expired','storage_error','repeated_cursor','unverified_exhaustion','history_window_unverified','invalid_json','response_too_large','invalid_import','review_conflict','sync_conflict','sync_failure','apify_network','apify_empty_response','apify_response_too_large','apify_invalid_json','apify_invalid_runs','apify_invalid_dataset','apify_invalid_checkpoint','apify_incomplete_page']);
 const safeError=value=>!value?null:knownErrors.has(value)||/^(?:provider_http(?:_error)?|provider_json_error|invalid_json|response_too_large|unexpected_204):[1-5][0-9]{2}$/.test(value)||/^apify_http_[1-5][0-9]{2}$/.test(value)?value:'unknown_error';
@@ -64,7 +66,7 @@ export async function readOperationsState(env,{details=true}={}){
   else if(!configured)status='unconfigured';
   else if(mismatch)status='attention';
   else if(running)status='running';
-  else if(late(ig?.next_due_at,ig?.last_checked_at??ig?.last_success_at,now)||overdue)status='delayed';
+  else if(late(ig?.next_due_at,ig?.last_checked_at??ig?.last_success_at,now)||overdue||late(ig?.last_success_at,null,now,igSaveAllowance))status='delayed';
   else if(ig?.last_error||ig?.failures||runs.errors)status='retry';
   else if(ig?.last_checked_at||ig?.last_success_at)status='healthy';
   const counts={pending:0,starting:0,waiting:0,ready:0,no_media:0,failed:0,existing:0};

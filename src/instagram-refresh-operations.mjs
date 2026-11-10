@@ -1,5 +1,5 @@
 const grace=900,daySeconds=86400;
-const knownErrors=new Set(['start_uncertain','run_timeout','invalid_response','run_failed','dataset_shape','invalid_author','author_mismatch','ambiguous_asset','provider_network','provider_failure','provider_access','not_found','rate_limited','response_too_large','save_failed','refresh_conflict','partial_refresh']);
+const knownErrors=new Set(['start_uncertain','start_rejected','run_timeout','invalid_response','run_failed','dataset_shape','invalid_author','author_mismatch','ambiguous_asset','provider_network','provider_failure','provider_access','not_found','rate_limited','response_too_large','save_failed','refresh_conflict','partial_refresh']);
 const iso=value=>Number.isFinite(value)&&value>0?new Date(value*1000).toISOString():null;
 const safeError=value=>!value?null:knownErrors.has(value)?value:'unknown_error';
 export const unavailableInstagramRefresh=()=>({status:'unavailable',refreshedAt:null,nextDueAt:null,error:null,startsToday:0,dailyStartLimit:2,failedPosts:0,overduePosts:0});

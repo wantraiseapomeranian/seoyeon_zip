@@ -11,10 +11,10 @@ async function setup(count=1){
  return {sqlite,DB,env:{DB,APIFY_TOKEN:'test-token',APIFY_SYNC_ENABLED:'true',INSTAGRAM_MEDIA_REFRESH_ENABLED:'true'},advance:(seconds=400)=>{now+=seconds;},now:()=>now};
 }
 const load=()=>import('../src/instagram-media-refresh.mjs');
-function provider(rows,{postError=false,getError=false,mutate=()=>{},runStatus='SUCCEEDED'}={}){
+function provider(rows,{postError=false,postStatus=0,getError=false,mutate=()=>{},runStatus='SUCCEEDED'}={}){
  const calls=[];const fetcher=async(address,options)=>{
   const u=new URL(address);calls.push({url:u,options});assert.equal(options.headers.Authorization,'Bearer test-token');
-  if(options.method==='POST'){assert.equal(u.searchParams.get('timeout'),'120');assert.equal(u.searchParams.get('maxTotalChargeUsd'),'0.05');const body=JSON.parse(options.body);assert.equal(body.resultsLimit,1);assert.ok(body.directUrls.length<=18);if(postError)throw Error('network');return Response.json({data:{id:'Run123'}});}
+  if(options.method==='POST'){assert.equal(u.searchParams.get('timeout'),'120');assert.equal(u.searchParams.get('maxTotalChargeUsd'),'0.05');const body=JSON.parse(options.body);assert.equal(body.resultsLimit,1);assert.ok(body.directUrls.length<=18);if(postError)throw Error('network');if(postStatus)return new Response(null,{status:postStatus});return Response.json({data:{id:'Run123'}});}
   if(getError)throw Error('network');if(u.pathname.endsWith('/items')){assert.equal(u.searchParams.get('limit'),'19');mutate();return Response.json(rows);}
   return Response.json({data:{id:'Run123',status:runStatus,defaultDatasetId:'Data123'}});
  };return {fetcher,calls};
@@ -44,6 +44,14 @@ test('different rendition never receives old byte hashes or overrides confirmed 
 });
 test('lost paid start is durable blocked status and never automatically replays',async()=>{
  const s=await setup();try{const {refreshInstagramMedia,instagramMediaRefreshStatus}=await load();const p=provider([],{postError:true});assert.equal((await refreshInstagramMedia(s.env,{fetcher:p.fetcher})).status,'blocked');s.advance(86400);assert.equal((await refreshInstagramMedia(s.env,{fetcher:p.fetcher})).status,'blocked');assert.equal(p.calls.length,1);assert.equal((await instagramMediaRefreshStatus(s.env)).error,'start_uncertain');}finally{s.sqlite.close();}
+});
+test('provider refusal proves no paid run and retries without operator recovery',async()=>{
+ for(const postStatus of [402,403,429]){
+  const s=await setup();try{const {refreshInstagramMedia}=await load();const refused=provider([],{postStatus});assert.deepEqual(await refreshInstagramMedia(s.env,{fetcher:refused.fetcher}),{status:'retry',error:'start_rejected'});assert.deepEqual({...s.sqlite.prepare('SELECT state,run_id,codes_json,last_error FROM instagram_media_refresh').get()},{state:'idle',run_id:null,codes_json:'[]',last_error:'start_rejected'});assert.equal((await refreshInstagramMedia(s.env,{fetcher:refused.fetcher})).status,'idle');assert.equal(refused.calls.length,1);s.advance(3601);assert.equal((await refreshInstagramMedia(s.env,{fetcher:provider([]).fetcher})).status,'waiting');}finally{s.sqlite.close();}
+ }
+});
+test('server failure on start stays blocked because a paid run may exist',async()=>{
+ const s=await setup();try{const {refreshInstagramMedia}=await load();assert.equal((await refreshInstagramMedia(s.env,{fetcher:provider([],{postStatus:500}).fetcher})).status,'blocked');assert.equal(s.sqlite.prepare('SELECT state FROM instagram_media_refresh').get().state,'error');}finally{s.sqlite.close();}
 });
 test('expired starting lease remains blocked and preserves reserved daily budget',async()=>{
  const s=await setup();try{s.sqlite.exec("UPDATE instagram_media_refresh SET state='starting',codes_json='[\"Post_000\"]',starts_today=1,lease_until=unixepoch()-1");const {refreshInstagramMedia}=await load();const p=provider([]);assert.equal((await refreshInstagramMedia(s.env,{fetcher:p.fetcher})).status,'blocked');assert.equal(p.calls.length,0);}finally{s.sqlite.close();}

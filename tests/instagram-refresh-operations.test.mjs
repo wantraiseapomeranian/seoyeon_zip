@@ -24,6 +24,12 @@ test('refresh health is included without writing or exposing provider state',asy
  assert.doesNotMatch(JSON.stringify(state),/private|fixture-token|Post_001|secret/);
 });
 
+test('refused start is a named retry rather than an operator block',async t=>{
+ const d=setup();t.after(()=>d.sqlite.close());
+ d.sqlite.exec("UPDATE instagram_media_refresh SET last_error='start_rejected',next_due_at=unixepoch()+3600");
+ const state=await read(d);assert.equal(state.status,'retry');assert.equal(state.error,'start_rejected');
+});
+
 test('refresh configuration stops old failures and does not invent first success',async t=>{
  const d=setup();t.after(()=>d.sqlite.close());
  assert.deepEqual(await read(d),{status:'waiting',refreshedAt:null,nextDueAt:null,error:null,startsToday:0,dailyStartLimit:2,failedPosts:0,overduePosts:0});

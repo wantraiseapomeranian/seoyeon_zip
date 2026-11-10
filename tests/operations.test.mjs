@@ -8,6 +8,14 @@ const setup=()=>{const db=testDatabase();return {...db,env:{DB:db.DB,COLLECTION_
 async function get(env){assert.equal(typeof module.handleOperations,'function','operations handler exists');return module.handleOperations(request(),env);}
 const source=data=>data.x.sources.find(s=>s.source==='Seowoo_0501');
 
+test('instagram is delayed when nothing was saved for longer than the Apify schedule gap',async()=>{
+ const {sqlite,env}=setup();
+ sqlite.exec("INSERT INTO instagram_sync(id,task_id,last_checked_at,next_due_at,last_success_at) VALUES(1,'task123',strftime('%Y-%m-%dT%H:%M:%fZ','now'),unixepoch()+100,strftime('%Y-%m-%dT%H:%M:%fZ','now','-79 hours'))");
+ assert.equal((await (await get(env)).json()).instagram.status,'delayed');
+ sqlite.exec("UPDATE instagram_sync SET last_success_at=strftime('%Y-%m-%dT%H:%M:%fZ','now','-77 hours')");
+ assert.equal((await (await get(env)).json()).instagram.status,'healthy');
+});
+
 test('history uncertainty is separate from collection health and never masks failures or delay',async()=>{
  const {sqlite,env,enable}=setup();enable();
  for(const [catchup,code] of [['gap','history_window_unverified'],['gap','unverified_exhaustion'],['gap','repeated_cursor'],['limited',null]]){
