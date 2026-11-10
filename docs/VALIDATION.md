@@ -1608,3 +1608,4 @@ CSS만 수정. 로컬 320/390/1280px 표본 검증에서 28×28px 버튼, 안내
 
 - 사용자가 URL 접두어 속성 `https://seoyeon-zip.seoyeon-archive.workers.dev/`의 HTML 파일 확인 방식을 선택했다. 받은 `googleda7ef8c89123f1b6.html`(53바이트, 끝 줄바꿈 없음)을 바이트 그대로 `validation/`에 추가하고 공개 경로 목록에 넣었다.
 - Cloudflare 정적 파일은 `*.html` 요청을 확장자 없는 주소로 307 이동시키므로, Worker가 이 파일만 확장자 없는 자산 경로로 요청해 이동 없이 200으로 제공한다. 회귀 2건 RED→GREEN, npm test 376/376. 로컬 `wrangler dev`(실제 자산 처리)에서 해당 주소 200·내용 일치, 비교용 `/feed.html`은 307을 확인했다. 확인 상태 유지를 위해 파일을 삭제하지 않는다.
+- 운영: PR #14 main 66a1483 Workers Builds success(04:11:14 UTC). 운영 주소 200·이동 없음·53바이트 일치 확인. 사용자가 서치 콘솔에서 소유권 확인과 `/feed` 색인 생성 요청 접수를 확인했다(사용자 보고). 실제 색인 반영 시점은 미확인.
