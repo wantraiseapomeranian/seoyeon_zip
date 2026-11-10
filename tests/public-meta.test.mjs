@@ -28,3 +28,12 @@ test('feed HTML carries a share preview whose image is a public site asset',asyn
  const env={PUBLIC_FEED_ENABLED:'true',ASSETS:{fetch:async()=>new Response('png')}};
  assert.equal((await worker.fetch(new Request('https://example.test'+image.pathname),env)).status,200);
 });
+
+test('Search Console verification file is public and fetched without the asset .html redirect',async()=>{
+ const file='googleda7ef8c89123f1b6.html';let assetPath;
+ const env={PUBLIC_FEED_ENABLED:'true',ASSETS:{fetch:async request=>{assetPath=new URL(request.url).pathname;return new Response(read(file));}}};
+ const response=await worker.fetch(new Request('https://example.test/'+file),env);
+ // Cloudflare assets answer /name.html with a 307 to /name; verification must get the file itself.
+ assert.equal(response.status,200);assert.equal(assetPath,'/googleda7ef8c89123f1b6');
+ assert.equal(await response.text(),'google-site-verification: '+file);
+});

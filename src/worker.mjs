@@ -78,7 +78,7 @@ export default {
   },
   async fetch(request,env,ctx) {
     const url=new URL(request.url);
-    const publicAssets=new Set(['/','/robots.txt','/feed','/feed.html','/feed.css','/feed.js','/review-gallery.js','/date-controls.js','/theme.js','/theme.css','/favicon.ico','/favicon-16.png','/favicon-32.png','/manifest.webmanifest','/apple-touch-icon.png','/app-icon-192.png','/app-icon-512.png']);
+    const publicAssets=new Set(['/','/robots.txt','/googleda7ef8c89123f1b6.html','/feed','/feed.html','/feed.css','/feed.js','/review-gallery.js','/date-controls.js','/theme.js','/theme.css','/favicon.ico','/favicon-16.png','/favicon-32.png','/manifest.webmanifest','/apple-touch-icon.png','/app-icon-192.png','/app-icon-512.png']);
     const publicApis=new Set(['/api/feed','/api/collection-status','/api/session']);
     const publicRequest=env.PUBLIC_FEED_ENABLED==='true'&&((['GET','HEAD'].includes(request.method)&&publicAssets.has(url.pathname))||(request.method==='GET'&&publicApis.has(url.pathname)));
     let auth,context;
@@ -109,6 +109,8 @@ export default {
       // Permanent, so search engines keep /feed as the only indexed entry; the query keeps feed filters.
       if(url.pathname==='/')return new Response(null,{status:308,headers:{Location:new URL('/feed'+url.search,url),'Cache-Control':'private, no-store'}});
       const assetUrl=new URL(request.url);
+      // Search Console must receive the file itself; assets would answer *.html with a 307 to the bare name.
+      if(assetUrl.pathname==='/googleda7ef8c89123f1b6.html')assetUrl.pathname='/googleda7ef8c89123f1b6';
       if(assetUrl.pathname==='/admin/operations'||assetUrl.pathname==='/admin/operations/')assetUrl.pathname='/operations.html';
       if(assetUrl.pathname==='/admin/youtube'||assetUrl.pathname==='/admin/youtube/')assetUrl.pathname='/youtube.html';
       if(assetUrl.pathname==='/admin/instagram'||assetUrl.pathname==='/admin/instagram/')assetUrl.pathname='/instagram.html';
