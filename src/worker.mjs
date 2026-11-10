@@ -78,7 +78,7 @@ export default {
   },
   async fetch(request,env,ctx) {
     const url=new URL(request.url);
-    const publicAssets=new Set(['/','/feed','/feed.html','/feed.css','/feed.js','/review-gallery.js','/date-controls.js','/theme.js','/theme.css','/favicon.ico','/favicon-16.png','/favicon-32.png','/manifest.webmanifest','/apple-touch-icon.png','/app-icon-192.png','/app-icon-512.png']);
+    const publicAssets=new Set(['/','/robots.txt','/feed','/feed.html','/feed.css','/feed.js','/review-gallery.js','/date-controls.js','/theme.js','/theme.css','/favicon.ico','/favicon-16.png','/favicon-32.png','/manifest.webmanifest','/apple-touch-icon.png','/app-icon-192.png','/app-icon-512.png']);
     const publicApis=new Set(['/api/feed','/api/collection-status','/api/session']);
     const publicRequest=env.PUBLIC_FEED_ENABLED==='true'&&((['GET','HEAD'].includes(request.method)&&publicAssets.has(url.pathname))||(request.method==='GET'&&publicApis.has(url.pathname)));
     let auth,context;
@@ -106,7 +106,9 @@ export default {
       if(url.pathname.startsWith('/api/')) return await handleApi(request,env,context,ctx);
       if(request.method!=='GET' && request.method!=='HEAD') return reply({error:'method_not_allowed'},405);
       if(!publicRequest&&(url.pathname==='/admin'||url.pathname==='/admin/'))return new Response(null,{status:302,headers:{Location:new URL('/',url),'Cache-Control':'private, no-store'}});
-      const assetUrl=new URL(request.url);if(assetUrl.pathname==='/')assetUrl.pathname='/feed.html';
+      // Permanent, so search engines keep /feed as the only indexed entry; the query keeps feed filters.
+      if(url.pathname==='/')return new Response(null,{status:308,headers:{Location:new URL('/feed'+url.search,url),'Cache-Control':'private, no-store'}});
+      const assetUrl=new URL(request.url);
       if(assetUrl.pathname==='/admin/operations'||assetUrl.pathname==='/admin/operations/')assetUrl.pathname='/operations.html';
       if(assetUrl.pathname==='/admin/youtube'||assetUrl.pathname==='/admin/youtube/')assetUrl.pathname='/youtube.html';
       if(assetUrl.pathname==='/admin/instagram'||assetUrl.pathname==='/admin/instagram/')assetUrl.pathname='/instagram.html';
@@ -115,7 +117,7 @@ export default {
       const asset=await env.ASSETS.fetch(new Request(assetUrl,request));const headers=new Headers(asset.headers);
       headers.set('Cache-Control','private, no-store');
       // Match the default UI request exactly; filtered pages fetch their own scope.
-      if(request.method==='GET'&&!url.search&&['/','/feed','/feed.html'].includes(url.pathname)&&asset.ok&&headers.get('Content-Type')?.includes('text/html'))
+      if(request.method==='GET'&&!url.search&&['/feed','/feed.html'].includes(url.pathname)&&asset.ok&&headers.get('Content-Type')?.includes('text/html'))
         headers.append('Link','</api/feed?media=image>; rel=preload; as=fetch; crossorigin=anonymous');
       headers.set('Content-Security-Policy',"default-src 'self'; script-src 'self' 'sha256-HzyTGjUU33k/Kv+MfVNbzz3t7E717fOQCbeUzo3O2Bg='; img-src https://i.ytimg.com https://i9.ytimg.com https://pbs.twimg.com https://*.cdninstagram.com https://*.fbcdn.net 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
       headers.set('Referrer-Policy','no-referrer');
