@@ -9,7 +9,7 @@ export function manualUrl(value){
 }
 export async function providerJson(url,{fetcher=fetch,token,body}={}){
  let response;try{response=await fetcher(url,{method:body?'POST':'GET',headers:{'User-Agent':'SeoyeonZip/0.1',...(token?{Authorization:'Bearer '+token}:{}),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),redirect:'manual',signal:AbortSignal.timeout(8000)});}catch{fail('provider_network');}
- if(!response.ok){await response.body?.cancel();if(response.status===429)rateLimited(response);fail(response.status===404?'not_found':response.status===401||response.status===403?'provider_access':'provider_failure');}
+ if(!response.ok){await response.body?.cancel();if(response.status===429)rateLimited(response);throw Object.assign(Error(response.status===404?'not_found':response.status===401||response.status===403?'provider_access':'provider_failure'),{status:response.status});}
  const reader=response.body?.getReader();if(!reader)fail('invalid_response');const chunks=[];let size=0;
  try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>2_000_000){await reader.cancel();fail('response_too_large');}chunks.push(value);}}catch(error){if(error.message==='response_too_large')throw error;fail('provider_network');}
  const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}

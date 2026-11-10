@@ -74,7 +74,13 @@ export async function refreshInstagramMedia(env,{fetcher=fetch}={}){
    // Any uncertain POST response stays blocked, including a lost save after the paid start.
    let run;
    try{run=(await providerJson('https://api.apify.com/v2/acts/apify~instagram-scraper/runs?waitForFinish=0&timeout=120&maxTotalChargeUsd=0.05',{fetcher,token:env.APIFY_TOKEN,body:{directUrls:codes.map(code=>`https://www.instagram.com/p/${code}/`),resultsType:'posts',resultsLimit:1}})).data;if(!opaque(run?.id))fail('start_uncertain');}
-   catch{await DB.prepare("UPDATE instagram_media_refresh SET state='error',last_error='start_uncertain',lease_token=NULL,lease_until=0 WHERE id=1 AND lease_token=? AND lease_until>unixepoch()").bind(token).run();return {status:'blocked',error:'start_uncertain'};}
+   catch(error){
+    // These mean Apify refused the request (input, access, usage limit, throttling), so no paid run exists.
+    // Timeouts such as 408, redirects and 5xx may hide a created run and stay blocked below.
+    // ponytail: the reserved daily start is kept, which caps these free retries at two per UTC day.
+    if([400,401,402,403,404,429].includes(error.status)){const saved=await DB.prepare("UPDATE instagram_media_refresh SET state='idle',codes_json='[]',last_error='start_rejected',next_due_at=unixepoch()+3600,lease_token=NULL,lease_until=0 WHERE id=1 AND lease_token=? AND lease_until>unixepoch()").bind(token).run();return saved.meta.changes?{status:'retry',error:'start_rejected'}:{status:'stale'};}
+    await DB.prepare("UPDATE instagram_media_refresh SET state='error',last_error='start_uncertain',lease_token=NULL,lease_until=0 WHERE id=1 AND lease_token=? AND lease_until>unixepoch()").bind(token).run();return {status:'blocked',error:'start_uncertain'};
+   }
    const saved=await DB.prepare("UPDATE instagram_media_refresh SET state='waiting',run_id=?,next_due_at=unixepoch()+10,lease_token=NULL,lease_until=0 WHERE id=1 AND lease_token=? AND lease_until>unixepoch() AND state='starting'").bind(run.id,token).run();
    return saved.meta.changes?{status:'waiting',runId:run.id}:{status:'stale'};
   }
