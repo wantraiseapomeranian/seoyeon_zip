@@ -114,10 +114,13 @@ export async function refreshInstagramMedia(env,{fetcher=fetch}={}){
     if(row.inputUrl!==undefined&&row.url!==undefined&&row.inputUrl!==row.url)return await finishError(`dataset_error_identity:${index}:url_disagreement:${inputCategory(row.inputUrl)}:${inputCategory(row.url)}`);
    }
    if(typeof code!=='string'||!/^[A-Za-z0-9_-]{5,64}$/.test(code))return await finishError(`dataset_identity:${index}:invalid`);
-   const requested=codes.includes(code),diagnosticCode=requested?code:'unrequested';
-   if(seenCodes.has(code))return await finishError('dataset_duplicate:'+diagnosticCode);
+   // Instagram can answer one requested URL with another post. Duplicates are keyed by the request answered,
+   // and a redirected row is validated then ignored like a foreign row, leaving its own request missing.
+   const answered=explicitError?code:codes.find(c=>row?.inputUrl===`https://www.instagram.com/p/${c}/`)??code;
+   const requested=answered===code&&codes.includes(code),diagnosticCode=requested?code:'unrequested';
+   if(seenCodes.has(answered))return await finishError('dataset_duplicate:'+diagnosticCode);
    if(row?.error!=null&&!explicitError)return await finishError('dataset_error_shape:'+diagnosticCode);
-   seenCodes.add(code);
+   seenCodes.add(answered);
    if(explicitError){failedCodes.add(code);continue;}
    if(!/^[A-Za-z0-9_.]{1,30}$/.test(row.ownerUsername??''))fail('invalid_author');
    let fresh;try{fresh=normalize(row);}catch{return await finishError('dataset_normalize:'+diagnosticCode);}

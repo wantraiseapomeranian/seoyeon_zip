@@ -144,6 +144,15 @@ test('dataset rejection diagnostics identify the guard without exposing provider
   assert.equal(s.sqlite.prepare('SELECT COUNT(*) n FROM instagram_preview_urls').get().n,0);assert.ok(!JSON.stringify(result).includes('secret-value'));
  }finally{s.sqlite.close();}}
 });
+const canonical=code=>`https://www.instagram.com/p/${code}/`;
+const redirected=(input,target=0)=>{const r=row(target);return {...r,childPosts:r.childPosts.map(c=>({...c,displayUrl:c.displayUrl.replace('oh=new','oh=redirected')})),inputUrl:canonical(input),url:canonical(`Post_00${target}`)};};
+test('rows redirected from other requested URLs are ignored instead of failing the batch',async()=>{
+ const s=await setup(3);try{const result=await complete(s,provider([redirected('Post_001'),{...row(),inputUrl:canonical('Post_000'),url:canonical('Post_000')},redirected('Post_002')]));assert.equal(result.status,'complete');assert.equal(result.updated,1);assert.equal(result.failed,2);assert.deepEqual(JSON.parse(s.sqlite.prepare('SELECT data FROM instagram_review WHERE code=?').get('Post_000').data).images,[url('one0','new'),url('two0','new')]);for(const code of ['Post_001','Post_002'])assert.equal(s.sqlite.prepare('SELECT last_error FROM instagram_media_refresh_posts WHERE code=?').get(code).last_error,'missing_post');}finally{s.sqlite.close();}
+});
+test('a redirected row never renews its target and repeated answers to one request still fail',async()=>{
+ const s=await setup(2);try{const before=s.sqlite.prepare('SELECT data FROM instagram_review WHERE code=?').get('Post_000').data;const result=await complete(s,provider([redirected('Post_001')]));assert.equal(result.updated,0);assert.equal(s.sqlite.prepare('SELECT data FROM instagram_review WHERE code=?').get('Post_000').data,before);assert.equal(s.sqlite.prepare('SELECT last_error FROM instagram_media_refresh_posts WHERE code=?').get('Post_000').last_error,'missing_post');}finally{s.sqlite.close();}
+ const d=await setup(2);try{assert.equal((await complete(d,provider([redirected('Post_001'),redirected('Post_001')]))).error,'dataset_duplicate:unrequested');}finally{d.sqlite.close();}
+});
 test('valid foreign rows are ignored while exact requested rows recover and missing requests retain originals',async()=>{
  const s=await setup(2);try{
   const missing=s.sqlite.prepare('SELECT * FROM instagram_review WHERE code=?').get('Post_001');
