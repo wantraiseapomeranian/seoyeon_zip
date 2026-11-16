@@ -5,6 +5,7 @@ const safeError=value=>!value?null:knownErrors.has(value)?value:'unknown_error';
 export const unavailableInstagramRefresh=()=>({status:'unavailable',refreshedAt:null,nextDueAt:null,error:null,startsToday:0,dailyStartLimit:2,failedPosts:0,overduePosts:0});
 
 // Read only: the same public-photo predicate as the paid refresh scheduler.
+// Only instagram_feed_posts can hold an 'ig:' id, so the wider managed_feed_posts view (X, manual, YouTube) is not evaluated here.
 // Internal run IDs, raw errors and signed media URLs never enter this response.
 export async function readInstagramRefreshOperations(env,now){
  const result={...unavailableInstagramRefresh(),status:'waiting'};
@@ -17,7 +18,7 @@ export async function readInstagramRefreshOperations(env,now){
    COUNT(CASE WHEN f.next_due_at>0 AND f.next_due_at<=? THEN 1 END) AS overdue,
    MIN(COALESCE(f.next_due_at,0)) AS next_due_at
    FROM instagram_review r LEFT JOIN instagram_media_refresh_posts f ON f.code=r.code
-   WHERE r.status='kept' AND EXISTS(SELECT 1 FROM managed_feed_posts p,json_each(p.data,'$.media') m
+   WHERE r.status='kept' AND EXISTS(SELECT 1 FROM instagram_feed_posts p,json_each(p.data,'$.media') m
     WHERE p.id='ig:'||r.code AND json_extract(m.value,'$.kind')='image')`).bind(now-grace).first()
  ]);
  if(!job)throw Error('instagram_refresh_state_missing');
