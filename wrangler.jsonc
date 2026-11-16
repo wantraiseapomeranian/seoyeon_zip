@@ -10,6 +10,8 @@
   "d1_databases": [{ "binding": "DB", "database_name": "seoyeon-zip-validation", "database_id": "017ec07d-d095-45f9-80f7-0dffd6f48ba0", "migrations_dir": "migrations" }],
   // Owner identity and Access settings are managed in the Cloudflare dashboard.
   "keep_vars": true,
+  // Trial: visitors in Korea enter at a distant location, so run next to D1 to shorten the DB round trips. Remove if /api/feed is not faster.
+  "placement": { "mode": "smart" },
   "limits": { "cpu_ms": 1000 },
   "ratelimits": [{ "name": "PUBLIC_RATE_LIMITER", "namespace_id": "2026091101", "simple": { "limit": 60, "period": 60 } }],
   "vars": { "YOUTUBE_ENABLED": "true", "YOUTUBE_COLLECTION_ENABLED": "true", "MANUAL_MEDIA_ENABLED": "true", "COLLECTION_ENABLED": "true", "APIFY_SYNC_ENABLED": "true", "INSTAGRAM_MEDIA_REFRESH_ENABLED": "true", "APIFY_TASK_ID": "W7bGic2wKjj2BKhSE", "PUBLIC_FEED_ENABLED": "true" },
