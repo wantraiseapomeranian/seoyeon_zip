@@ -101,7 +101,7 @@ function render(data){
  if(yt&&needsAttention(yt.status))issues.push({text:'YouTube · '+statusNames[yt.status],href:'/admin/youtube'});
  for(const source of data.x.sources)if(needsAttention(source.status))issues.push({text:'X @'+source.source+' · '+statusNames[source.status],href:'/?manage=collection'});
  const ig=data.instagram;
- if(needsAttention(ig.status))issues.push({text:'Instagram · '+statusNames[ig.status],href:'/admin/instagram'});
+ if(needsAttention(ig.status))issues.push({text:'Instagram · '+(/^apify_http_40[13]$/.test(ig.error)?'Apify 토큰 확인 필요':statusNames[ig.status]),href:'/admin/instagram'});
  if(!['disabled','unconfigured'].includes(ig.status)&&ig.pendingErrors)issues.push({text:'Instagram 자료 처리 실패 '+count(ig.pendingErrors),href:'/admin/instagram'});
  if(!['disabled','unconfigured'].includes(ig.status)&&ig.overdue)issues.push({text:'Instagram 대기 작업 지연 '+count(ig.overdue),href:'/admin/instagram'});
  if(needsAttention(refresh.status)||refresh.status==='unavailable')issues.push({text:'Instagram 이미지 갱신 · '+statusNames[refresh.status],href:'#instagram-refresh-title'});

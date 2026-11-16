@@ -26,15 +26,17 @@ function xSource(row,enabled,now,allowance){
  const historyOnly=sources.some(source=>source.handle===row.source&&source.historyOnly);
  const completed=historyOnly&&!row.enabled&&!row.failures&&
   (row.last_complete_sync_at||row.history_paused&&row.last_success_at&&['limited','gap','idle'].includes(row.catchup_status));
+ // ponytail: FxEmbed answers live profiles with a stray 404 now and then; only the second consecutive one is worth showing.
+ const strayNotFound=/^provider_(?:http|json)_error:404$/.test(row.last_error_code)&&!row.failures&&(row.not_found_failures??0)<2&&!!row.last_success_at;
  let status='waiting';
  if(completed)status='completed';
  else if(!active)status='disabled';
  else if(row.lease_until>now)status='running';
  else if(row.catchup_status==='needs_attention')status='attention';
  else if(late(row.next_due_at,row.last_attempt_at??row.last_success_at,now,allowance))status='delayed';
- else if(row.failures||row.catchup_status==='retry'||row.last_error_code&&!historyNote)status='retry';
+ else if(!strayNotFound&&(row.failures||row.catchup_status==='retry'||row.last_error_code&&!historyNote))status='retry';
  else if(row.last_success_at)status='healthy';
- return {source:row.source,status,historyStatus,historyReason:historyNote?row.last_error_code:null,enabled:active,lastAttemptAt:iso(row.last_attempt_at),lastSuccessAt:iso(row.last_success_at),lastCompleteSyncAt:iso(row.last_complete_sync_at),nextDueAt:iso(row.next_due_at),failures:row.failures,error:historyNote?null:safeError(row.last_error_code)};
+ return {source:row.source,status,historyStatus,historyReason:historyNote?row.last_error_code:null,enabled:active,lastAttemptAt:iso(row.last_attempt_at),lastSuccessAt:iso(row.last_success_at),lastCompleteSyncAt:iso(row.last_complete_sync_at),nextDueAt:iso(row.next_due_at),failures:row.failures,error:historyNote||strayNotFound?null:safeError(row.last_error_code)};
 }
 
 export async function readOperationsState(env,{details=true}={}){
@@ -44,7 +46,7 @@ export async function readOperationsState(env,{details=true}={}){
   const task=configured?env.APIFY_TASK_ID:'';
   const [control,xRows,ig,runs,manualRows,manualDue,totals,history,youtube,instagramRefresh]=await Promise.all([
    DB.prepare('SELECT enabled FROM collection_control WHERE id=1').first(),
-   DB.prepare('SELECT source,enabled,last_attempt_at,last_success_at,last_complete_sync_at,next_due_at,lease_until,failures,last_error_code,catchup_status,history_paused FROM collection_state WHERE source IN (SELECT value FROM json_each(?)) ORDER BY source').bind(sourceHandlesJson).all(),
+   DB.prepare('SELECT source,enabled,last_attempt_at,last_success_at,last_complete_sync_at,next_due_at,lease_until,failures,last_error_code,catchup_status,history_paused,not_found_failures FROM collection_state WHERE source IN (SELECT value FROM json_each(?)) ORDER BY source').bind(sourceHandlesJson).all(),
    DB.prepare('SELECT task_id,last_checked_at,last_success_at,next_due_at,lease_until,failures,last_error FROM instagram_sync WHERE id=1').first(),
    DB.prepare("SELECT COUNT(*) AS pending,COUNT(CASE WHEN last_error IS NOT NULL THEN 1 END) AS errors,COUNT(CASE WHEN (CASE WHEN next_due_at>0 THEN next_due_at ELSE COALESCE(unixepoch((SELECT last_checked_at FROM instagram_sync WHERE id=1 AND task_id=?)),unixepoch(finished_at)) END)<? THEN 1 END) AS overdue FROM instagram_sync_runs WHERE task_id=? AND state='pending'").bind(task,now-grace,task).first(),
    DB.prepare('SELECT state,COUNT(*) AS count FROM manual_media_jobs GROUP BY state').all(),
@@ -66,6 +68,8 @@ export async function readOperationsState(env,{details=true}={}){
   else if(!configured)status='unconfigured';
   else if(mismatch)status='attention';
   else if(running)status='running';
+  // A rejected token never recovers by waiting, so it is not a delay.
+  else if(/^apify_http_40[13]$/.test(ig?.last_error))status='attention';
   else if(late(ig?.next_due_at,ig?.last_checked_at??ig?.last_success_at,now)||overdue||late(ig?.last_success_at,null,now,igSaveAllowance))status='delayed';
   else if(ig?.last_error||ig?.failures||runs.errors)status='retry';
   else if(ig?.last_checked_at||ig?.last_success_at)status='healthy';
