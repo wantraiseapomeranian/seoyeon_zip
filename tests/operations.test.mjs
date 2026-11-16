@@ -125,3 +125,19 @@ test('totals count storage records without loading private content or writing po
  const data=await (await get(env)).json();assert.deepEqual(data.totals,{x:1,instagram:1,manual:0,youtube:0});assert.doesNotMatch(JSON.stringify(data),/secret content/);
  assert.equal(sqlite.prepare('SELECT total_changes() AS n').get().n,before);
 });
+
+test('a single provider 404 stays healthy; the second consecutive one is shown as retry',async()=>{
+ const {sqlite,env,enable}=setup();enable();
+ sqlite.exec("UPDATE collection_state SET catchup_status='retry',last_error_code='provider_http_error:404',failures=0,not_found_failures=1,last_success_at=unixepoch()-600,next_due_at=unixepoch()+300 WHERE source='Seowoo_0501'");
+ let row=source(await (await get(env)).json());assert.equal(row.status,'healthy');assert.equal(row.error,null);
+ sqlite.exec("UPDATE collection_state SET not_found_failures=2 WHERE source='Seowoo_0501'");
+ row=source(await (await get(env)).json());assert.equal(row.status,'retry');assert.equal(row.error,'provider_http_error:404');
+ sqlite.exec("UPDATE collection_state SET not_found_failures=1,next_due_at=unixepoch()-7200 WHERE source='Seowoo_0501'");
+ assert.equal(source(await (await get(env)).json()).status,'delayed');
+});
+
+test('a rejected Apify token needs attention instead of looking like a delay',async()=>{
+ const {sqlite,env}=setup();
+ sqlite.exec("INSERT INTO instagram_sync(id,task_id,last_checked_at,next_due_at,last_success_at,last_error,failures) VALUES(1,'task123',strftime('%Y-%m-%dT%H:%M:%fZ','now'),unixepoch()+100,strftime('%Y-%m-%dT%H:%M:%fZ','now','-79 hours'),'apify_http_401',9)");
+ const data=await (await get(env)).json();assert.equal(data.instagram.status,'attention');assert.equal(data.instagram.error,'apify_http_401');
+});
