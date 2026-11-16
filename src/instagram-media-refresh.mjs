@@ -3,7 +3,7 @@ import {normalize} from './instagram-import.mjs';
 const batchSize=18,successDelay=3*86400;
 const opaque=value=>typeof value==='string'&&/^[A-Za-z0-9]{3,64}$/.test(value);
 const fields='shortCode,type,isVideo,productType,ownerUsername,displayUrl,thumbnailUrl,images,childPosts,mediaCount,error,inputUrl,url';
-const visible="r.status='kept' AND EXISTS(SELECT 1 FROM managed_feed_posts p,json_each(p.data,'$.media') m WHERE p.id='ig:'||r.code AND json_extract(m.value,'$.kind')='image')";
+const visible="r.status='kept' AND EXISTS(SELECT 1 FROM instagram_feed_posts p,json_each(p.data,'$.media') m WHERE p.id='ig:'||r.code AND json_extract(m.value,'$.kind')='image')";
 const fail=code=>{throw Error(code);};
 const backoff=failures=>Math.min(86400,3600*2**Math.min(failures,5));
 function identity(value){
