@@ -32,7 +32,7 @@ test('refused start is a named retry rather than an operator block',async t=>{
 
 test('refresh configuration stops old failures and does not invent first success',async t=>{
  const d=setup();t.after(()=>d.sqlite.close());
- assert.deepEqual(await read(d),{status:'waiting',refreshedAt:null,nextDueAt:null,error:null,startsToday:0,dailyStartLimit:2,failedPosts:0,overduePosts:0});
+ assert.deepEqual(await read(d),{status:'waiting',refreshedAt:null,nextDueAt:null,error:null,startsToday:0,dailyStartLimit:2,failedPosts:0,overduePosts:0,reviewPosts:0});
  d.sqlite.exec("UPDATE instagram_media_refresh SET state='error',last_error='start_uncertain'");
  for(const flag of ['INSTAGRAM_MEDIA_REFRESH_ENABLED','APIFY_SYNC_ENABLED']){
   assert.equal((await read({...d,env:{...d.env,[flag]:'false'}})).status,'disabled');
@@ -88,5 +88,14 @@ test('refresh query failure stays isolated and carries the full unavailable cont
  const d=setup();t.after(()=>d.sqlite.close());d.sqlite.exec('DROP TABLE instagram_media_refresh_posts');
  const state=await readOperationsState(d.env,{details:false});
  assert.equal(state.instagram.status,'waiting');assert.equal(state.youtube.status,'disabled');
- assert.deepEqual(state.instagramRefresh,{status:'unavailable',refreshedAt:null,nextDueAt:null,error:null,startsToday:0,dailyStartLimit:2,failedPosts:0,overduePosts:0});
+ assert.deepEqual(state.instagramRefresh,{status:'unavailable',refreshedAt:null,nextDueAt:null,error:null,startsToday:0,dailyStartLimit:2,failedPosts:0,overduePosts:0,reviewPosts:0});
+});
+
+test('parked posts are reported for review without counting as refresh failures',async t=>{
+ const d=setup();t.after(()=>d.sqlite.close());
+ for(const [code,status,error] of [['Post_001','kept','redirected_post'],['Post_002','kept','post_unavailable'],['Post_003','excluded','post_unavailable']]){
+  post(d,code,{status});d.sqlite.prepare('INSERT INTO instagram_media_refresh_posts(code,next_due_at,failures,last_error) VALUES(?,?,4,?)').run(code,now+86400,error);
+ }
+ d.sqlite.exec("UPDATE instagram_media_refresh SET last_success_at=1779999000,last_error='partial_refresh',next_due_at=1780000300");
+ const state=await read(d);assert.equal(state.reviewPosts,2);assert.equal(state.failedPosts,0);assert.equal(state.overduePosts,0);assert.equal(state.status,'healthy');
 });

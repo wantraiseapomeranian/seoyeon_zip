@@ -147,7 +147,7 @@ test('dataset rejection diagnostics identify the guard without exposing provider
 const canonical=code=>`https://www.instagram.com/p/${code}/`;
 const redirected=(input,target=0)=>{const r=row(target);return {...r,childPosts:r.childPosts.map(c=>({...c,displayUrl:c.displayUrl.replace('oh=new','oh=redirected')})),inputUrl:canonical(input),url:canonical(`Post_00${target}`)};};
 test('rows redirected from other requested URLs are ignored instead of failing the batch',async()=>{
- const s=await setup(3);try{const result=await complete(s,provider([redirected('Post_001'),{...row(),inputUrl:canonical('Post_000'),url:canonical('Post_000')},redirected('Post_002')]));assert.equal(result.status,'complete');assert.equal(result.updated,1);assert.equal(result.failed,2);assert.deepEqual(JSON.parse(s.sqlite.prepare('SELECT data FROM instagram_review WHERE code=?').get('Post_000').data).images,[url('one0','new'),url('two0','new')]);for(const code of ['Post_001','Post_002'])assert.equal(s.sqlite.prepare('SELECT last_error FROM instagram_media_refresh_posts WHERE code=?').get(code).last_error,'missing_post');}finally{s.sqlite.close();}
+ const s=await setup(3);try{const result=await complete(s,provider([redirected('Post_001'),{...row(),inputUrl:canonical('Post_000'),url:canonical('Post_000')},redirected('Post_002')]));assert.equal(result.status,'complete');assert.equal(result.updated,1);assert.equal(result.failed,2);assert.deepEqual(JSON.parse(s.sqlite.prepare('SELECT data FROM instagram_review WHERE code=?').get('Post_000').data).images,[url('one0','new'),url('two0','new')]);for(const code of ['Post_001','Post_002'])assert.equal(s.sqlite.prepare('SELECT last_error FROM instagram_media_refresh_posts WHERE code=?').get(code).last_error,'redirected_post');}finally{s.sqlite.close();}
 });
 test('a redirected row never renews its target and repeated answers to one request still fail',async()=>{
  const s=await setup(2);try{const before=s.sqlite.prepare('SELECT data FROM instagram_review WHERE code=?').get('Post_000').data;const result=await complete(s,provider([redirected('Post_001')]));assert.equal(result.updated,0);assert.equal(s.sqlite.prepare('SELECT data FROM instagram_review WHERE code=?').get('Post_000').data,before);assert.equal(s.sqlite.prepare('SELECT last_error FROM instagram_media_refresh_posts WHERE code=?').get('Post_000').last_error,'missing_post');}finally{s.sqlite.close();}
@@ -183,3 +183,45 @@ test('foreign rows still obey duplicate, author, normalization and child-media v
  }
 });
 
+const parked=30*86400;
+const seedFailures=(s,code,failures,error)=>s.sqlite.prepare('INSERT INTO instagram_media_refresh_posts(code,next_due_at,failures,last_error) VALUES(?,0,?,?)').run(code,failures,error);
+const refreshState=(s,code)=>s.sqlite.prepare('SELECT failures,next_due_at,last_error,last_success_at FROM instagram_media_refresh_posts WHERE code=?').get(code);
+test('a request answered by another post is parked for a month instead of retried daily',async()=>{
+ const s=await setup(2);try{
+  const before=s.sqlite.prepare('SELECT data FROM instagram_review WHERE code=?').get('Post_001').data;
+  const result=await complete(s,provider([{...row(),inputUrl:canonical('Post_000'),url:canonical('Post_000')},redirected('Post_001')]));
+  assert.equal(result.failed,1);const state=refreshState(s,'Post_001');
+  assert.equal(state.last_error,'redirected_post');assert.equal(state.next_due_at,s.now()+parked);
+  assert.equal(s.sqlite.prepare('SELECT data FROM instagram_review WHERE code=?').get('Post_001').data,before);
+ }finally{s.sqlite.close();}
+});
+test('a post reported not_found is parked only after repeated failures',async()=>{
+ for(const [failures,error,want,delay] of [[2,'not_found','provider_post_error',14400],[3,'not_found','post_unavailable',parked],[9,'Post not found','provider_post_error',86400]]){
+  const s=await setup(2);try{
+   seedFailures(s,'Post_001',failures,'provider_post_error');
+   await complete(s,provider([row(),{url:canonical('Post_001'),error}]));
+   const state=refreshState(s,'Post_001');assert.equal(state.last_error,want);assert.equal(state.next_due_at,s.now()+delay);assert.equal(state.failures,failures+1);
+  }finally{s.sqlite.close();}
+ }
+});
+test('photos the post no longer has are dropped after repeated incomplete answers',async()=>{
+ const fewer=()=>({...row(),childPosts:[row().childPosts[0]]});
+ const s=await setup();try{
+  seedFailures(s,'Post_000',3,'incomplete_media');
+  s.sqlite.prepare('INSERT INTO instagram_preview_urls(code,source_url,preview_url,updated_at) VALUES(?,?,?,0)').run('Post_000',url('one0'),url('one0','alias'));
+  const result=await complete(s,provider([fewer()]));assert.equal(result.updated,1);assert.equal(result.failed,0);
+  const data=JSON.parse(s.sqlite.prepare('SELECT data FROM instagram_review').get().data);
+  assert.deepEqual(data.images,[url('two0','new')]);assert.deepEqual(data.media,[{previewUrl:url('two0','new'),kind:'image'}]);
+  if('image' in data)assert.equal(data.image,url('two0','new'));
+  const state=refreshState(s,'Post_000');assert.equal(state.last_error,null);assert.equal(state.failures,0);assert.equal(state.next_due_at,s.now()+3*86400);
+  assert.equal(s.sqlite.prepare('SELECT COUNT(*) n FROM instagram_preview_urls').get().n,0);
+ }finally{s.sqlite.close();}
+ // Too few repeats, a different earlier failure, or an unknown photo in the answer keep every stored photo.
+ for(const [failures,error,rows] of [[2,'incomplete_media',[fewer()]],[5,'missing_post',[fewer()]],[5,'incomplete_media',[{...row(),childPosts:[row().childPosts[0],{type:'Image',displayUrl:url('other0','new')}]}]]]){
+  const k=await setup();try{
+   seedFailures(k,'Post_000',failures,error);await complete(k,provider(rows));
+   assert.equal(JSON.parse(k.sqlite.prepare('SELECT data FROM instagram_review').get().data).images.length,2);
+   const state=refreshState(k,'Post_000');assert.equal(state.last_error,'incomplete_media');assert.equal(state.failures,failures+1);
+  }finally{k.sqlite.close();}
+ }
+});
