@@ -106,6 +106,7 @@ function render(data){
  if(!['disabled','unconfigured'].includes(ig.status)&&ig.overdue)issues.push({text:'Instagram 대기 작업 지연 '+count(ig.overdue),href:'/admin/instagram'});
  if(needsAttention(refresh.status)||refresh.status==='unavailable')issues.push({text:'Instagram 이미지 갱신 · '+statusNames[refresh.status],href:'#instagram-refresh-title'});
  else if(refresh.status!=='disabled'&&refresh.failedPosts)issues.push({text:'Instagram 이미지 갱신 실패 '+count(refresh.failedPosts),href:'#instagram-refresh-title'});
+ if(refresh.status!=='disabled'&&refresh.reviewPosts)issues.push({text:'Instagram 게시물 확인 필요 '+count(refresh.reviewPosts),href:'#instagram-refresh-title'});
  if(data.manual.enabled&&data.manual.counts.failed)issues.push({text:'직접 등록 사진 조회 실패 '+count(data.manual.counts.failed),href:'/?manage=tools'});
  if(data.manual.enabled&&data.manual.overdue)issues.push({text:'직접 등록 사진 조회 지연 '+count(data.manual.overdue),href:'/?manage=tools'});
  $('#attention-summary').textContent=issues.length?'':'현재 기록에서 확인이 필요한 항목은 없어요.';
@@ -133,7 +134,7 @@ function render(data){
  $('#instagram-refresh-status').replaceChildren(state(refresh.status));
  $('#instagram-refresh-status').firstElementChild.dataset.attention=String(needsAttention(refresh.status)||refresh.status==='unavailable'||refresh.status!=='disabled'&&refresh.failedPosts>0);
  const stopped=['disabled','unconfigured'].includes(refresh.status),unavailable=refresh.status==='unavailable';
- values($('#instagram-refresh-values'),[['마지막 성공',timestamp(refresh.refreshedAt)],['다음 예정',stopped?'진행 안 함':timestamp(refresh.nextDueAt)],['갱신 실패',unavailable?'확인 불가':count(refresh.failedPosts)],['기한 지난 게시물',unavailable?'확인 불가':count(refresh.overduePosts)],['오늘 시작',unavailable?'확인 불가':refresh.startsToday+' / '+refresh.dailyStartLimit+'회']]);
+ values($('#instagram-refresh-values'),[['마지막 성공',timestamp(refresh.refreshedAt)],['다음 예정',stopped?'진행 안 함':timestamp(refresh.nextDueAt)],['갱신 실패',unavailable?'확인 불가':count(refresh.failedPosts)],['게시물 확인 필요',unavailable?'확인 불가':count(refresh.reviewPosts??0)],['기한 지난 게시물',unavailable?'확인 불가':count(refresh.overduePosts)],['오늘 시작',unavailable?'확인 불가':refresh.startsToday+' / '+refresh.dailyStartLimit+'회']]);
  $('#instagram-refresh-error').textContent=unavailable?'이미지 갱신 현황을 불러오지 못했어요. 새로고침으로 다시 확인해 주세요.':refresh.error==='start_uncertain'?'실행 시작 결과를 확인할 수 없어 자동 갱신을 멈췄어요. 운영자 확인이 필요합니다.':refresh.error?'최근 갱신 실행에 문제가 남아 있어요. 다음 예정과 실패 건수를 확인해 주세요.':'';
  $('#manual-status').textContent=data.manual.enabled?'자동 조회 켜짐':'자동 조회 중지 · 저장된 작업 상태';
  const labels={pending:'조회 대기',starting:'조회 시작 중',waiting:'외부 처리 중',ready:'사진 조회 완료',no_media:'사진 없음',failed:'조회 실패',existing:'기존 자료 연결'};

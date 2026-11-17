@@ -1,6 +1,9 @@
 import {providerJson} from './manual-provider.mjs';
 import {normalize} from './instagram-import.mjs';
-const batchSize=18,successDelay=3*86400;
+import {parkedErrors} from './instagram-refresh-operations.mjs';
+// Parked posts cannot succeed as stored (the address belongs to another post, or the post is gone), so they are only rechecked monthly.
+// A photo or a not_found answer counts as settled after this many failures in a row.
+const batchSize=18,successDelay=3*86400,parkedDelay=30*86400,settled=3;
 const opaque=value=>typeof value==='string'&&/^[A-Za-z0-9]{3,64}$/.test(value);
 const fields='shortCode,type,isVideo,productType,ownerUsername,displayUrl,thumbnailUrl,images,childPosts,mediaCount,error,inputUrl,url';
 const visible="r.status='kept' AND EXISTS(SELECT 1 FROM instagram_feed_posts p,json_each(p.data,'$.media') m WHERE p.id='ig:'||r.code AND json_extract(m.value,'$.kind')='image')";
@@ -16,15 +19,16 @@ function rendition(value){
  const query=[...u.searchParams].filter(([key])=>!/^_nc_/.test(key)&&!['oh','oe','ccb','edm','ig_cache_key'].includes(key)).sort(([a,av],[b,bv])=>a.localeCompare(b)||av.localeCompare(bv));
  return JSON.stringify([u.pathname,query]);
 }
-function renew(old,fresh){
+function renew(old,fresh,drop=false){
  const images=old.images??(old.image?[old.image]:[]),incoming=fresh.media;
  const oldKeys=images.map(identity),newKeys=incoming.map(m=>identity(m.previewUrl));
  if(new Set(oldKeys).size!==oldKeys.length||new Set(newKeys).size!==newKeys.length)fail('ambiguous_asset');
- const mapping=new Map(),aliases=new Map(),clearAliases=[];let missing=false;
+ const mapping=new Map(),aliases=new Map(),clearAliases=[],gone=[];let missing=false;
  for(let position=0;position<images.length;position++){
   const previous=images[position];if(old.media?.[position]?.kind!=='image')continue;
   const item=incoming.find(m=>identity(m.previewUrl)===oldKeys[position]);
-  if(!item||item.kind==='video'){missing=true;continue;}
+  if(!item){gone.push(position);continue;}
+  if(item.kind==='video'){missing=true;continue;}
   if(rendition(previous)!==rendition(item.previewUrl)){aliases.set(previous,item.previewUrl);continue;}
   clearAliases.push(previous);
   if(previous!==item.previewUrl)mapping.set(previous,item.previewUrl);
@@ -35,7 +39,15 @@ function renew(old,fresh){
   if(old.image)data.image=mapping.get(old.image)??old.image;
   if(Array.isArray(old.media))data.media=old.media.map(m=>({...m,previewUrl:mapping.get(m.previewUrl)??m.previewUrl}));
  }
- return {data,mapping,aliases,clearAliases,error:missing?'incomplete_media':null};
+ // The author removed photos: every file still in the post is one already stored, so only the absent ones are dropped.
+ // A shortened provider answer looks the same, which is why the caller waits for repeated identical failures first.
+ const removed=drop&&gone.length&&gone.length<images.length&&!missing&&Array.isArray(old.images)&&old.media?.length===images.length&&newKeys.every(key=>oldKeys.includes(key))?gone.map(position=>images[position]):[];
+ if(removed.length){
+  data.images=data.images.filter((_,position)=>!gone.includes(position));data.media=data.media.filter((_,position)=>!gone.includes(position));
+  if(old.image&&!data.images.includes(data.image))data.image=data.images[0];
+  clearAliases.push(...removed);
+ }
+ return {data,mapping,aliases,clearAliases,removed,error:missing||gone.length&&!removed.length?'incomplete_media':null};
 }
 export async function instagramMediaRefreshStatus(env){
  if(env.INSTAGRAM_MEDIA_REFRESH_ENABLED!=='true'||env.APIFY_SYNC_ENABLED!=='true')return {status:'disabled'};
@@ -92,7 +104,7 @@ export async function refreshInstagramMedia(env,{fetcher=fetch}={}){
   if(run.status!=='SUCCEEDED')return await finishError('run_failed');
   if(!opaque(run.defaultDatasetId))fail('invalid_response');
   // Read latest metadata before the remote page; the transaction checks it again after download.
-  snapshots=(await DB.prepare(`SELECT r.code,r.data,r.revision,f.failures FROM instagram_review r LEFT JOIN instagram_media_refresh_posts f ON f.code=r.code WHERE r.code IN (SELECT value FROM json_each(?)) AND ${visible}`).bind(JSON.stringify(codes)).all()).results;
+  snapshots=(await DB.prepare(`SELECT r.code,r.data,r.revision,f.failures,f.last_error FROM instagram_review r LEFT JOIN instagram_media_refresh_posts f ON f.code=r.code WHERE r.code IN (SELECT value FROM json_each(?)) AND ${visible}`).bind(JSON.stringify(codes)).all()).results;
   const rows=await providerJson(`https://api.apify.com/v2/datasets/${run.defaultDatasetId}/items?format=json&limit=${batchSize+1}&clean=false&skipEmpty=false&skipHidden=false&fields=${fields}`,{fetcher,token:env.APIFY_TOKEN});
   // Diagnostics contain only fixed labels, bounded counts and already requested public shortcodes.
   if(!Array.isArray(rows))return await finishError('dataset_shape');
@@ -102,7 +114,7 @@ export async function refreshInstagramMedia(env,{fetcher=fetch}={}){
    try{const u=new URL(value),match=u.pathname.match(/^\/(?:p|reel)\/([A-Za-z0-9_-]{5,64})\/?$/);if(u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&['instagram.com','www.instagram.com'].includes(u.hostname)&&match&&codes.includes(match[1]))return 'requested_post_variant';}catch{}
    return 'other';
   };
-  const normalized=new Map(),failedCodes=new Set(),seenCodes=new Set();let unknownRows=0;
+  const normalized=new Map(),failedCodes=new Map(),redirectedCodes=new Set(),seenCodes=new Set();let unknownRows=0;
   for(const [index,row] of rows.entries()){
    let code=row?.shortCode;
    const explicitError=typeof row?.error==='string'&&row.error.length>0&&row.error.length<=2000;
@@ -121,29 +133,29 @@ export async function refreshInstagramMedia(env,{fetcher=fetch}={}){
    if(seenCodes.has(answered))return await finishError('dataset_duplicate:'+diagnosticCode);
    if(row?.error!=null&&!explicitError)return await finishError('dataset_error_shape:'+diagnosticCode);
    seenCodes.add(answered);
-   if(explicitError){failedCodes.add(code);continue;}
+   if(explicitError){failedCodes.set(code,row.error);continue;}
    if(!/^[A-Za-z0-9_.]{1,30}$/.test(row.ownerUsername??''))fail('invalid_author');
    let fresh;try{fresh=normalize(row);}catch{return await finishError('dataset_normalize:'+diagnosticCode);}
    if(Array.isArray(row.childPosts)&&row.childPosts.length&&fresh.media.length!==row.childPosts.length)return await finishError(`dataset_child_media:${diagnosticCode}:${Math.min(row.childPosts.length,101)}:${fresh.media.length}`);
    // Apify can return a valid unrelated post. Never assign it to a missing request by position or author.
-   if(!requested){unknownRows++;continue;}
+   if(!requested){if(answered!==code)redirectedCodes.add(answered);unknownRows++;continue;}
    normalized.set(row.shortCode,fresh);
   }
   const statements=[guard()],transfers=new Map(),patches=[],outcomes=[],aliases=[],clearAliases=[];let updated=0,failed=0;
   statements.push(DB.prepare(`INSERT INTO commit_guard(token,ok) SELECT ?,CASE WHEN NOT EXISTS(SELECT 1 FROM json_each(?) s WHERE NOT EXISTS(SELECT 1 FROM instagram_review r WHERE r.code=json_extract(s.value,'$.code') AND r.data=json_extract(s.value,'$.data') AND r.revision=json_extract(s.value,'$.revision') AND ${visible})) THEN 1 ELSE 0 END`).bind(token+':posts',JSON.stringify(snapshots)));
   for(const snapshot of snapshots){
-   const old=JSON.parse(snapshot.data),fresh=normalized.get(snapshot.code);let result;
+   const old=JSON.parse(snapshot.data),fresh=normalized.get(snapshot.code),prior=snapshot.failures??0;let result;
    if(fresh){
     if(fresh.author.toLowerCase()!==(old.author??'').toLowerCase())fail('author_mismatch');
-    result=renew(old,fresh);
-   }else result={data:old,mapping:new Map(),aliases:new Map(),clearAliases:[],error:failedCodes.has(snapshot.code)?'provider_post_error':'missing_post'};
+    result=renew(old,fresh,prior>=settled&&snapshot.last_error==='incomplete_media');
+   }else result={data:old,mapping:new Map(),aliases:new Map(),clearAliases:[],removed:[],error:redirectedCodes.has(snapshot.code)?'redirected_post':failedCodes.get(snapshot.code)==='not_found'&&prior>=settled?'post_unavailable':failedCodes.has(snapshot.code)?'provider_post_error':'missing_post'};
    for(const [from,to] of result.mapping){if(transfers.has(from)&&transfers.get(from)!==to)fail('ambiguous_asset');transfers.set(from,to);}
-   if(result.mapping.size||result.aliases.size)updated++;
-   if(result.mapping.size)patches.push({code:snapshot.code,data:JSON.stringify(result.data)});
+   if(result.mapping.size||result.aliases.size||result.removed.length)updated++;
+   if(result.mapping.size||result.removed.length)patches.push({code:snapshot.code,data:JSON.stringify(result.data)});
    for(const [source,preview] of result.aliases)aliases.push({code:snapshot.code,source,preview});
    for(const source of result.clearAliases)clearAliases.push({code:snapshot.code,source});
    if(result.error)failed++;
-   outcomes.push({code:snapshot.code,delay:result.error?backoff(snapshot.failures??0):successDelay,success:result.error?0:1,failures:result.error?(snapshot.failures??0)+1:0,error:result.error});
+   outcomes.push({code:snapshot.code,delay:parkedErrors.includes(result.error)?parkedDelay:result.error?backoff(prior):successDelay,success:result.error?0:1,failures:result.error?prior+1:0,error:result.error});
   }
   statements.push(DB.prepare("UPDATE instagram_review SET data=(SELECT json_extract(p.value,'$.data') FROM json_each(?) p WHERE json_extract(p.value,'$.code')=instagram_review.code) WHERE code IN (SELECT json_extract(value,'$.code') FROM json_each(?))").bind(JSON.stringify(patches),JSON.stringify(patches)));
   statements.push(DB.prepare("INSERT INTO instagram_preview_urls(code,source_url,preview_url,updated_at) SELECT json_extract(value,'$.code'),json_extract(value,'$.source'),json_extract(value,'$.preview'),unixepoch() FROM json_each(?) WHERE true ON CONFLICT(code,source_url) DO UPDATE SET preview_url=excluded.preview_url,updated_at=excluded.updated_at").bind(JSON.stringify(aliases)));
