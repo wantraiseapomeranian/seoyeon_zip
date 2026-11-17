@@ -4,7 +4,7 @@ export const hamming=(a,b)=>{let x=BigInt('0x'+a)^BigInt('0x'+b),n=0;while(x){x&
 const instagramImage=u=>u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&/(^|\.)(cdninstagram\.com|fbcdn\.net)$/.test(u.hostname);
 const twitterImage='https://pbs.twimg.com/';
 // X photos are compared within 4 bits and reviewed by hand. Instagram copies are hidden automatically within 5 bits:
-// measured on 2026-11-17, 14 of 17 real copies were within 5 and the closest different photo was 11 away.
+// measured on 2026-11-17 at X's 680px size, 16 of 17 real copies were within 5 and the closest different photo was 9 away.
 const nearX=4,nearInstagram=5,ratioTolerance=.02;
 function dhashOf({width,height,data}){
  const lum=(x,y)=>{const i=(Math.min(height-1,Math.floor(y*height/8))*width+Math.min(width-1,Math.floor(x*width/9)))*4;return data[i]*.299+data[i+1]*.587+data[i+2]*.114;};
@@ -13,12 +13,15 @@ function dhashOf({width,height,data}){
 }
 const closest=(candidates,fp,limit)=>{let best=null;for(const f of candidates){if(Math.abs(f.width/f.height-fp.width/fp.height)>=ratioTolerance)continue;const distance=hamming(f.dhash,fp.dhash);if(distance<=limit&&(!best||distance<best.distance))best={...f,distance};}return best;};
 const matchEvidence=(instagram,x,distance)=>JSON.stringify({schemaVersion:1,origin:'instagram_auto_match',generatedAt:new Date().toISOString(),leftImageUrl:instagram.url,rightImageUrl:x.url,algorithm:'dhash',algorithmVersion:'dhash-luma-9x8-v1',hashBits:64,distance,threshold:nearInstagram,aspectRatioTolerance:ratioTolerance,leftWidth:instagram.width,leftHeight:instagram.height,rightWidth:x.width,rightHeight:x.height,leftDhash:instagram.dhash,rightDhash:x.dhash,rightHash:x.hash});
-// Instagram's signed addresses cannot be resized, so the stored photo is decoded whole. Files over 3 megapixels are skipped to bound CPU and memory.
-export async function instagramDhash(url){
+// Instagram's signed addresses cannot be resized, so the Images binding shrinks the photo to X's 680px "small" size before decoding:
+// large and WebP photos are compared too, and both sides are hashed at the same size.
+export async function instagramDhash(url,images){
  const u=new URL(url);if(!instagramImage(u))throw Error('unsupported_image');
  const response=await fetch(u,{redirect:'manual',signal:AbortSignal.timeout(15000)});
  if(!response.ok)throw Error('image_http_'+response.status);
- const decoded=jpeg.decode(await limitedBody(response,4_000_000),{useTArray:true,maxResolutionInMP:3,maxMemoryUsageInMB:96,tolerantDecoding:false});
+ let small;try{small=(await images.input(response.body).transform({width:680,height:680,fit:'scale-down'}).output({format:'image/jpeg'})).response();}
+ catch(error){console.log(JSON.stringify({event:'instagram_image_transform',status:'failed',message:String(error?.message).slice(0,200)}));throw Error('image_transform_failed');}
+ const decoded=jpeg.decode(await limitedBody(small,2_000_000),{useTArray:true,maxResolutionInMP:1,maxMemoryUsageInMB:32,tolerantDecoding:false});
  return {dhash:dhashOf(decoded),width:decoded.width,height:decoded.height};
 }
 export async function fingerprint(url){
@@ -75,18 +78,21 @@ export async function maintainX(env){
   }catch{statements.push(DB.prepare("INSERT INTO x_fingerprints(url,error,next_check) VALUES(?,'image_check_failed',unixepoch()+86400) ON CONFLICT(url) DO UPDATE SET error=excluded.error,next_check=excluded.next_check").bind(image.url));}}
   else{
    // With nothing new to hash, compare one kept Instagram photo against X. The display alias is fetched when the stored address has a newer rendition.
-   const photo=await DB.prepare("SELECT f.url,COALESCE((SELECT a.preview_url FROM instagram_preview_urls a WHERE a.code=p.code AND a.source_url=f.url),f.url) AS fetch_url FROM instagram_review p,json_each(CASE WHEN COALESCE(json_array_length(p.data,'$.images'),0)>0 THEN json_extract(p.data,'$.images') ELSE json_array(json_extract(p.data,'$.image')) END) m JOIN x_fingerprints f ON f.url=m.value WHERE p.status='kept' AND f.hash IS NOT NULL AND f.dhash IS NULL AND (f.error IS NULL OR (f.error='perceptual_retry' AND f.next_check<=unixepoch())) AND COALESCE(json_extract(p.data,'$.media['||m.key||'].kind'),'image')!='video' ORDER BY f.error IS NOT NULL LIMIT 1").first();
+   // Instagram addresses carry their expiry (oe, hex seconds) and always answer 403 after it, so expired ones are not fetched:
+   // they come back once image refresh hands out a new address or display alias.
+   const now=Date.now()/1000,live=p=>{const oe=new URL(p.fetch_url).searchParams.get('oe');return !oe||parseInt(oe,16)>now+60;};
+   const photo=(await DB.prepare("SELECT f.url,COALESCE((SELECT a.preview_url FROM instagram_preview_urls a WHERE a.code=p.code AND a.source_url=f.url),f.url) AS fetch_url FROM instagram_review p,json_each(CASE WHEN COALESCE(json_array_length(p.data,'$.images'),0)>0 THEN json_extract(p.data,'$.images') ELSE json_array(json_extract(p.data,'$.image')) END) m JOIN x_fingerprints f ON f.url=m.value WHERE p.status='kept' AND f.hash IS NOT NULL AND f.dhash IS NULL AND (f.error IS NULL OR (f.error='perceptual_retry' AND f.next_check<=unixepoch())) AND COALESCE(json_extract(p.data,'$.media['||m.key||'].kind'),'image')!='video' ORDER BY f.error IS NOT NULL").all()).results.find(live);
    if(photo){
     // Marked before decoding: if this invocation is killed for CPU, the photo is not picked again and cannot stall maintenance.
     await DB.prepare("UPDATE x_fingerprints SET error='perceptual_pending' WHERE url=? AND (error IS NULL OR error='perceptual_retry')").bind(photo.url).run();
     try{
-     const fp=await instagramDhash(photo.fetch_url);
+     const fp=await instagramDhash(photo.fetch_url,env.IMAGES);
      const shown=(await DB.prepare("SELECT url,COALESCE(confirmed_hash,hash) AS hash,dhash,width,height FROM x_fingerprints WHERE dhash IS NOT NULL AND hash IS NOT NULL AND url LIKE 'https://pbs.twimg.com/%'").all()).results;
      const match=closest(shown,fp,nearInstagram);
      statements.push(DB.prepare('UPDATE x_fingerprints SET dhash=?,width=?,height=?,error=NULL,confirmed_hash=COALESCE(?,confirmed_hash),candidate_metadata_json=COALESCE(?,candidate_metadata_json) WHERE url=?').bind(fp.dhash,fp.width,fp.height,match?.hash??null,match?matchEvidence({url:photo.url,...fp},match,match.distance):null,photo.url));
     }catch(error){
-     // An expired or refused address is retried daily because image refresh renews it; an undecodable or oversized photo is final.
-     statements.push(/^image_http_/.test(error.message)?DB.prepare("UPDATE x_fingerprints SET error='perceptual_retry',next_check=unixepoch()+86400 WHERE url=?").bind(photo.url):DB.prepare("UPDATE x_fingerprints SET error='perceptual_failed' WHERE url=?").bind(photo.url));
+     // A refused address or a failed transformation (such as the monthly free allowance running out) is retried daily; an undecodable result is final.
+     statements.push(/^image_(http|transform)_/.test(error.message)?DB.prepare("UPDATE x_fingerprints SET error='perceptual_retry',next_check=unixepoch()+86400 WHERE url=?").bind(photo.url):DB.prepare("UPDATE x_fingerprints SET error='perceptual_failed' WHERE url=?").bind(photo.url));
     }
    }
   }
