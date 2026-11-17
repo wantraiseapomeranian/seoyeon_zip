@@ -16,6 +16,7 @@ export function testDatabase({beforeYouTubeCategories=false,beforeYouTubeScope=f
   sqlite.exec(readFileSync(new URL('../../migrations/0032_instagram_preview_urls.sql',import.meta.url),'utf8'));
   if(!beforeProviderRetry)sqlite.exec(readFileSync(new URL('../../migrations/0033_provider_retry.sql',import.meta.url),'utf8'));
   sqlite.exec(readFileSync(new URL('../../migrations/0034_gorgeouseoyeon_source.sql',import.meta.url),'utf8'));
+  sqlite.exec(readFileSync(new URL('../../migrations/0035_instagram_confirmed_duplicates.sql',import.meta.url),'utf8'));
   const DB={
     prepare(sql) {
       return {sql,args:[],bind(...args){this.args=args;return this;},
