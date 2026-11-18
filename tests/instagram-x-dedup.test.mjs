@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import jpeg from 'jpeg-js';
 import {testDatabase} from './helpers/d1.mjs';
 import {readFeed} from '../src/feed.mjs';
-import {maintainX} from '../src/x-maintenance.mjs';
+import {maintainX,instagramDhash} from '../src/x-maintenance.mjs';
 
 // Smooth synthetic pictures: the same pattern at another size and quality stands in for a re-encoded copy.
 const picture=(width,height,fx,fy,quality=85)=>{
@@ -63,6 +63,25 @@ test('an X photo collected after its Instagram copy still hides the copy and nev
  const d=setup({x:false});try{
   await withFetch(files,async()=>{await runs(d,4);assert.ok(row(d,ig('same')).dhash);assert.equal(row(d,ig('same')).confirmed_hash,null);addX(d);await runs(d,2);});
   const x=row(d,xUrl);assert.equal(row(d,ig('same')).confirmed_hash,x.hash);assert.equal(row(d,ig('other')).confirmed_hash,null);assert.equal(x.near_url,null);
+ }finally{d.sqlite.close();}
+});
+// Production 2026-11-18: an Instagram copy tied (distance 4) between a hand-hidden X post and a shown one, took the hidden one and stayed in the feed.
+const addHiddenX=(d,url)=>{d.sqlite.prepare('INSERT INTO posts VALUES (?,?)').run('x:2',JSON.stringify({id:'x:2',platformPostId:'2',authorHandle:'second',canonicalUrl:'https://x.com/second/status/2',publishedAt:'2026-09-10T00:00:00.000Z',media:[{kind:'image',previewUrl:url}]}));d.sqlite.prepare("INSERT INTO x_quality(post_id,decision) VALUES('x:2','hidden')").run();};
+test('an Instagram copy is matched only to an X photo the feed shows, even when a hidden post holds an equally close one',async()=>{
+ const hiddenUrl='https://pbs.twimg.com/media/hidden.jpg',d=setup({x:false,images:[ig('same')]});try{
+  const fp=await withFetch(files,()=>instagramDhash(ig('same'),fakeImages()));
+  addHiddenX(d,hiddenUrl);addX(d);
+  const insert=d.sqlite.prepare('INSERT INTO x_fingerprints(url,hash,dhash,width,height) VALUES(?,?,?,?,?)');
+  insert.run(hiddenUrl,'hidden',fp.dhash,fp.width,fp.height);insert.run(xUrl,'shown',fp.dhash,fp.width,fp.height);insert.run(ig('same'),'stored',null,null,null);
+  await withFetch(files,()=>runs(d,2));
+  assert.equal(row(d,ig('same')).confirmed_hash,'shown');
+  assert.ok(!(await readFeed(d.DB,new URLSearchParams())).posts.some(p=>p.platform==='instagram'));
+ }finally{d.sqlite.close();}
+});
+test('an X photo arriving in a hidden post leaves a waiting Instagram copy unmatched',async()=>{
+ const d=setup({x:false,images:[ig('same')]});try{
+  await withFetch(files,async()=>{await runs(d,3);assert.ok(row(d,ig('same')).dhash);addHiddenX(d,xUrl);await runs(d,2);});
+  assert.ok(row(d,xUrl).dhash);assert.equal(row(d,ig('same')).confirmed_hash,null);
  }finally{d.sqlite.close();}
 });
 test('a photo that cannot be compared is marked once; a refused address or failed transformation is retried a day later',async()=>{

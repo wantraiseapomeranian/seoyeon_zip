@@ -71,8 +71,10 @@ export async function maintainX(env){
    const fp=await fingerprint(image.url);const all=await DB.prepare('SELECT url,hash,confirmed_hash,dhash,width,height FROM x_fingerprints WHERE dhash IS NOT NULL AND hash!=?').bind(fp.hash).all();
    // Review candidates stay X-to-X; Instagram rows are only ever hidden against X.
    const near=fp.dhash&&all.results.find(f=>f.url.startsWith(twitterImage)&&Math.abs(f.width/f.height-fp.width/fp.height)<ratioTolerance&&hamming(f.dhash,fp.dhash)<=nearX);
-   // An X photo collected after its Instagram copy: hide the copies that were waiting without a match.
-   if(fp.dhash)for(const copy of all.results){if(copy.url.startsWith(twitterImage)||copy.confirmed_hash)continue;const match=closest([copy],fp,nearInstagram);if(match)statements.push(DB.prepare('UPDATE x_fingerprints SET confirmed_hash=?,candidate_metadata_json=? WHERE url=? AND confirmed_hash IS NULL').bind(fp.hash,matchEvidence(copy,{url:image.url,...fp},match.distance),copy.url));}
+   // An X photo collected after its Instagram copy: hide the copies that were waiting without a match, if the feed shows that X photo.
+   const copies=fp.dhash?all.results.filter(copy=>!copy.url.startsWith(twitterImage)&&!copy.confirmed_hash).map(copy=>({copy,match:closest([copy],fp,nearInstagram)})).filter(c=>c.match):[];
+   if(copies.length&&await DB.prepare("SELECT 1 FROM x_eligible p,json_each(p.data,'$.media') m WHERE json_extract(m.value,'$.previewUrl')=? LIMIT 1").bind(image.url).first())
+    for(const {copy,match} of copies)statements.push(DB.prepare('UPDATE x_fingerprints SET confirmed_hash=?,candidate_metadata_json=? WHERE url=? AND confirmed_hash IS NULL').bind(fp.hash,matchEvidence(copy,{url:image.url,...fp},match.distance),copy.url));
    const evidence=near?JSON.stringify({schemaVersion:1,origin:'candidate_generation',generatedAt:new Date().toISOString(),leftImageUrl:image.url,rightImageUrl:near.url,algorithm:'dhash',algorithmVersion:'dhash-luma-9x8-v1',hashBits:64,sampleWidth:9,sampleHeight:8,distance:hamming(fp.dhash,near.dhash),threshold:nearX,aspectRatioTolerance:ratioTolerance,leftAspectRatio:fp.width/fp.height,rightAspectRatio:near.width/near.height,leftWidth:fp.width,leftHeight:fp.height,rightWidth:near.width,rightHeight:near.height,leftDhash:fp.dhash,rightDhash:near.dhash,leftHash:fp.hash,rightHash:near.hash}):null;
    statements.push(DB.prepare('INSERT INTO x_fingerprints(url,hash,dhash,width,height,near_url,candidate_metadata_json) VALUES(?,?,?,?,?,?,?) ON CONFLICT(url) DO UPDATE SET hash=excluded.hash,dhash=excluded.dhash,width=excluded.width,height=excluded.height,near_url=excluded.near_url,candidate_metadata_json=excluded.candidate_metadata_json,error=NULL').bind(image.url,fp.hash,fp.dhash,fp.width,fp.height,near?.url??null,evidence));
   }catch{statements.push(DB.prepare("INSERT INTO x_fingerprints(url,error,next_check) VALUES(?,'image_check_failed',unixepoch()+86400) ON CONFLICT(url) DO UPDATE SET error=excluded.error,next_check=excluded.next_check").bind(image.url));}}
@@ -87,7 +89,9 @@ export async function maintainX(env){
     await DB.prepare("UPDATE x_fingerprints SET error='perceptual_pending' WHERE url=? AND (error IS NULL OR error='perceptual_retry')").bind(photo.url).run();
     try{
      const fp=await instagramDhash(photo.fetch_url,env.IMAGES);
-     const shown=(await DB.prepare("SELECT url,COALESCE(confirmed_hash,hash) AS hash,dhash,width,height FROM x_fingerprints WHERE dhash IS NOT NULL AND hash IS NOT NULL AND url LIKE 'https://pbs.twimg.com/%'").all()).results;
+     // Only X photos in posts the feed shows (x_eligible, as x_photo_rows): a hand-hidden post's copy would hide nothing.
+     // ponytail: a shown post hidden later lets its Instagram copies back without rematching; add a rematch if that shows up.
+     const shown=(await DB.prepare("SELECT DISTINCT f.url,COALESCE(f.confirmed_hash,f.hash) AS hash,f.dhash,f.width,f.height FROM x_eligible p,json_each(p.data,'$.media') m JOIN x_fingerprints f ON f.url=json_extract(m.value,'$.previewUrl') WHERE f.dhash IS NOT NULL AND f.hash IS NOT NULL AND f.url LIKE 'https://pbs.twimg.com/%'").all()).results;
      const match=closest(shown,fp,nearInstagram);
      statements.push(DB.prepare('UPDATE x_fingerprints SET dhash=?,width=?,height=?,error=NULL,confirmed_hash=COALESCE(?,confirmed_hash),candidate_metadata_json=COALESCE(?,candidate_metadata_json) WHERE url=?').bind(fp.dhash,fp.width,fp.height,match?.hash??null,match?matchEvidence({url:photo.url,...fp},match,match.distance):null,photo.url));
     }catch(error){
