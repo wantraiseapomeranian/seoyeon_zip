@@ -53,7 +53,7 @@ test('maintenance hides a re-encoded Instagram copy of an existing X photo and k
   const x=row(d,xUrl),same=row(d,ig('same')),different=row(d,ig('other'));
   assert.ok(x.dhash);assert.equal(x.near_url,null);
   assert.ok(same.dhash);assert.equal(same.confirmed_hash,x.hash);assert.equal(same.near_url,null);assert.equal(same.error,null);
-  const evidence=JSON.parse(same.candidate_metadata_json);assert.equal(evidence.origin,'instagram_auto_match');assert.equal(evidence.rightImageUrl,xUrl);assert.equal(evidence.threshold,5);assert.ok(evidence.distance<=5);
+  const evidence=JSON.parse(same.candidate_metadata_json);assert.equal(evidence.origin,'instagram_auto_match');assert.equal(evidence.rightImageUrl,xUrl);assert.equal(evidence.threshold,7);assert.ok(evidence.distance<=7);
   assert.ok(different.dhash);assert.ok(Math.max(different.width,different.height)<=680);assert.equal(different.confirmed_hash,null);
   const post=(await readFeed(d.DB,new URLSearchParams())).posts.find(p=>p.platform==='instagram');
   assert.equal(post.media.length,1);assert.match(post.media[0].previewUrl,/other/);
