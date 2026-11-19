@@ -1,11 +1,13 @@
 import jpeg from 'jpeg-js';
 import {withProviderRetry,ProviderCooldownError} from './provider-retry.mjs';
+import {decidePhotos} from './review-mutations.mjs';
 export const hamming=(a,b)=>{let x=BigInt('0x'+a)^BigInt('0x'+b),n=0;while(x){x&=x-1n;n++;}return n;};
 const instagramImage=u=>u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&/(^|\.)(cdninstagram\.com|fbcdn\.net)$/.test(u.hostname);
 const twitterImage='https://pbs.twimg.com/';
-// X photos are compared within 4 bits and reviewed by hand. Instagram copies are hidden automatically within 7 bits:
+// X photos are compared within 4 bits. Pairs within 2 bits are merged automatically: by hand (2026-09-12..11-19) 173 of 174 such pairs
+// were the same photo (one distinct pair at 1 bit); 3-4 bits stay in the review queue. Instagram copies are hidden automatically within 7 bits:
 // on production (2026-11-18, Cloudflare's 680px shrink) the 17 real copies were 0-5 and 7, and the closest different photo was 11 away.
-const nearX=4,nearInstagram=7,ratioTolerance=.02;
+const nearX=4,autoX=2,nearInstagram=7,ratioTolerance=.02;
 function dhashOf({width,height,data}){
  const lum=(x,y)=>{const i=(Math.min(height-1,Math.floor(y*height/8))*width+Math.min(width-1,Math.floor(x*width/9)))*4;return data[i]*.299+data[i+1]*.587+data[i+2]*.114;};
  let dhash=0n;for(let y=0;y<8;y++)for(let x=0;x<8;x++)dhash=(dhash<<1n)|BigInt(lum(x,y)>lum(x+1,y));
@@ -106,5 +108,19 @@ export async function maintainX(env){
    else statements.push(DB.prepare("INSERT INTO x_quality(post_id,availability,missing_count,checked_at,next_check) VALUES(?,?,?,unixepoch(),unixepoch()+?) ON CONFLICT(post_id) DO UPDATE SET availability=CASE WHEN ?='retry' THEN x_quality.availability ELSE excluded.availability END,missing_count=CASE WHEN ?='missing' THEN x_quality.missing_count+1 WHEN ?='available' THEN 0 ELSE x_quality.missing_count END,checked_at=excluded.checked_at,next_check=excluded.next_check").bind(candidate.id,state==='retry'?'unknown':state,state==='missing'?1:0,state==='missing'?21600:state==='retry'?3600:86400,state,state,state));
   }
   await DB.batch([DB.prepare('INSERT INTO commit_guard(token,ok) SELECT ?,CASE WHEN EXISTS(SELECT 1 FROM collection_control c,x_maintenance m WHERE c.id=1 AND c.enabled=1 AND c.revision=? AND m.id=1 AND m.token=? AND m.until_at>unixepoch()) THEN 1 ELSE 0 END').bind(token,lock.revision,token),...statements,DB.prepare('DELETE FROM commit_guard WHERE token=?').bind(token)]);
+  await autoMergeX(DB);
  }finally{await DB.prepare('UPDATE x_maintenance SET until_at=0,token=NULL WHERE token=?').bind(token).run();}
+}
+// One open review pair per run goes through the review button's path, so it is audited and "묶음 해제" undoes it.
+// ponytail: a pair that keeps failing is retried every run before the next one; skip-listing waits until that shows up.
+async function autoMergeX(DB){
+ const pairs=(await DB.prepare(`SELECT a.url AS left_url,b.url AS right_url,a.dhash AS left_dhash,b.dhash AS right_dhash FROM x_fingerprints a INDEXED BY x_review_near_url CROSS JOIN x_fingerprints b ON b.url=a.near_url
+  WHERE a.near_url IS NOT NULL AND a.hash IS NOT NULL AND b.hash IS NOT NULL AND a.dhash IS NOT NULL AND b.dhash IS NOT NULL AND COALESCE(a.confirmed_hash,a.hash)!=COALESCE(b.confirmed_hash,b.hash)
+   AND NOT EXISTS(SELECT 1 FROM x_photo_differences d WHERE d.left_url=min(a.url,b.url) AND d.right_url=max(a.url,b.url))`).all()).results;
+ const control=await DB.prepare('SELECT revision FROM x_group_control WHERE id=1').first();
+ for(const pair of pairs){
+  const distance=hamming(pair.left_dhash,pair.right_dhash);if(distance>autoX)continue;
+  try{await decidePhotos(DB,{action:'merge',left:pair.left_url,right:pair.right_url,groupRevision:control.revision,requestId:crypto.randomUUID(),reasonCode:'DUPLICATE_IMAGE',note:`사진 차이값 ${distance} (${autoX} 이하 자동)`},{id:'자동 판정'});return;}
+  catch(error){console.log(JSON.stringify({event:'x_auto_merge',status:'failed',error:String(error?.message).slice(0,100)}));}
+ }
 }
