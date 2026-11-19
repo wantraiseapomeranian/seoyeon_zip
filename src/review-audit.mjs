@@ -1,4 +1,4 @@
-// Only successful, state-changing human decisions belong in this ledger.
+// Only successful, state-changing decisions belong in this ledger: human ones, plus automatic same-photo merges by "자동 판정".
 export const reasons={
  SHOW:['SEOYEON_CONFIRMED','FALSE_POSITIVE','OTHER'],
  HIDE:['NOT_SEOYEON','PRODUCT_IMAGE','EVENT_NOTICE','ADVERTISEMENT','DUPLICATE_IMAGE','SOURCE_DELETED','OTHER'],
