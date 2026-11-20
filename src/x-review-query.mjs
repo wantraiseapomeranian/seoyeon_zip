@@ -4,17 +4,18 @@ import {publishedDayRange} from './published-day.mjs';
 // Global classification reads compact indexed rows, never post bodies or an all-photo pair product.
 const classification=`WITH
  eligible AS MATERIALIZED (
-  SELECT p.id FROM x_review_posts p LEFT JOIN x_quality q ON q.post_id=p.id
+  SELECT p.id,lower(COALESCE(p.author,''))='triplescosmos' AS official FROM x_review_posts p LEFT JOIN x_quality q ON q.post_id=p.id
   WHERE COALESCE(q.availability,'unknown')!='missing' AND COALESCE(q.decision,'auto')!='hidden'
    AND (q.decision='visible' OR p.moderation_present=0)
  ),
+ -- Same order as x_photo_rows (0036): the official account's copy first, then the smallest post ID.
  visible AS MATERIALIZED (
   SELECT e.id FROM eligible e WHERE EXISTS(
    SELECT 1 FROM x_review_media m LEFT JOIN x_fingerprints f ON f.url=m.url AND m.kind='image'
    WHERE m.post_id=e.id AND (COALESCE(f.confirmed_hash,f.hash) IS NULL OR NOT EXISTS(
     SELECT 1 FROM x_fingerprints other INDEXED BY x_review_effective_hash
-    CROSS JOIN x_review_media b INDEXED BY x_review_media_url ON b.url=other.url AND b.kind='image' AND b.post_id<e.id
-    CROSS JOIN eligible earlier ON earlier.id=b.post_id
+    CROSS JOIN x_review_media b INDEXED BY x_review_media_url ON b.url=other.url AND b.kind='image' AND b.post_id!=e.id
+    CROSS JOIN eligible earlier ON earlier.id=b.post_id AND (earlier.official>e.official OR (earlier.official=e.official AND b.post_id<e.id))
     WHERE COALESCE(other.confirmed_hash,other.hash)=COALESCE(f.confirmed_hash,f.hash)
    ))
   )
