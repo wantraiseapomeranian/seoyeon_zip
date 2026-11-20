@@ -111,14 +111,14 @@ test('large review list classifies off-page near candidates before filters and p
  const end=await get('?status=visible&offset=3075');assert.equal(end.items.length,23);
  }finally{sqlite.close();}
 });
-test('maintenance merges near X photos within 2 bits like the review button and leaves 3-4 bits and different-marked pairs for review',async t=>{
+test('maintenance merges near X photos within 3 bits like the review button and leaves 4 bits and different-marked pairs for review',async t=>{
  const {sqlite,DB}=testDatabase();t.mock.method(globalThis,'fetch',async()=>new Response('down',{status:500}));
  for(const [i,url] of ['a','b','c','d','e','f'].entries())sqlite.prepare('INSERT INTO posts VALUES(?,?)').run('x:'+(i+1),JSON.stringify({id:'x:'+(i+1),media:[{kind:'image',previewUrl:url}]}));
- sqlite.exec("UPDATE collection_control SET enabled=1; INSERT INTO x_fingerprints(url,hash,dhash,near_url) VALUES('a','ha','0000000000000000',NULL),('b','hb','0000000000000001','a'),('c','hc','0000000000000000',NULL),('d','hd','0000000000000007','c'),('e','he','0000000000000000',NULL),('f','hf','0000000000000000','e'); INSERT INTO x_photo_differences(left_url,right_url) VALUES('e','f');");
+ sqlite.exec("UPDATE collection_control SET enabled=1; INSERT INTO x_fingerprints(url,hash,dhash,near_url) VALUES('a','ha','0000000000000000',NULL),('b','hb','0000000000000007','a'),('c','hc','0000000000000000',NULL),('d','hd','000000000000000f','c'),('e','he','0000000000000000',NULL),('f','hf','0000000000000000','e'); INSERT INTO x_photo_differences(left_url,right_url) VALUES('e','f');");
  const groups=()=>sqlite.prepare('SELECT url,confirmed_hash FROM x_fingerprints ORDER BY url').all().map(f=>f.confirmed_hash);
  await maintainX({DB,COLLECTION_ENABLED:'true'});await maintainX({DB,COLLECTION_ENABLED:'true'});
  const [a,b,c,d,e,f]=groups();assert.ok(a&&a===b);assert.equal(c,null);assert.equal(d,null);assert.equal(e,null);assert.equal(f,null);
  const audit=sqlite.prepare('SELECT action,reviewed_by,reason_code,note FROM review_audit_log').all();
- assert.deepEqual(audit.map(r=>({...r})),[{action:'MARK_SAME_IMAGE',reviewed_by:'자동 판정',reason_code:'DUPLICATE_IMAGE',note:'사진 차이값 1 (2 이하 자동)'}]);
+ assert.deepEqual(audit.map(r=>({...r})),[{action:'MARK_SAME_IMAGE',reviewed_by:'자동 판정',reason_code:'DUPLICATE_IMAGE',note:'사진 차이값 3 (3 이하 자동)'}]);
  sqlite.close();
 });
