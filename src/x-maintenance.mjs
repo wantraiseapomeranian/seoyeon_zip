@@ -4,10 +4,11 @@ import {decidePhotos} from './review-mutations.mjs';
 export const hamming=(a,b)=>{let x=BigInt('0x'+a)^BigInt('0x'+b),n=0;while(x){x&=x-1n;n++;}return n;};
 const instagramImage=u=>u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&/(^|\.)(cdninstagram\.com|fbcdn\.net)$/.test(u.hostname);
 const twitterImage='https://pbs.twimg.com/';
-// X photos are compared within 4 bits. Pairs within 2 bits are merged automatically: by hand (2026-09-12..11-19) 173 of 174 such pairs
-// were the same photo (one distinct pair at 1 bit); 3-4 bits stay in the review queue. Instagram copies are hidden automatically within 7 bits:
+// X photos are compared within 4 bits. Pairs within 3 bits are merged automatically: by hand (2026-09-12..11-20) 173 of 174 pairs within
+// 2 bits were the same photo (one distinct pair at 1 bit) and all 16 at 3 bits were; 4 bits stay in the review queue (owner's choice).
+// Instagram copies are hidden automatically within 7 bits:
 // on production (2026-11-18, Cloudflare's 680px shrink) the 17 real copies were 0-5 and 7, and the closest different photo was 11 away.
-const nearX=4,autoX=2,nearInstagram=7,ratioTolerance=.02;
+const nearX=4,autoX=3,nearInstagram=7,ratioTolerance=.02;
 function dhashOf({width,height,data}){
  const lum=(x,y)=>{const i=(Math.min(height-1,Math.floor(y*height/8))*width+Math.min(width-1,Math.floor(x*width/9)))*4;return data[i]*.299+data[i+1]*.587+data[i+2]*.114;};
  let dhash=0n;for(let y=0;y<8;y++)for(let x=0;x<8;x++)dhash=(dhash<<1n)|BigInt(lum(x,y)>lum(x+1,y));
