@@ -4,6 +4,7 @@ import jpeg from 'jpeg-js';
 import {testDatabase} from './helpers/d1.mjs';
 import {readFeed} from '../src/feed.mjs';
 import {maintainX,instagramDhash} from '../src/x-maintenance.mjs';
+import {handleInstagramReview} from '../src/instagram-review.mjs';
 
 // Smooth synthetic pictures: the same pattern at another size and quality stands in for a re-encoded copy.
 const picture=(width,height,fx,fy,quality=85)=>{
@@ -114,5 +115,22 @@ test('the comparison reads the display alias, keeps the stored byte hash and is 
   assert.equal(marker,'perceptual_pending');
   assert.deepEqual(images.calls,[{transform:{width:680,height:680,fit:'scale-down'},output:{format:'image/jpeg'}}]);
   const state=row(d,ig('same'));assert.equal(state.hash,'stored');assert.equal(state.confirmed_hash,row(d,xUrl).hash);assert.equal(state.error,null);
+ }finally{d.sqlite.close();}
+});
+test('a photo awaiting review is compared with X first, the review card names the match, and keeping the post hides that photo at once',async()=>{
+ const d=setup({images:[]});try{
+  d.sqlite.prepare('INSERT INTO instagram_review(code,data,status,imported_at) VALUES(?,?,?,?)').run('Pend_123',JSON.stringify({author:'ig.author',url:'https://www.instagram.com/p/Pend_123/',images:[ig('same'),ig('other'),ig('clip')],media:[{kind:'image',previewUrl:ig('same')},{kind:'image',previewUrl:ig('other')},{kind:'video',previewUrl:ig('clip')}]}),'pending','2026-09-10');
+  const review=async()=>(await (await handleInstagramReview(new Request('https://example.test/api/admin/instagram?status=all'),{DB:d.DB})).json()).items[0].xComparison;
+  assert.deepEqual(await review(),{photos:2,compared:0,waiting:2,failed:0,matches:[]});
+  await withFetch(files,()=>runs(d,6));
+  const x=row(d,xUrl),{matches,...counts}=await review();
+  assert.equal(row(d,ig('same')).confirmed_hash,x.hash);assert.equal(row(d,ig('clip')).dhash,null);
+  assert.deepEqual(counts,{photos:2,compared:2,waiting:0,failed:0});
+  assert.equal(matches.length,1);assert.ok(matches[0].distance<=7);
+  assert.deepEqual({...matches[0],distance:0},{position:0,image:xUrl,url:'https://x.com/first/status/1',author:'first',publishedAt:'2026-09-10T00:00:00.000Z',distance:0,shown:true});
+  assert.ok(!(await readFeed(d.DB,new URLSearchParams())).posts.some(p=>p.platform==='instagram'));
+  d.sqlite.exec("UPDATE instagram_review SET status='kept'");
+  const post=(await readFeed(d.DB,new URLSearchParams())).posts.find(p=>p.platform==='instagram');
+  assert.deepEqual(post.media.map(m=>m.previewUrl),[ig('other'),ig('clip')]);
  }finally{d.sqlite.close();}
 });

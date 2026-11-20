@@ -15,6 +15,32 @@ async function body(request) {
   const bytes=new Uint8Array(size);let offset=0;for(const c of chunks){bytes.set(c,offset);offset+=c.length;}
   return JSON.parse(new TextDecoder().decode(bytes));
 }
+// Maintenance's X comparison for each stored photo of the page (videos are never compared). A match names the X photo and
+// whether the feed shows it: only then is the Instagram copy hidden once kept.
+async function xComparison(DB,rows){
+  const photos=rows.flatMap(r=>{const d=JSON.parse(r.data),images=d.images?.length?d.images:(d.image?[d.image]:[]);
+    return images.map((url,position)=>({code:r.code,position,url,video:d.media?.[position]?.kind==='video'}));});
+  const urls=photos.filter(p=>!p.video).map(p=>p.url);
+  const {results}=urls.length?await DB.prepare("SELECT url,dhash IS NOT NULL AS compared,error,confirmed_hash,CASE WHEN json_extract(candidate_metadata_json,'$.origin')='instagram_auto_match' AND confirmed_hash IS NOT NULL THEN json_extract(candidate_metadata_json,'$.rightImageUrl') END AS x_image,json_extract(candidate_metadata_json,'$.distance') AS distance FROM x_fingerprints WHERE url IN (SELECT value FROM json_each(?))").bind(JSON.stringify(urls)).all():{results:[]};
+  const rowsByUrl=new Map(results.map(r=>[r.url,r])),matched=results.filter(r=>r.x_image);
+  const posts=new Map(),shown=new Set();
+  if(matched.length){
+    const [x,feed]=await DB.batch([
+      DB.prepare('SELECT m.url,p.author,p.published_at,p.canonical_url FROM x_review_media m JOIN x_review_posts p ON p.id=m.post_id WHERE m.url IN (SELECT value FROM json_each(?))').bind(JSON.stringify(matched.map(r=>r.x_image))),
+      DB.prepare('SELECT DISTINCT hash FROM x_photo_rows WHERE rank=1 AND hash IN (SELECT value FROM json_each(?))').bind(JSON.stringify(matched.map(r=>r.confirmed_hash)))]);
+    for(const r of x.results)if(!posts.has(r.url))posts.set(r.url,r);
+    for(const r of feed.results)shown.add(r.hash);
+  }
+  const byCode=new Map(rows.map(r=>[r.code,{photos:0,compared:0,waiting:0,failed:0,matches:[]}]));
+  for(const p of photos){
+    if(p.video)continue;const c=byCode.get(p.code),f=rowsByUrl.get(p.url);c.photos++;
+    if(f?.x_image){const post=posts.get(f.x_image);c.compared++;c.matches.push({position:p.position,image:f.x_image,url:post?.canonical_url??null,author:post?.author??null,publishedAt:post?.published_at??null,distance:f.distance,shown:shown.has(f.confirmed_hash)});}
+    else if(f?.compared)c.compared++;
+    else if(f?.error==='perceptual_failed')c.failed++;
+    else c.waiting++;
+  }
+  return byCode;
+}
 export async function handleInstagramReview(request,env,context) {
   const url=new URL(request.url),path=url.pathname.slice('/api/admin/instagram'.length);
   if(request.method==='GET'&&path==='') {
@@ -32,7 +58,8 @@ export async function handleInstagramReview(request,env,context) {
     const counts=await env.DB.prepare('SELECT status,COUNT(*) AS count FROM instagram_review'+where+' GROUP BY status').bind(...args).all();
     const {results}=await env.DB.prepare('SELECT * FROM instagram_review'+where+(status==='all'?'':(where?' AND':' WHERE')+' status=?')+' ORDER BY imported_at DESC,code LIMIT 25 OFFSET ?').bind(...args,...(status==='all'?[]:[status]),offset).all();
     const authors=await env.DB.prepare("SELECT DISTINCT json_extract(data,'$.author') AS author FROM instagram_review WHERE COALESCE(json_extract(data,'$.author'),'')!='' ORDER BY author").all();
-    const items=await instagramPreviewUrls(env.DB,results.map(r=>({...JSON.parse(r.data),status:r.status,revision:r.revision,importedAt:r.imported_at,reviewedAt:r.reviewed_at})),{review:true});
+    const comparison=await xComparison(env.DB,results);
+    const items=await instagramPreviewUrls(env.DB,results.map(r=>({...JSON.parse(r.data),status:r.status,revision:r.revision,importedAt:r.imported_at,reviewedAt:r.reviewed_at,xComparison:comparison.get(r.code)})),{review:true});
     return reply({items,counts:Object.fromEntries(counts.results.map(r=>[r.status,r.count])),authors:authors.results.map(r=>r.author)});
   }
   if(request.method!=='POST')return reply({error:'method_not_allowed'},405);

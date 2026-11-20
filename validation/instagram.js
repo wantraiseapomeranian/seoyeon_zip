@@ -10,16 +10,34 @@ async function api(path='',body){
 }
 function el(tag,text,className){const n=document.createElement(tag);if(text!=null)n.textContent=text;if(className)n.className=className;return n;}
 function link(url,text,className){const n=el('a',text,className);n.href=url;n.target='_blank';n.rel='noopener noreferrer';return n;}
+// Maintenance compares photos with X before review; videos are not compared.
+function xSummary(x){
+  if(!x?.photos)return null;
+  return [x.matches.length?`X 같은 사진 ${x.matches.length}장`:x.waiting||x.failed?null:'X 같은 사진 없음',x.waiting?`X 비교 대기 ${x.waiting}/${x.photos}장`:null,x.failed?`X 비교 실패 ${x.failed}장`:null].filter(Boolean).join(' · ');
+}
 function card(p){
   const article=el('article',null,'review-card');article.dataset.reviewId=p.code;
-  const images=p.images?.length?p.images:(p.image?[p.image]:[]);
-  const preview=window.reviewGallery(images.map((src,i)=>({src,url:p.url,kind:p.media?.find(m=>m.previewUrl===src)?.kind,alt:(p.author||'인스타그램')+' 사진 '+(i+1)})),{label:'게시물 사진'}).element;
+  const images=p.images?.length?p.images:(p.image?[p.image]:[]),matches=p.xComparison?.matches??[];
+  const pictures=el('div',null,'review-pictures'),comparison=el('section',null,'photo-comparison');comparison.setAttribute('aria-label','X 같은 사진 비교');
+  const gallery=window.reviewGallery(images.map((src,i)=>({src,url:p.url,kind:p.media?.find(m=>m.previewUrl===src)?.kind,alt:(p.author||'인스타그램')+' 사진 '+(i+1)})),{label:'게시물 사진',onChange:()=>renderComparison()});
+  pictures.append(gallery.element,comparison);
+  function renderComparison(){
+    const current=matches.filter(m=>m.position===gallery.index);
+    pictures.classList.toggle('has-comparison',current.length>0);comparison.hidden=!current.length;comparison.replaceChildren();if(!current.length)return;
+    const info=el('div',null,'comparison-info'),other=window.reviewGallery(current.map(m=>({src:m.image,url:m.url??m.image,alt:'@'+(m.author||'X')+' 같은 사진'})),{label:'X 사진',onChange:show});
+    comparison.append(el('p','X 같은 사진','comparison-heading'),other.element,info);show(0);
+    function show(i){const m=current[i];info.replaceChildren(el('strong','@'+(m.author||'작성자 미상')),...(m.publishedAt?[el('span',new Date(m.publishedAt).toLocaleDateString('ko-KR'))]:[]),
+      el('span',m.shown?(p.status==='kept'?'X 글이 피드에 표시 중 · 이 사진은 자동으로 숨겨져요':'X 글이 피드에 표시 중 · 표시해도 이 사진은 자동으로 숨겨져요'):'X 글이 피드에서 숨겨져 있어 이 사진은 표시돼요'),
+      el('span','차이값 '+m.distance),...(m.url?[link(m.url,'원문 보기','review-link')]:[]));}
+  }
+  if(matches.length)gallery.select(matches[0].position,false);renderComparison();
   const body=el('div',null,'review-body'),meta=el('div',null,'review-meta');
   const time=el('time',p.publishedAt?new Date(p.publishedAt).toLocaleDateString('ko-KR'):'게시일 미상');if(p.publishedAt)time.dateTime=p.publishedAt;
   meta.append(el('h2',p.author?`@${p.author}`:'작성자 미상'),time);
   const tags=el('div',null,'review-tags');tags.append(el('span',labels[p.status]),el('span',p.media?.some(m=>m.kind==='video')?(p.media.some(m=>m.kind==='image')?'사진·영상':'영상'):p.media?.every(m=>m.kind==='image')?'사진':'유형 미확인'),el('span',`미디어 ${p.mediaCount}개`));
   if(p.firstSeenInTrial!==null)tags.append(el('span',p.firstSeenInTrial?'시험 중 처음 발견':'기존 발견 글'));
   if(p.newlyPublished===true)tags.append(el('span','시험 시작 후 게시'));
+  const summary=xSummary(p.xComparison);if(summary)tags.append(el('span',summary));
   const reasons=el('ul',null,'review-reasons');p.reasons.filter(r=>r!=='그룹·인물 문맥 일치 · 사진은 직접 확인').forEach(r=>reasons.append(el('li',r)));reasons.hidden=!reasons.childElementCount;
   if(images.length<p.mediaCount)tags.append(el('span','저장된 미리보기 '+images.length+'장 · 전체는 원문에서 확인'));
   body.append(meta,tags,reasons,el('p',p.caption||'본문이 없는 게시물이에요.','review-caption'),link(p.url,'원문 보기','review-link'));
@@ -27,7 +45,7 @@ function card(p){
   for(const value of ['kept','excluded','held','pending']){const button=el('button',value==='pending'?'판단 취소':value==='kept'?'피드에 표시':labels[value]);button.setAttribute('aria-pressed',String(p.status===value));button.disabled=p.status===value;button.addEventListener('click',async()=>{
     if(busy)return;const focus=window.reviewFocus(button);busy=true;actions.querySelectorAll('button').forEach(b=>b.disabled=true);
     try{if(await window.reviewDecision({action:value,label:button.textContent,submit:details=>api('/'+p.code,{status:value,revision:p.revision,...details})})){await load();focus.restore();$('#message').textContent=`${labels[value]} 상태로 저장했어요.`;}else actions.querySelectorAll('button').forEach(b=>b.disabled=b.getAttribute('aria-pressed')==='true');}catch(e){$('#message').textContent=e.message;actions.querySelectorAll('button').forEach(b=>b.disabled=b.getAttribute('aria-pressed')==='true');}finally{focus.stop();busy=false;}
-  });actions.append(button);}body.append(actions);article.append(preview,body);return article;
+  });actions.append(button);}body.append(actions);article.append(pictures,body);return article;
 }
 let generation=0;
 async function load(){
